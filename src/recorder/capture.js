@@ -135,7 +135,8 @@ async function captureFrames(story, outputName = 'story') {
                 padding-right: 15px !important; /* Flush to right edge */
             }
             #chat-header {
-                padding-top: 60px !important; /* Safe zone for TikTok top UI */
+                padding-top: 80px !important; /* Safe zone for TikTok search bar */
+                padding-bottom: 15px !important;
                 height: auto !important;
             }
             /* Right bubble max-width to avoid TikTok icons */
