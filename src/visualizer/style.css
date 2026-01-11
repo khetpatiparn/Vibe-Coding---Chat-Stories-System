@@ -235,6 +235,19 @@ body.rendering .message.right {
   color: var(--text-dark);
   border-bottom-right-radius: 5px;
   box-shadow: 0 2px 5px var(--shadow-soft);
+  overflow: hidden; /* Prevent image overflow */
+}
+
+/* Chat Images inside bubbles */
+.chat-image {
+  max-width: 100% !important;
+  max-height: 150px !important;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+  margin-bottom: 4px;
+  object-fit: cover;
 }
 
 .message-time {

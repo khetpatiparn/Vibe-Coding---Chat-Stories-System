@@ -140,7 +140,7 @@ class ChatStory {
 
     const bubbleHtml = `
       <div class="message-bubble">
-        ${item.image_path ? `<img src="${item.image_path.startsWith('data:') ? item.image_path : this.resolvePath(item.image_path)}" class="chat-image" style="max-width: 150px; max-height: 150px; border-radius: 8px; display: block; margin-bottom: 4px; object-fit: cover;">` : ''}
+        ${item.image_path ? `<img src="${item.image_path.startsWith('data:') ? item.image_path : this.resolvePath(item.image_path)}" class="chat-image" style="max-width: 130px; max-height: 130px; border-radius: 8px; display: block; margin: 4px auto; object-fit: cover;">` : ''}
         ${item.message ? `<div>${item.message}</div>` : ''}
         <div class="message-time" style="text-align: right; opacity: 0.7; font-size: 0.7em;">${this.getCurrentTime()}</div>
       </div>`;

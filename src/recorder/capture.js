@@ -97,13 +97,18 @@ async function captureFrames(story, outputName = 'story') {
         hasTouch: true
     });
     
-    // Load visualizer
-    const storyParam = encodeURIComponent(JSON.stringify(story));
-    const timelineParam = encodeURIComponent(JSON.stringify(timeline));
+    // 🚀 KEY FIX: Inject story data BEFORE page loads (avoids URL length limits)
+    // This allows large image data to be passed without URL encoding issues
+    await page.evaluateOnNewDocument((storyData, timelineData) => {
+        window.__INJECTED_STORY__ = storyData;
+        window.__INJECTED_TIMELINE__ = timelineData;
+        window.__INJECTED_MODE__ = true;
+    }, story, timeline);
     
-    // Note: เพิ่ม random query param (?v=...) เพื่อป้องกัน Cache
+    // Load visualizer without story data in URL
     const cacheBuster = Date.now();
-    await page.goto(`http://localhost:3000/visualizer/index.html?story=${storyParam}&timelineMode=true&timeline=${timelineParam}&v=${cacheBuster}`, {
+    console.log('Loading visualizer page...');
+    await page.goto(`http://localhost:3000/visualizer/index.html?injectMode=true&v=${cacheBuster}`, {
         waitUntil: 'networkidle0',
         timeout: 60000
     });
@@ -127,29 +132,66 @@ async function captureFrames(story, outputName = 'story') {
                 box-shadow: none !important;
             }
             .message-bubble {
+                /*border: 2px solid green;*/
                 font-size: 0.95rem !important;
-                padding: 12px 16px !important;
             }
             #chat-container {
                 padding-bottom: 150px !important;
-                padding-right: 15px !important; /* Flush to right edge */
+                padding-right: 15px !important;
             }
             #chat-header {
-                padding-top: 80px !important; /* Safe zone for TikTok search bar */
+                padding-top: 80px !important;
                 padding-bottom: 15px !important;
                 height: auto !important;
             }
-            /* Right bubble max-width to avoid TikTok icons */
-            .message.right .message-bubble {
-                max-width: 70% !important;
+            /* Ensure images have proper spacing inside bubbles */
+            .chat-image {
+                /*border: 2px solid #000;*/
+                max-width: 100%;
+                height: auto;
+                border-radius: 8px;
+                display: block;
+                margin: 0 auto;
             }
         `
     });
     
     console.log('✅ Mobile emulation & Full-screen CSS injected');
     
-    // Wait for visualizer
-    await page.waitForFunction(() => window.timelineReady === true, { timeout: 10000 });
+    // Initialize the timeline mode via page.evaluate
+    await page.evaluate(() => {
+        if (window.__INJECTED_MODE__ && window.__INJECTED_STORY__ && window.__INJECTED_TIMELINE__) {
+            const storyData = window.__INJECTED_STORY__;
+            const timeline = window.__INJECTED_TIMELINE__;
+            
+            // Create ChatStory instance
+            const story = new ChatStory(storyData);
+            
+            // Track which messages have been shown
+            let shownMessages = new Set();
+            
+            // Function for Puppeteer to call with current time
+            window.setCurrentTime = function(currentTime) {
+                for (const item of timeline) {
+                    if (currentTime >= item.appearTime && !shownMessages.has(item.index)) {
+                        shownMessages.add(item.index);
+                        const dialogue = storyData.dialogues[item.index];
+                        const senderChar = storyData.characters[dialogue.sender];
+                        story.addMessage(dialogue, senderChar);
+                        story.scrollToBottom();
+                        console.log(`[${currentTime.toFixed(1)}s] Showing message ${item.index + 1}`);
+                    }
+                }
+            };
+            
+            // Signal ready
+            window.timelineReady = true;
+            console.log('Inject mode: Timeline ready');
+        }
+    });
+    
+    // Wait for visualizer to be ready
+    await page.waitForFunction(() => window.timelineReady === true, { timeout: 15000 });
     
     // Capture Loop
     console.log('Starting capture...');
