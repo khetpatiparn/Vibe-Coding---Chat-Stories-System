@@ -84,6 +84,16 @@
 
                 <!-- Preview (Right) -->
                 <div class="preview-pane">
+                    <!-- View Mode Toggle -->
+                    <div class="view-mode-toggle">
+                        <span class="toggle-label">View Mode:</span>
+                        <div class="toggle-switch" id="tiktok-mode-toggle" onclick="toggleTiktokMode()">
+                            <span class="toggle-option" data-mode="normal">Normal</span>
+                            <span class="toggle-option active" data-mode="tiktok">TikTok</span>
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+
                     <div class="phone-mockup">
                         <iframe id="preview-frame" src="../visualizer/index.html"></iframe>
                     </div>

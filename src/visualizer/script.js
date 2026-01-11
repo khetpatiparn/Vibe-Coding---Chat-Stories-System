@@ -64,21 +64,29 @@ class ChatStory {
       const isInstant = i < startAt;
       await this.processDialogue(dialogue, isInstant);
     }
+    
+    // Dispatch story-complete event for Puppeteer to catch
+    console.log('Dispatching story-complete event');
+    window.dispatchEvent(new CustomEvent('story-complete'));
   }
 
   async processDialogue(item, isInstant = false) {
     const senderChar = this.data.characters[item.sender];
     const isLeft = senderChar && senderChar.side === "left";
     
+    // Minimum delay for readability (1.5 seconds)
+    const minDelay = 0.5;
+    const actualDelay = Math.max(item.delay || 0.5, minDelay);
+    
     // 1. Delays & Typing (Skip if instant)
     if (!isInstant) {
         if (isLeft) {
           this.showTyping(senderChar);
-          const typingTime = item.delay * 1000; 
+          const typingTime = actualDelay * 1000; 
           await this.wait(typingTime);
           this.hideTyping();
         } else {
-            await this.wait(item.delay * 1000);
+            await this.wait(actualDelay * 1000);
         }
     }
 
@@ -198,8 +206,96 @@ const sampleStory = {
 window.onload = async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const projectId = urlParams.get('projectId');
+    const storyParam = urlParams.get('story'); // For video render (Puppeteer)
+    const tiktokMode = urlParams.get('tiktokMode') === 'true';
     
-    if (projectId) {
+    // Toggle TikTok overlay
+    const tiktokOverlay = document.getElementById('tiktok-overlay');
+    if (tiktokOverlay) {
+        if (tiktokMode) {
+            tiktokOverlay.classList.remove('hidden');
+        } else {
+            tiktokOverlay.classList.add('hidden');
+        }
+    }
+    
+    // Timeline Mode: Puppeteer controls time, messages appear based on time
+    const timelineMode = urlParams.get('timelineMode') === 'true';
+    const timelineParam = urlParams.get('timeline');
+    const renderMode = urlParams.get('renderMode') === 'true';
+    
+    // Add rendering class for full screen video export
+    if (timelineMode || renderMode) {
+        document.body.classList.add('rendering');
+        console.log('Rendering mode: Full screen enabled');
+    }
+    
+    if (timelineMode && storyParam && timelineParam) {
+        console.log('Timeline Mode: Puppeteer controls timing');
+        try {
+            const storyData = JSON.parse(decodeURIComponent(storyParam));
+            const timeline = JSON.parse(decodeURIComponent(timelineParam));
+            const story = new ChatStory(storyData);
+            
+            // Track which messages have been shown
+            let shownMessages = new Set();
+            
+            // Function for Puppeteer to call with current time
+            window.setCurrentTime = function(currentTime) {
+                // Show all messages that should appear by this time
+                for (const item of timeline) {
+                    if (currentTime >= item.appearTime && !shownMessages.has(item.index)) {
+                        shownMessages.add(item.index);
+                        const dialogue = storyData.dialogues[item.index];
+                        const senderChar = storyData.characters[dialogue.sender];
+                        story.addMessage(dialogue, senderChar);
+                        story.scrollToBottom();
+                        console.log(`[${currentTime.toFixed(1)}s] Showing message ${item.index + 1}`);
+                    }
+                }
+            };
+            
+            // Signal ready
+            window.timelineReady = true;
+            console.log('Timeline mode ready, waiting for setCurrentTime calls');
+            
+        } catch (e) {
+            console.error('Failed to parse timeline data:', e);
+        }
+        return; // Don't run normal modes
+    }
+    
+    // Render Mode: Wait for Puppeteer to signal start
+    // (renderMode already declared above)    
+    // Option 1: Load story from URL parameter (Puppeteer video render)
+    if (storyParam) {
+        console.log('Loading story from URL parameter');
+        try {
+            const storyData = JSON.parse(decodeURIComponent(storyParam));
+            const story = new ChatStory(storyData);
+            
+            if (renderMode) {
+                // In render mode: Wait for Puppeteer to call window.startStory()
+                console.log('Render mode: Waiting for start signal...');
+                window.storyInstance = story;
+                window.startStory = async function() {
+                    console.log('Start signal received, playing story...');
+                    await story.play();
+                    console.log('Story complete, signaling...');
+                };
+                // Signal that we're ready to start
+                window.storyReady = true;
+                console.log('Story ready, waiting for start signal');
+            } else {
+                // Normal mode: Start immediately
+                story.play();
+            }
+        } catch (e) {
+            console.error('Failed to parse story from URL:', e);
+        }
+    }
+    // Option 2: Load story from API by projectId (Dashboard preview)
+    else if (projectId) {
         console.log('Loading project API:', projectId);
         try {
             const res = await fetch(`http://localhost:3000/api/projects/${projectId}`);

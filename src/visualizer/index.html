@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div id="phone-frame">
         <div id="chat-header">
@@ -20,13 +22,13 @@
                 <span class="header-status">กำลังพิมพ์...</span>
             </div>
         </div>
-        
+
         <div id="camera-wrapper">
             <div id="chat-container">
                 <!-- Messages will be injected here -->
             </div>
         </div>
-        
+
         <div id="typing-indicator" class="hidden">
             <div class="typing-avatar">
                 <img src="" alt="" id="typing-avatar-img">
@@ -39,6 +41,12 @@
         </div>
     </div>
 
+    <!-- TikTok Overlay (Hidden by default) - Uses PNG Image -->
+    <div id="tiktok-overlay" class="tiktok-overlay hidden">
+        <img src="/assets/TikTok-Safe-Zone-Template.png" alt="TikTok UI Overlay" class="tiktok-overlay-image">
+    </div>
+
     <script src="script.js"></script>
 </body>
+
 </html>

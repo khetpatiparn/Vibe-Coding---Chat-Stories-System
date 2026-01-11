@@ -1,6 +1,6 @@
 /**
- * Video Recorder - Puppeteer + FFmpeg Integration
- * Captures chat animation as video frames and assembles with audio
+ * Video Recorder - Frame-Synced Rendering
+ * Puppeteer controls the time, visualizer displays messages based on that time
  */
 
 const puppeteer = require('puppeteer');
@@ -21,86 +21,153 @@ const CONFIG = {
     fps: 30,
     framesDir: './output/frames',
     outputDir: './output',
-    visualizerPath: './src/visualizer/index.html'
+    delayPerMessage: 1.5, // Seconds per message (reading time)
+    endingBuffer: 2 // Extra seconds after last message
 };
 
 // ============================================
-// Frame Capture
+// Calculate Timeline from Story
+// ============================================
+function calculateTimeline(story) {
+    const timeline = [];
+    let currentTime = 0;
+    
+    if (!story.dialogues || story.dialogues.length === 0) {
+        return { timeline: [], totalDuration: 5 };
+    }
+    
+    for (let i = 0; i < story.dialogues.length; i++) {
+        const dialogue = story.dialogues[i];
+        const delay = Math.max(dialogue.delay || 1.5, CONFIG.delayPerMessage);
+        
+        timeline.push({
+            index: i,
+            appearTime: currentTime,
+            dialogue: dialogue
+        });
+        
+        currentTime += delay;
+    }
+    
+    const totalDuration = currentTime + CONFIG.endingBuffer;
+    
+    console.log(`Timeline: ${timeline.length} messages over ${totalDuration.toFixed(1)} seconds`);
+    timeline.forEach(t => {
+        console.log(`  [${t.appearTime.toFixed(1)}s] Message ${t.index + 1}: "${t.dialogue.message?.substring(0, 30)}..."`);
+    });
+    
+    return { timeline, totalDuration };
+}
+
+// ============================================
+// Frame Capture (Mobile Emulation Mode)
 // ============================================
 async function captureFrames(story, outputName = 'story') {
     const framesDir = path.join(CONFIG.framesDir, outputName);
     await fs.ensureDir(framesDir);
     await fs.emptyDir(framesDir);
     
-    console.log('Launching browser...');
+    // Calculate timeline
+    const { timeline, totalDuration } = calculateTimeline(story);
+    const totalFrames = Math.ceil(totalDuration * CONFIG.fps);
+    
+    console.log(`\nWill capture ${totalFrames} frames (${totalDuration.toFixed(1)}s at ${CONFIG.fps} FPS)`);
+    console.log('Launching browser in Mobile Emulation Mode...');
+    
     const browser = await puppeteer.launch({
-        headless: 'new',
+        headless: 'new', // Use 'new' for latest puppeteer
         args: [
-            `--window-size=${CONFIG.width},${CONFIG.height}`,
             '--no-sandbox',
             '--disable-setuid-sandbox'
         ]
     });
     
     const page = await browser.newPage();
+    
+    // 🚀 KEY FIX 1: Mobile Emulation
+    // ตั้งค่าเป็นจอ มือถือ (360x640) แต่คูณความชัด 3 เท่า (Scale 3)
+    // 360 * 3 = 1080px (Width)
+    // 640 * 3 = 1920px (Height)
+    // ผลลัพธ์: ได้ไฟล์ 1080x1920 ที่ตัวหนังสือใหญ่เท่ามือถือจริง
     await page.setViewport({
-        width: CONFIG.width,
-        height: CONFIG.height,
-        deviceScaleFactor: 1
+        width: 360,
+        height: 640,
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true
     });
     
-    // Load the visualizer
-    const htmlPath = path.resolve(CONFIG.visualizerPath);
+    // Load visualizer
     const storyParam = encodeURIComponent(JSON.stringify(story));
-    await page.goto(`file://${htmlPath}?story=${storyParam}`, {
-        waitUntil: 'networkidle0'
+    const timelineParam = encodeURIComponent(JSON.stringify(timeline));
+    
+    // Note: เพิ่ม random query param (?v=...) เพื่อป้องกัน Cache
+    const cacheBuster = Date.now();
+    await page.goto(`http://localhost:3000/visualizer/index.html?story=${storyParam}&timelineMode=true&timeline=${timelineParam}&v=${cacheBuster}`, {
+        waitUntil: 'networkidle0',
+        timeout: 60000
     });
     
-    console.log('Starting frame capture...');
+    // 🚀 KEY FIX 2: Force Full Screen via Injection
+    // ฝัง CSS ลงไปตรงๆ เพื่อบังคับให้เต็มจอแน่นอน (แก้ปัญหาขอบสีม่วง)
+    await page.addStyleTag({
+        content: `
+            body, body.rendering {
+                background: #e5ddd5 !important; /* บังคับพื้นหลังสีครีม */
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: hidden !important;
+            }
+            #phone-frame, body.rendering #phone-frame {
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: none !important;
+                max-height: none !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+            }
+            /* ปรับขนาด UI ให้พอดีกับ Mobile Viewport (360px) */
+            .message-bubble {
+                font-size: 0.95rem !important; /* ขนาดฟอนต์ปกติของมือถือ */
+                padding: 12px 16px !important;
+            }
+            #chat-container {
+                padding-bottom: 200px !important; /* Safe Zone สำหรับ TikTok */
+                padding-right: 70px !important;   /* Safe Zone ปุ่มขวา */
+            }
+        `
+    });
     
+    console.log('✅ Mobile emulation & Full-screen CSS injected');
+    
+    // Wait for visualizer
+    await page.waitForFunction(() => window.timelineReady === true, { timeout: 10000 });
+    
+    // Capture Loop
+    console.log('Starting capture...');
     let frameCount = 0;
-    let isComplete = false;
     
-    // Listen for story completion
-    await page.exposeFunction('onStoryComplete', () => {
-        isComplete = true;
-    });
-    
-    await page.evaluate(() => {
-        window.addEventListener('story-complete', () => {
-            window.onStoryComplete();
-        });
-    });
-    
-    // Capture frames
-    const frameInterval = 1000 / CONFIG.fps;
-    const maxDuration = 60000; // 60 seconds max
-    const startTime = Date.now();
-    
-    while (!isComplete && (Date.now() - startTime) < maxDuration) {
+    for (let frame = 0; frame < totalFrames; frame++) {
+        const currentTime = frame / CONFIG.fps;
+        
+        await page.evaluate((time) => {
+            if (window.setCurrentTime) window.setCurrentTime(time);
+        }, currentTime);
+        
+        // Small delay for rendering
+        // await new Promise(r => setTimeout(r, 10)); // Optional: Enable if frames glitch
+        
         const framePath = path.join(framesDir, `frame_${String(frameCount).padStart(6, '0')}.png`);
-        await page.screenshot({ path: framePath, type: 'png' });
+        await page.screenshot({ path: framePath, type: 'png' }); // Screenshot will be 1080x1920 due to scale factor 3
         frameCount++;
         
-        // Wait for next frame
-        await new Promise(resolve => setTimeout(resolve, frameInterval));
-        
-        if (frameCount % 30 === 0) {
-            console.log(`Captured ${frameCount} frames...`);
+        if (frame % CONFIG.fps === 0) {
+            console.log(`Capturing: ${Math.floor(currentTime)}s / ${totalDuration.toFixed(1)}s`);
         }
     }
     
-    // Capture a few more frames after completion for ending
-    for (let i = 0; i < CONFIG.fps * 2; i++) {
-        const framePath = path.join(framesDir, `frame_${String(frameCount).padStart(6, '0')}.png`);
-        await page.screenshot({ path: framePath, type: 'png' });
-        frameCount++;
-        await new Promise(resolve => setTimeout(resolve, frameInterval));
-    }
-    
     await browser.close();
-    console.log(`Captured ${frameCount} frames in ${framesDir}`);
-    
     return { framesDir, frameCount };
 }
 
@@ -126,35 +193,18 @@ async function assembleVideo(framesDir, outputName = 'story', bgMusicPath = null
                 '-crf 23'
             ]);
         
-        // Add background music if provided
         if (bgMusicPath && fs.existsSync(bgMusicPath)) {
             command = command
                 .input(bgMusicPath)
-                .outputOptions([
-                    '-c:a aac',
-                    '-b:a 128k',
-                    '-shortest'
-                ]);
+                .outputOptions(['-c:a aac', '-b:a 128k', '-shortest']);
         }
         
         command
             .output(outputPath)
-            .on('start', (cmd) => {
-                console.log('FFmpeg command:', cmd);
-            })
-            .on('progress', (progress) => {
-                if (progress.percent) {
-                    console.log(`Processing: ${Math.round(progress.percent)}%`);
-                }
-            })
-            .on('error', (err) => {
-                console.error('FFmpeg error:', err);
-                reject(err);
-            })
-            .on('end', () => {
-                console.log(`Video saved to: ${outputPath}`);
-                resolve(outputPath);
-            })
+            .on('start', (cmd) => console.log('FFmpeg:', cmd))
+            .on('progress', (p) => p.percent && console.log(`Processing: ${Math.round(p.percent)}%`))
+            .on('error', (err) => { console.error('FFmpeg error:', err); reject(err); })
+            .on('end', () => { console.log(`Video saved: ${outputPath}`); resolve(outputPath); })
             .run();
     });
 }
@@ -164,27 +214,20 @@ async function assembleVideo(framesDir, outputName = 'story', bgMusicPath = null
 // ============================================
 async function recordStory(story, options = {}) {
     const outputName = options.outputName || story.title?.replace(/[^a-zA-Z0-9ก-๙]/g, '_') || 'story';
-    const bgMusicPath = options.bgMusicPath || null;
     
     try {
-        // Step 1: Capture frames
         const { framesDir, frameCount } = await captureFrames(story, outputName);
         
-        if (frameCount === 0) {
-            throw new Error('No frames captured');
-        }
+        if (frameCount === 0) throw new Error('No frames captured');
         
-        // Step 2: Assemble video
-        const videoPath = await assembleVideo(framesDir, outputName, bgMusicPath);
+        const videoPath = await assembleVideo(framesDir, outputName, options.bgMusicPath);
         
-        // Step 3: Clean up frames (optional)
         if (!options.keepFrames) {
             await fs.remove(framesDir);
             console.log('Cleaned up frames');
         }
         
         return videoPath;
-        
     } catch (error) {
         console.error('Recording failed:', error);
         throw error;
@@ -194,30 +237,17 @@ async function recordStory(story, options = {}) {
 // ============================================
 // Exports
 // ============================================
-module.exports = {
-    captureFrames,
-    assembleVideo,
-    recordStory,
-    CONFIG
-};
+module.exports = { captureFrames, assembleVideo, recordStory, calculateTimeline, CONFIG };
 
-// ============================================
 // CLI Test
-// ============================================
 if (require.main === module) {
     const testStory = {
-        title: "Test Story",
-        characters: {
-            a: { name: "คนที่ 1", avatar: "", side: "left" },
-            b: { name: "คนที่ 2", avatar: "", side: "right" }
-        },
+        title: "Test",
+        characters: { a: { name: "A", side: "left" }, b: { name: "B", side: "right" } },
         dialogues: [
-            { sender: "a", message: "สวัสดีครับ!", delay: 0.5, typing_speed: "normal", camera_effect: "normal" },
-            { sender: "b", message: "สวัสดีค่ะ 😊", delay: 0.5, typing_speed: "normal", camera_effect: "normal" }
+            { sender: "a", message: "Hello!", delay: 1.5 },
+            { sender: "b", message: "Hi there! 😊", delay: 1.5 }
         ]
     };
-    
-    recordStory(testStory, { keepFrames: true })
-        .then(path => console.log('Done:', path))
-        .catch(err => console.error('Error:', err));
+    recordStory(testStory, { keepFrames: true }).then(p => console.log('Done:', p)).catch(console.error);
 }

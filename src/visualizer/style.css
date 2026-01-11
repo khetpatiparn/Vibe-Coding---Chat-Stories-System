@@ -34,17 +34,63 @@ body {
   padding: 20px;
 }
 
-/* Phone Frame - 9:16 Aspect Ratio (Wider for better visibility) */
+/* Phone Frame - Full Width for Mobile (9:16 Aspect Ratio) */
 #phone-frame {
-  width: 420px;
-  height: 812px;
+  width: calc(100vw - 20px); /* Almost full screen width */
+  max-width: 600px; /* Max for large screens */
+  min-width: 360px; /* Min for readability */
+  height: calc((100vw - 20px) * 1.77); /* 9:16 ratio */
+  max-height: 1067px;
+  min-height: 640px;
   background: var(--phone-bg);
-  border-radius: 40px;
+  border-radius: 30px;
   overflow: hidden;
   position: relative;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
+}
+
+/* Rendering Mode - Full screen for video export */
+/* Note: capture.js uses deviceScaleFactor:3 on 360x640 viewport = 1080x1920 output */
+body.rendering #phone-frame {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+body.rendering {
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  background: var(--phone-bg) !important;
+}
+
+/* Mobile-sized elements for rendering (deviceScaleFactor handles the scaling) */
+body.rendering .message-bubble {
+  font-size: 0.9rem !important; /* Standard mobile size */
+  padding: 10px 14px !important;
+}
+
+body.rendering .message-avatar {
+  width: 35px !important; /* Default mobile size */
+  height: 35px !important;
+}
+
+body.rendering .header-avatar {
+  width: 45px !important; /* Default mobile size */
+  height: 45px !important;
+}
+
+body.rendering #chat-container {
+  padding-right: 60px !important; /* TikTok safe zone */
+  padding-bottom: 150px !important; /* Caption safe zone */
 }
 
 /* Chat Header */
@@ -97,23 +143,25 @@ body {
   transform-origin: center bottom;
 }
 
-/* Chat Container */
+/* Chat Container - Wider with reduced margins */
 #chat-container {
   height: 100%;
   overflow-y: auto;
-  padding: 20px 15px;
+  padding: 15px 10px; /* Reduced side padding */
+  padding-bottom: 150px; /* TikTok Safe Zone - Bottom protection */
+  padding-right: 60px; /* TikTok Safe Zone - Right protection for icons */
   display: flex;
   flex-direction: column;
   gap: 10px;
   scroll-behavior: smooth;
 }
 
-/* Message Bubbles */
+/* Message Bubbles - Wider for mobile */
 .message {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  max-width: 70%;
+  max-width: 85%; /* Wider bubbles */
   width: fit-content;
   animation: popIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   clear: both;
@@ -126,6 +174,8 @@ body {
 .message.right {
   align-self: flex-end;
   flex-direction: row-reverse;
+  max-width: 80%; /* Wider right bubbles */
+  margin-right: 0; /* Container padding handles right safe zone */
 }
 
 .message-avatar {
@@ -144,9 +194,9 @@ body {
 }
 
 .message-bubble {
-  padding: 12px 16px;
-  border-radius: 20px;
-  font-size: 1rem;
+  padding: 10px 14px; /* Reduced for smaller text */
+  border-radius: 18px;
+  font-size: 0.85rem; /* Reduced from 1rem (~15% smaller) */
   line-height: 1.4;
   position: relative;
   word-wrap: break-word;
@@ -360,4 +410,33 @@ body {
   max-width: 150px !important;
   max-height: 150px !important;
   height: auto;
+}
+
+/* ============================================
+   TikTok Overlay Styles (PNG Image Based)
+   ============================================ */
+
+.tiktok-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none; /* Allow clicks through */
+  z-index: 100;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.tiktok-overlay.hidden {
+  display: none;
+}
+
+/* TikTok Overlay Image - Stretches to fill container */
+.tiktok-overlay-image {
+  width: 100%;
+  height: 100%;
+  object-fit: fill; /* Stretch to fit the container exactly */
+  pointer-events: none;
 }

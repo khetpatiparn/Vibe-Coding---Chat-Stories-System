@@ -906,7 +906,32 @@ window.cycleEffect = function(index) {
 function reloadPreview() {
     if (!currentProject) return;
     const timestamp = new Date().getTime();
-    elPreviewFrame.src = `/visualizer/index.html?projectId=${currentProject}&t=${timestamp}`;
+    const tiktokParam = window.tiktokMode ? '&tiktokMode=true' : '';
+    elPreviewFrame.src = `/visualizer/index.html?projectId=${currentProject}&t=${timestamp}${tiktokParam}`;
+}
+
+// TikTok Mode Toggle
+window.tiktokMode = false;
+
+window.toggleTiktokMode = function() {
+    window.tiktokMode = !window.tiktokMode;
+    
+    // Update toggle UI
+    const toggle = document.getElementById('tiktok-mode-toggle');
+    const options = toggle.querySelectorAll('.toggle-option');
+    
+    if (window.tiktokMode) {
+        toggle.setAttribute('data-mode', 'tiktok');
+        options[0].classList.remove('active');
+        options[1].classList.add('active');
+    } else {
+        toggle.setAttribute('data-mode', 'normal');
+        options[0].classList.add('active');
+        options[1].classList.remove('active');
+    }
+    
+    // Reload preview with new mode
+    reloadPreview();
 }
 
 // Expose globals

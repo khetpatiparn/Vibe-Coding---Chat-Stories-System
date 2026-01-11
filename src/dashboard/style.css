@@ -748,3 +748,63 @@ iframe { width: 100%; height: 100%; border: none; }
     color: white;
 }
 
+/* View Mode Toggle Switch */
+.view-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 20px;
+}
+
+.toggle-label {
+    font-size: 0.85rem;
+    color: var(--text-gray);
+    font-weight: 500;
+}
+
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 4px;
+    position: relative;
+    cursor: pointer;
+}
+
+.toggle-option {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    color: var(--text-gray);
+    border-radius: 16px;
+    transition: all 0.3s;
+    z-index: 2;
+    position: relative;
+}
+
+.toggle-option.active {
+    color: white;
+    font-weight: 600;
+}
+
+.toggle-slider {
+    position: absolute;
+    height: calc(100% - 8px);
+    width: 50%;
+    background: linear-gradient(135deg, #fe2c55, #25f4ee);
+    border-radius: 16px;
+    transition: all 0.3s ease;
+    left: 4px;
+}
+
+.toggle-switch[data-mode="tiktok"] .toggle-slider {
+    left: calc(50% - 0px);
+}
+
+.toggle-switch[data-mode="normal"] .toggle-slider {
+    left: 4px;
+    background: var(--primary);
+}
