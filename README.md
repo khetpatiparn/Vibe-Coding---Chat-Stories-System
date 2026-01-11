@@ -12,7 +12,7 @@
 
 - [✅] เพิ่ม tiktok overlay
 - [✅] จัดการ render video
-- [ ] แก้ไข render video เมื่ออัปโหลดรูป
+- [✅] แก้ไข render video เมื่ออัปโหลดรูป
 - [ ] การเพิ่มระบบเสียง (Audio Integration)
 - [ ] การใช้ Camera Effects
 - [ ] การแสดงสถานะ "กำลังพิมพ์..." (Typing Indicator)
