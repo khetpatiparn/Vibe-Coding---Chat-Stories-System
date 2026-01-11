@@ -109,11 +109,10 @@ async function captureFrames(story, outputName = 'story') {
     });
     
     // 🚀 KEY FIX 2: Force Full Screen via Injection
-    // ฝัง CSS ลงไปตรงๆ เพื่อบังคับให้เต็มจอแน่นอน (แก้ปัญหาขอบสีม่วง)
     await page.addStyleTag({
         content: `
             body, body.rendering {
-                background: #e5ddd5 !important; /* บังคับพื้นหลังสีครีม */
+                background: #e5ddd5 !important;
                 padding: 0 !important;
                 margin: 0 !important;
                 overflow: hidden !important;
@@ -127,14 +126,21 @@ async function captureFrames(story, outputName = 'story') {
                 border-radius: 0 !important;
                 box-shadow: none !important;
             }
-            /* ปรับขนาด UI ให้พอดีกับ Mobile Viewport (360px) */
             .message-bubble {
-                font-size: 0.95rem !important; /* ขนาดฟอนต์ปกติของมือถือ */
+                font-size: 0.95rem !important;
                 padding: 12px 16px !important;
             }
             #chat-container {
-                padding-bottom: 200px !important; /* Safe Zone สำหรับ TikTok */
-                padding-right: 70px !important;   /* Safe Zone ปุ่มขวา */
+                padding-bottom: 150px !important;
+                padding-right: 15px !important; /* Flush to right edge */
+            }
+            #chat-header {
+                padding-top: 60px !important; /* Safe zone for TikTok top UI */
+                height: auto !important;
+            }
+            /* Right bubble max-width to avoid TikTok icons */
+            .message.right .message-bubble {
+                max-width: 70% !important;
             }
         `
     });

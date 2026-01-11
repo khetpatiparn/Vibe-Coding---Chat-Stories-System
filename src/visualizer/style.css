@@ -22,31 +22,25 @@
 
 body {
   font-family: "Mali", cursive;
-  background: linear-gradient(
-    135deg,
-    var(--bg-gradient-start),
-    var(--bg-gradient-end)
-  );
+  background: var(--phone-bg); /* Same as chat background */
   min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
-/* Phone Frame - Full Width for Mobile (9:16 Aspect Ratio) */
+/* Phone Frame - Full Screen (No Mockup) */
 #phone-frame {
-  width: calc(100vw - 20px); /* Almost full screen width */
-  max-width: 600px; /* Max for large screens */
-  min-width: 360px; /* Min for readability */
-  height: calc((100vw - 20px) * 1.77); /* 9:16 ratio */
-  max-height: 1067px;
-  min-height: 640px;
+  width: 100%;
+  height: 100vh;
   background: var(--phone-bg);
-  border-radius: 30px;
+  border-radius: 0;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
 }
@@ -118,6 +112,7 @@ body.rendering .message.right {
 #chat-header {
   background: linear-gradient(135deg, #075e54, #128c7e);
   padding: 15px 20px;
+  padding-top: 50px; /* Safe zone for TikTok top UI */
   display: flex;
   align-items: center;
   gap: 15px;
@@ -164,13 +159,13 @@ body.rendering .message.right {
   transform-origin: center bottom;
 }
 
-/* Chat Container - Wider with reduced margins */
+/* Chat Container - Flush to right edge like real apps */
 #chat-container {
   height: 100%;
   overflow-y: auto;
-  padding: 15px 10px; /* Reduced side padding */
-  padding-bottom: 150px; /* TikTok Safe Zone - Bottom protection */
-  padding-right: 60px; /* TikTok Safe Zone - Right protection for icons */
+  padding: 15px 10px;
+  padding-bottom: 150px; /* TikTok Safe Zone - Bottom */
+  padding-right: 15px; /* Flush to right edge */
   display: flex;
   flex-direction: column;
   gap: 10px;
