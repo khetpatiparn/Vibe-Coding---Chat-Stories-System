@@ -117,7 +117,12 @@ class ChatStory {
 
   addMessage(item, char) {
     const msgDiv = document.createElement("div");
-    const sideClass = char ? char.side : "left";
+    
+    // Debug: Log character lookup
+    console.log("Rendering message:", item.sender, "char:", char, "side:", char?.side);
+    
+    // If char is undefined or has no side, try to determine from message data
+    const sideClass = char && char.side ? char.side : "left";
     msgDiv.classList.add("message", sideClass);
 
     const avatarHtml = `
@@ -127,8 +132,9 @@ class ChatStory {
 
     const bubbleHtml = `
       <div class="message-bubble">
-        ${item.message}
-        <div class="message-time">${this.getCurrentTime()}</div>
+        ${item.image_path ? `<img src="${item.image_path.startsWith('data:') ? item.image_path : this.resolvePath(item.image_path)}" class="chat-image" style="max-width: 150px; max-height: 150px; border-radius: 8px; display: block; margin-bottom: 4px; object-fit: cover;">` : ''}
+        ${item.message ? `<div>${item.message}</div>` : ''}
+        <div class="message-time" style="text-align: right; opacity: 0.7; font-size: 0.7em;">${this.getCurrentTime()}</div>
       </div>`;
 
     // Swap order for right side

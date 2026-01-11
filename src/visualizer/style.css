@@ -34,9 +34,9 @@ body {
   padding: 20px;
 }
 
-/* Phone Frame - 9:16 Aspect Ratio */
+/* Phone Frame - 9:16 Aspect Ratio (Wider for better visibility) */
 #phone-frame {
-  width: 375px;
+  width: 420px;
   height: 812px;
   background: var(--phone-bg);
   border-radius: 40px;
@@ -113,7 +113,7 @@ body {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  max-width: 80%;
+  max-width: 70%;
   width: fit-content;
   animation: popIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   clear: both;
@@ -344,4 +344,20 @@ body {
   border-radius: 15px;
   margin-top: 8px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+}
+
+/* Chat Image in Bubble - Prevent Overflow */
+.chat-image {
+  max-width: 150px !important;
+  max-height: 150px !important;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.message-bubble img {
+  max-width: 150px !important;
+  max-height: 150px !important;
+  height: auto;
 }

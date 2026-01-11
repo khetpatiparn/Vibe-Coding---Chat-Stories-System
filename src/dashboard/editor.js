@@ -459,12 +459,23 @@ function renderDialogues(dialogues, characters) {
                     <strong>${char.name}</strong>
                     <div class="dialogue-controls">
                         <span class="seq-number">#${index + 1}</span>
+                        <label class="btn-icon" title="Attach Image" style="cursor: pointer;">
+                            🖼️ <input type="file" accept="image/*" style="display:none" onchange="uploadDialogueImage(this, ${index}, ${d.id})">
+                        </label>
                         <button onclick="playFrom(event, ${index})" class="btn-icon" title="Play from here">▶</button>
                         <button onclick="deleteDialogue(event, ${d.id})" class="btn-icon text-red" title="Delete">🗑️</button>
                     </div>
                 </div>
+                
+                ${d.image_path ? `
+                <div class="dialogue-attachment" style="margin-bottom: 5px; position: relative; display: inline-block;">
+                    <img src="${d.image_path.startsWith('data:') ? d.image_path : '/' + d.image_path}" style="max-height: 100px; border-radius: 8px; border: 1px solid var(--border);">
+                    <button onclick="removeDialogueImage(${index}, ${d.id})" style="position: absolute; top: -5px; right: -5px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer;">x</button>
+                </div>
+                ` : ''}
+
                 <textarea class="dialogue-input" rows="1" 
-                    oninput="autoResize(this)"
+                    oninput="autoResize(this)" placeholder="Type a message..."
                     onchange="updateDialogue(this, ${index}, ${d.id})">${d.message}</textarea>
                 <div class="dialogue-meta">
                     <span class="meta-tag" onclick="cycleEffect(${index}, ${d.id})">🎥 ${d.camera_effect}</span>
@@ -1218,3 +1229,90 @@ window.addDialogue = addDialogue;
 window.toggleSender = toggleSender;
 window.deleteDialogue = deleteDialogue;
 window.deleteProject = deleteProject;
+
+// ===================================
+// Image Upload for Dialogues (Base64)
+// ===================================
+
+window.uploadDialogueImage = async function(input, index, id) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    // Validate size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+        alert('File too large! Max 5MB.');
+        input.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const base64Image = e.target.result;
+        
+        try {
+            const res = await fetch(`${API_BASE}/projects/${currentProject}/dialogues/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_path: base64Image })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                currentDialogues[index].image_path = base64Image;
+                renderDialogues(currentDialogues, window.currentProjectCharacters);
+                reloadPreview();
+            } else {
+                alert('Error saving image: ' + (data.error || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error saving image: ' + err.message);
+        }
+    };
+    reader.readAsDataURL(file);
+    
+    input.value = '';
+};
+
+window.removeDialogueImage = async function(index, id) {
+    if (!confirm('Remove attached image?')) return;
+    
+    try {
+        const res = await fetch(`${API_BASE}/projects/${currentProject}/dialogues/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_path: null })
+        });
+        
+        currentDialogues[index].image_path = null;
+        renderDialogues(currentDialogues, window.currentProjectCharacters);
+        reloadPreview();
+    } catch (err) {
+        console.error(err);
+        alert('Error removing image');
+    }
+};
+
+// Update Dialogue Text (called on textarea blur/change)
+window.updateDialogue = async function(textarea, index, id) {
+    const message = textarea.value;
+    
+    try {
+        const res = await fetch(`${API_BASE}/projects/${currentProject}/dialogues/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: message })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            // Update local state
+            currentDialogues[index].message = message;
+            reloadPreview();
+        } else {
+            console.error('Failed to save message:', data.error);
+        }
+    } catch (err) {
+        console.error('Error saving message:', err);
+    }
+};

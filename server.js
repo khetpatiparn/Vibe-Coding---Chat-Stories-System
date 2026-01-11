@@ -19,7 +19,8 @@ const app = express();
 const PORT = 3000;
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('src')); // Serve static files (dashboard, visualizer)
 app.use('/assets', express.static('assets')); // Serve assets
 app.use('/output', express.static('output')); // Serve output videos
@@ -55,6 +56,31 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
     fileFilter: fileFilter
+});
+
+// Chat Image Configuration (ADDED)
+const chatStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = 'assets/uploads/';
+        fs.ensureDirSync(uploadDir);
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'chat-img-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+const uploadChat = multer({ storage: chatStorage, fileFilter: fileFilter, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+
+// Upload Endpoint
+app.post('/api/upload/image', uploadChat.single('image'), (req, res) => {
+    if (!req.file) {
+        console.error("Upload failed: No file received");
+        return res.status(400).json({ success: false, error: 'No file uploaded' });
+    }
+    const webPath = req.file.path.replace(/\\/g, '/');
+    console.log("Image uploaded to:", webPath);
+    res.json({ success: true, path: webPath });
 });
 
 // ============================================
@@ -233,7 +259,18 @@ app.post('/api/projects/:id/set_main_character', async (req, res) => {
         const projectId = req.params.id;
         const { role } = req.body;
         
-        console.log(`Setting main character for project ${projectId} to '${role}'`);
+        console.log(`\n=== SET MAIN CHARACTER ===`);
+        console.log(`Project ID: ${projectId}`);
+        console.log(`Role to set as main: ${role}`);
+        
+        // First, check existing characters
+        const existingChars = await new Promise((resolve, reject) => {
+            db.all('SELECT role, side FROM characters WHERE project_id = ?', [projectId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+        console.log('Existing characters before update:', existingChars);
         
         // Atomic update using CASE
         await new Promise((resolve, reject) => {
@@ -245,12 +282,22 @@ app.post('/api/projects/:id/set_main_character', async (req, res) => {
                         console.error('Update side error:', err);
                         reject(err);
                     } else {
-                        console.log(`Updated sides. Changes: ${this.changes}`);
+                        console.log(`Updated sides. Rows changed: ${this.changes}`);
                         resolve();
                     }
                 }
             );
         });
+        
+        // Verify update
+        const updatedChars = await new Promise((resolve, reject) => {
+            db.all('SELECT role, side FROM characters WHERE project_id = ?', [projectId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+        console.log('Characters after update:', updatedChars);
+        console.log(`=========================\n`);
         
         res.json({ success: true });
     } catch (e) {
@@ -357,6 +404,22 @@ app.post('/api/generate/continue', async (req, res) => {
     } catch (e) {
         console.error('Continue API Error:', e);
         res.status(500).json({ error: e.message });
+    }
+});
+
+// 4.1.5 Update Dialogue
+app.put('/api/projects/:id/dialogues/:did', async (req, res) => {
+    try {
+        const { id, did } = req.params; // did = dialogue id
+        const updates = req.body;
+        
+        // Use generic update
+        await Dialogue.updateData(did, updates);
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Update dialogue error:', err);
+        res.status(500).json({ error: err.message });
     }
 });
 

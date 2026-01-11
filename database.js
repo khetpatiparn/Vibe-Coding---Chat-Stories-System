@@ -49,8 +49,25 @@ function initSchema() {
             typing_speed TEXT,
             camera_effect TEXT,
             seq_order INTEGER,
+            image_path TEXT,
             FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
-        )`);
+        )`, (err) => {
+            if (!err) {
+                // Migration: Check if column exists, if not add it
+                db.all("PRAGMA table_info(dialogues)", (err, rows) => {
+                    if (!err) {
+                        const hasImage = rows.some(r => r.name === 'image_path');
+                        if (!hasImage) {
+                            console.log('Migrating: Adding image_path to dialogues table...');
+                            db.run("ALTER TABLE dialogues ADD COLUMN image_path TEXT", (err) => {
+                                if (err) console.error("Migration failed:", err);
+                                else console.log("Migration successful: image_path added.");
+                            });
+                        }
+                    }
+                });
+            }
+        });
 
         // 4. Custom Characters Table
         db.run(`CREATE TABLE IF NOT EXISTS custom_characters (
@@ -163,26 +180,24 @@ const Dialogue = {
         });
     },
 
-    update: (id, text) => {
+    updateData: (id, updates) => {
         return new Promise((resolve, reject) => {
-            db.run(`UPDATE dialogues SET message = ? WHERE id = ?`, [text, id], function(err) {
+            const keys = Object.keys(updates).filter(k => 
+                ['sender', 'message', 'delay', 'typing_speed', 'camera_effect', 'image_path'].includes(k)
+            );
+            
+            if (keys.length === 0) return resolve(0);
+            
+            const setClause = keys.map(k => `${k} = ?`).join(', ');
+            const values = [...keys.map(k => updates[k]), id];
+            
+            db.run(`UPDATE dialogues SET ${setClause} WHERE id = ?`, values, function(err) {
                 if (err) reject(err);
                 else resolve(this.changes);
             });
         });
     },
-    
-    updateAll: (id, data) => {
-        return new Promise((resolve, reject) => {
-             const { message, sender, camera_effect } = data;
-             db.run(`UPDATE dialogues SET message = ?, sender = ?, camera_effect = ? WHERE id = ?`, 
-                [message, sender, camera_effect, id], function(err) {
-                if (err) reject(err);
-                else resolve(this.changes);
-            });
-        });
-    },
-    
+
     delete: (id) => {
         return new Promise((resolve, reject) => {
             db.run(`DELETE FROM dialogues WHERE id = ?`, [id], function(err) {
@@ -193,6 +208,7 @@ const Dialogue = {
     },
 
     reorder: (updates) => {
+// ... existing reorder ...
         return new Promise((resolve, reject) => {
             db.serialize(() => {
                 db.run('BEGIN TRANSACTION');
@@ -266,7 +282,8 @@ async function exportStoryJSON(projectId) {
         delay: d.delay,
         typing_speed: d.typing_speed,
         camera_effect: d.camera_effect,
-        seq_order: d.seq_order
+        seq_order: d.seq_order,
+        image_path: d.image_path // [NEW] Image Support
     }));
     
     return {
