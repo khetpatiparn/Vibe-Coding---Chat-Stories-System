@@ -74,23 +74,44 @@ body.rendering {
 
 /* Mobile-sized elements for rendering (deviceScaleFactor handles the scaling) */
 body.rendering .message-bubble {
-  font-size: 0.9rem !important; /* Standard mobile size */
+  font-size: 0.9rem !important;
   padding: 10px 14px !important;
 }
 
 body.rendering .message-avatar {
-  width: 35px !important; /* Default mobile size */
+  width: 35px !important;
   height: 35px !important;
 }
 
 body.rendering .header-avatar {
-  width: 45px !important; /* Default mobile size */
+  width: 45px !important;
   height: 45px !important;
 }
 
+/* 1. Chat Container - Move closer to right edge */
 body.rendering #chat-container {
-  padding-right: 60px !important; /* TikTok safe zone */
+  padding-right: 15px !important; /* Closer to edge like real app */
   padding-bottom: 150px !important; /* Caption safe zone */
+}
+
+/* 2. Header - Push down for TikTok top UI safe zone */
+body.rendering #chat-header {
+  padding-top: 50px !important; /* Avoid TikTok search bar */
+}
+
+/* 3. Right messages - Constrain width to avoid TikTok buttons */
+body.rendering .message.right {
+  justify-content: flex-end !important;
+  margin-right: 0 !important;
+}
+
+body.rendering .message.right .message-bubble {
+  max-width: 70% !important; /* Text wraps before hitting TikTok icons */
+}
+
+/* Tighter gap for right-side avatar and bubble */
+body.rendering .message.right {
+  gap: 5px !important;
 }
 
 /* Chat Header */
@@ -173,9 +194,10 @@ body.rendering #chat-container {
 
 .message.right {
   align-self: flex-end;
-  flex-direction: row-reverse;
-  max-width: 80%; /* Wider right bubbles */
-  margin-right: 0; /* Container padding handles right safe zone */
+  flex-direction: row; /* Keep HTML order: [Bubble] [Avatar] */
+  justify-content: flex-end; /* Anchor to right edge */
+  max-width: 80%;
+  margin-right: 0;
 }
 
 .message-avatar {
