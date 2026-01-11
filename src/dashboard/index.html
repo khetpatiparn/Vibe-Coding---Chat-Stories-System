@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoChat Studio Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Sidebar: Project List -->
+        <aside id="sidebar">
+            <div class="brand">
+                <h1>🤖 AutoChat</h1>
+                <span class="badge-pro">PRO</span>
+            </div>
+
+            <button id="btn-new-story" class="btn-primary-full">+ New Story</button>
+
+            <a href="characters.html" class="menu-item">
+                🎭 Manage Characters
+            </a>
+
+            <div class="story-counter" id="story-counter">
+                <span class="counter-icon">📊</span>
+                <span class="counter-text">
+                    <strong id="story-count">0</strong> Stories
+                </span>
+            </div>
+
+            <div class="dialogue-counter" id="dialogue-counter" style="display: none;">
+                <span class="counter-icon">💬</span>
+                <span class="counter-text">
+                    <strong id="dialogue-count">0</strong> Dialogues
+                </span>
+            </div>
+
+            <div class="project-list" id="project-list">
+                <!-- Projects go here -->
+                <div class="project-item active">
+                    <span class="status-dot draft"></span>
+                    <div class="project-info">
+                        <h3>Loading...</h3>
+                        <span>Just now</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Editor -->
+        <main id="editor-area">
+            <header class="top-bar">
+                <div class="breadcrumbs">
+                    <input type="text" id="current-project-title" value="Select a project" readonly
+                        style="background: transparent; border: none; color: white; font-size: 1.2rem; font-weight: 600; cursor: pointer; outline: none;">
+                    <button id="btn-edit-title"
+                        style="background: transparent; border: none; color: var(--text-gray); cursor: pointer; font-size: 1rem; margin-left: 8px; display: none;">✏️</button>
+                    <span class="status-badge" id="current-project-status">DRAFT</span>
+                </div>
+                <div class="actions">
+                    <button id="btn-generate-ai" class="btn-secondary" style="display: none;">Generate with AI
+                        🤖</button>
+                    <button id="btn-save" class="btn-secondary">Save Draft</button>
+                    <button id="btn-render" class="btn-primary">Approve & Render 🎬</button>
+                </div>
+            </header>
+
+            <div class="workspace">
+                <!-- Dialogue Editor (Left) -->
+                <div class="script-editor">
+                    <div id="dialogue-list">
+                        <!-- Dialogue Items go here -->
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button id="btn-add-dialogue" class="btn-dashed" style="flex: 1;">+ Add Dialogue</button>
+                        <button id="btn-continue-ai" class="btn-dashed"
+                            style="flex: 1; background: linear-gradient(135deg, #4f46e520, #9333ea20); border-color: #9333ea;">✨
+                            Continue with AI</button>
+                    </div>
+                </div>
+
+                <!-- Preview (Right) -->
+                <div class="preview-pane">
+                    <div class="phone-mockup">
+                        <iframe id="preview-frame" src="../visualizer/index.html"></iframe>
+                    </div>
+                    <div class="preview-controls">
+                        <button onclick="reloadPreview()" class="btn-replay">
+                            <span>↻</span> Replay
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for New Story -->
+    <div id="modal-new-story" class="modal hidden">
+        <div class="modal-content">
+            <h2>Create New Story</h2>
+            <p style="color: var(--text-gray); margin: 20px 0;">Create a blank story and add dialogues manually, or use
+                AI to generate content.</p>
+            <div class="modal-options-grid"
+                style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                <button id="btn-create-blank" class="option-card"
+                    style="padding: 30px; border: 2px solid var(--border); background: var(--bg-dark); border-radius: 12px; cursor: pointer; transition: all 0.2s; text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">📝</div>
+                    <h3 style="color: white; margin-bottom: 5px;">Blank Story</h3>
+                    <p style="color: var(--text-gray); font-size: 0.9rem;">Start from scratch</p>
+                </button>
+
+                <button id="btn-create-ai" class="option-card"
+                    style="padding: 30px; border: 2px solid var(--primary); background: rgba(147, 51, 234, 0.1); border-radius: 12px; cursor: pointer; transition: all 0.2s; text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">✨</div>
+                    <h3 style="color: white; margin-bottom: 5px;">Generate with AI</h3>
+                    <p style="color: var(--text-gray); font-size: 0.9rem;">Auto-create plot & dialogue</p>
+                </button>
+            </div>
+            <button id="btn-cancel-create" class="btn-text"
+                style="display: block; margin: 20px auto 0; background: none; border: none; color: var(--text-gray); cursor: pointer; text-decoration: underline;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="modal-confirm" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="confirm-title">Confirm Action</h2>
+            <p id="confirm-message" style="color: var(--text-gray); margin: 20px 0; line-height: 1.6;">Are you sure?</p>
+            <div class="modal-actions">
+                <button id="btn-cancel-confirm" class="btn-secondary">Cancel</button>
+                <button id="btn-confirm-action" class="btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Story Settings Modal -->
+    <div id="modal-story-settings" class="modal hidden">
+        <div class="modal-content modal-wide">
+            <h2>Story Settings</h2>
+
+            <div class="form-group">
+                <label>Characters (Select at least 2)</label>
+                <div class="character-selector">
+                    <label class="character-option">
+                        <input type="checkbox" name="character" value="me" checked>
+                        <span>👤 Me (ฉัน)</span>
+                    </label>
+                    <label class="character-option">
+                        <input type="checkbox" name="character" value="boss" checked>
+                        <span>👔 Boss (เจ้านาย)</span>
+                    </label>
+                    <label class="character-option">
+                        <input type="checkbox" name="character" value="employee">
+                        <span>👨‍💼 Employee (ลูกน้อง)</span>
+                    </label>
+                    <label class="character-option">
+                        <input type="checkbox" name="character" value="friend">
+                        <span>👥 Friend (เพื่อน)</span>
+                    </label>
+                    <label class="character-option">
+                        <input type="checkbox" name="character" value="girlfriend">
+                        <span>💕 Girlfriend (แฟน)</span>
+                    </label>
+                    <label class="character-option">
+                        <input type="checkbox" name="character" value="ghost">
+                        <span>👻 Ghost (ผี)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Story Topic / Prompt (Optional)</label>
+                <textarea id="custom-prompt" rows="3" placeholder="e.g., เรื่องเกี่ยวกับการไปหาหมอฟัน"
+                    style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px; font-family: inherit; resize: vertical;"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Category</label>
+                <select id="story-category"
+                    style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                    <option value="funny">Funny (ตลก)</option>
+                    <option value="drama">Drama (ดราม่า)</option>
+                    <option value="horror">Horror (ผี)</option>
+                    <option value="office">Office (ออฟฟิศ)</option>
+                    <option value="love">Love (รัก)</option>
+                </select>
+            </div>
+
+            <div class="modal-actions">
+                <button id="btn-cancel-settings" class="btn-secondary">Cancel</button>
+                <button id="btn-confirm-settings" class="btn-primary">Generate with AI ✨</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Character Selector Modal -->
+    <div id="modal-character-selector" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="char-selector-title">Choose Character</h2>
+            <div id="character-selector-grid" class="character-grid-selector">
+                <!-- Javascript will populate this -->
+            </div>
+            <div class="modal-actions">
+                <button id="btn-cancel-char-select" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Continue Settings Modal -->
+    <div id="modal-continue-settings" class="modal hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <h2>✨ AI Story Continuation</h2>
+            <p class="modal-subtitle">Let AI write the next scene for you.</p>
+
+            <div class="form-group">
+                <label>Who is in this scene?</label>
+                <div class="character-selector" id="continue-character-selector">
+                    <!-- Checkboxes injected here -->
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>What happens next? (Optional)</label>
+                <textarea id="continue-prompt"
+                    placeholder="e.g. They start arguing about money... or They suddenly hear a loud noise..." rows="3"
+                    style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;"></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button id="btn-cancel-continue" class="btn-secondary">Cancel</button>
+                <button id="btn-generate-continue" class="btn-primary">Generate Preview 🤖</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Preview Modal -->
+    <div id="modal-ai-preview" class="modal hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2>AI Suggestion</h2>
+            <div id="ai-preview-list" class="preview-list-scroll">
+                <!-- Generated dialogues appear here -->
+            </div>
+            <div class="modal-actions">
+                <button id="btn-cancel-preview" class="btn-secondary">Discard</button>
+                <button id="btn-retry-preview" class="btn-secondary">🔄 Try Again</button>
+                <button id="btn-confirm-preview" class="btn-primary">✅ Add to Story</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="editor.js?v=5.5"></script>
+</body>
+
+
+</html>

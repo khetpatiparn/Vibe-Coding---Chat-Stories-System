@@ -1,0 +1,219 @@
+/* Character Manager Specific Styles */
+
+.dashboard-layout {
+    display: flex;
+    height: 100%;
+}
+
+#char-manager-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-main);
+}
+
+.content-area {
+    flex: 1;
+    padding: 30px;
+    padding-bottom: 100px; /* Ensure space for scrolling */
+    overflow-y: auto;
+}
+
+.char-section {
+    margin-bottom: 40px;
+}
+
+.char-section h2 {
+    color: white;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+}
+
+/* Character Grid */
+.character-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.default-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+/* Character Card */
+.character-card {
+    background: var(--bg-panel);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    transition: all 0.3s;
+}
+
+.character-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(124, 58, 237, 0.2);
+}
+
+.character-card img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-bottom: 12px;
+    object-fit: cover;
+    border: 3px solid var(--border);
+}
+
+.char-info h3 {
+    color: white;
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+}
+
+.char-subtitle {
+    color: var(--text-gray);
+    font-size: 0.9rem;
+}
+
+/* Card Actions */
+.card-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.card-actions button {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-edit {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-edit:hover {
+    background: #9333ea;
+}
+
+.btn-delete {
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+}
+
+.btn-delete:hover {
+    background: #ef4444;
+    color: white;
+}
+
+/* Default Character (Read-only) */
+.default-char {
+    opacity: 0.8;
+}
+
+.default-char:hover {
+    border-color: var(--border);
+    transform: none;
+    box-shadow: none;
+}
+
+/* Empty State */
+.empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-gray);
+}
+
+.empty-state p:first-child {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+/* Upload Preview */
+.upload-preview {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.upload-preview img {
+    max-width: 150px;
+    max-height: 150px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+}
+
+/* Menu Item Styles */
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    color: var(--text-gray);
+    text-decoration: none;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+    font-size: 1rem;
+}
+
+.menu-item:hover {
+    background: rgba(124, 58, 237, 0.1);
+    color: var(--primary);
+}
+
+.menu-item.active {
+    background: rgba(124, 58, 237, 0.2);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Form Styles */
+#char-form small {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.85rem;
+}
+
+#char-form input[type="text"],
+#char-form input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    color: white;
+    border-radius: 6px;
+    font-family: inherit;
+}
+
+#char-form input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+#char-form input[type="file"] {
+    padding: 8px;
+}
+
+/* Loading State */
+.loading {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: "⏳";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+}

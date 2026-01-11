@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Manager - AutoChat Studio Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="characters.css">
+</head>
+
+<body>
+    <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside id="sidebar">
+            <div class="brand">
+                <h1>🤖 AutoChat <span class="badge">PRO</span></h1>
+            </div>
+
+            <a href="index.html" class="menu-item">
+                📊 Dashboard
+            </a>
+
+            <a href="characters.html" class="menu-item active">
+                🎭 Manage Characters
+            </a>
+
+            <div class="story-counter" style="margin-top: 20px;">
+                <span class="counter-icon">🎭</span>
+                <span class="counter-text">
+                    <strong id="char-count">0</strong> Custom Characters
+                </span>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="char-manager-area">
+            <header class="top-bar">
+                <div class="breadcrumbs">
+                    <span>🎭 Character Manager</span>
+                </div>
+                <div class="actions">
+                    <button id="btn-add-character" class="btn-primary">+ Add Character</button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- Custom Characters -->
+                <section class="char-section">
+                    <h2>Your Custom Characters</h2>
+                    <div id="custom-characters-grid" class="character-grid">
+                        <!-- Custom characters will be loaded here -->
+                        <div class="empty-state">
+                            <p>🎭 No custom characters yet</p>
+                            <p style="color: var(--text-gray); font-size: 0.9rem;">Click "+ Add Character" to create
+                                your first one</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Default Characters (Read-only) -->
+                <section class="char-section">
+                    <h2>Default Characters</h2>
+                    <div class="character-grid default-grid">
+                        <div class="character-card default-char">
+                            <img src="../../assets/avatars/person1.png" alt="Me">
+                            <div class="char-info">
+                                <h3>Me</h3>
+                                <span class="char-subtitle">ฉัน</span>
+                            </div>
+                        </div>
+                        <div class="character-card default-char">
+                            <img src="../../assets/avatars/boss.png" alt="Boss">
+                            <div class="char-info">
+                                <h3>Boss</h3>
+                                <span class="char-subtitle">เจ้านาย</span>
+                            </div>
+                        </div>
+                        <!-- Removed Employee, Friend, Girlfriend, Ghost as per user request -->
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="modal-confirm-delete" class="modal hidden">
+        <div class="modal-content">
+            <h2>Delete Character?</h2>
+            <p id="delete-message" style="color: var(--text-gray); margin: 20px 0; line-height: 1.6;"></p>
+            <div class="modal-actions">
+                <button id="btn-cancel-delete" class="btn-secondary">Cancel</button>
+                <button id="btn-confirm-delete" class="btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Character Modal -->
+    <div id="modal-character" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="modal-title">Add New Character</h2>
+
+            <form id="char-form">
+                <div class="form-group">
+                    <label>Character Name (Internal ID)</label>
+                    <input type="text" id="char-name" placeholder="e.g., alice, john, sister" pattern="[a-z0-9_]+"
+                        maxlength="20" required>
+                    <small style="color: var(--text-gray);">Lowercase letters, numbers, underscores only</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Display Name</label>
+                    <input type="text" id="char-display-name" placeholder="e.g., Alice, จอห์น, พี่สาว" maxlength="50"
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label>Avatar Image</label>
+                    <input type="file" id="char-avatar" accept="image/*" required>
+                    <small style="color: var(--text-gray);">PNG, JPG, GIF, WebP - Max 5MB</small>
+                    <div id="image-preview" class="upload-preview"></div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" id="btn-cancel-char" class="btn-secondary">Cancel</button>
+                    <button type="submit" id="btn-save-char" class="btn-primary">Save Character</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="characters.js"></script>
+</body>
+
+</html>

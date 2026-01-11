@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Story Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="phone-frame">
+        <div id="chat-header">
+            <div class="header-avatar">
+                <img src="" alt="avatar" id="header-avatar-img">
+            </div>
+            <div class="header-info">
+                <span class="header-name" id="header-name">ชื่อคู่สนทนา</span>
+                <span class="header-status">กำลังพิมพ์...</span>
+            </div>
+        </div>
+        
+        <div id="camera-wrapper">
+            <div id="chat-container">
+                <!-- Messages will be injected here -->
+            </div>
+        </div>
+        
+        <div id="typing-indicator" class="hidden">
+            <div class="typing-avatar">
+                <img src="" alt="" id="typing-avatar-img">
+            </div>
+            <div class="typing-bubble">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
