@@ -60,6 +60,8 @@ class ChatStory {
     const urlParams = new URLSearchParams(window.location.search);
     const startAt = parseInt(urlParams.get('startAt')) || 0;
 
+    this.lastSender = null; // Reset sender tracking for playback
+
     for (let i = 0; i < this.data.dialogues.length; i++) {
       const dialogue = this.data.dialogues[i];
       this.currentIndex = i;
@@ -145,19 +147,48 @@ class ChatStory {
     this.typingIndicator.classList.add("hidden");
   }
 
+  renderStory() {
+    this.container.innerHTML = "";
+    this.lastSender = null; // Reset sender tracking
+    
+    // Safety check
+    if (!this.data || !this.data.dialogues) return;
+
+    // Check project settings for bubble names
+    // (We use this.data.show_partner_name / show_my_name directly in addMessage)
+
+    this.data.dialogues.forEach((item) => {
+      const char = this.data.characters[item.sender]; // Assuming getCharacter is not yet implemented, using direct lookup
+      this.addMessage(item, char);
+    });
+
+    // Scroll to bottom
+    this.scrollToBottom();
+  }
+
   addMessage(item, char) {
     const msgDiv = document.createElement("div");
     
+    // Grouping Logic
+    const isConsecutive = (this.lastSender === item.sender);
+    this.lastSender = item.sender;
+
     // Debug: Log character lookup
-    console.log("Rendering message:", item.sender, "char:", char, "side:", char?.side);
+    // console.log("Rendering message:", item.sender, "char:", char, "side:", char?.side);
     
     // If char is undefined or has no side, try to determine from message data
     const sideClass = char && char.side ? char.side : "left";
     msgDiv.classList.add("message", sideClass);
+    if (isConsecutive) msgDiv.classList.add("consecutive");
 
+    // Avatar HTML
+    // If consecutive, we keep the container but hide the image (or make it transparent/invisible)
+    // ensuring alignment stays correct.
+    const avatarContent = isConsecutive ? '' : `<img src="${this.resolvePath(char.avatar)}" alt="${char.name}">`;
+    
     const avatarHtml = `
-      <div class="message-avatar">
-        <img src="${this.resolvePath(char.avatar)}" alt="${char.name}">
+      <div class="message-avatar" style="${isConsecutive ? 'visibility: hidden;' : ''}">
+        ${avatarContent}
       </div>`;
 
     // Toggle sender name visibility
@@ -167,6 +198,12 @@ class ChatStory {
     } else {
         showName = this.data.show_my_name !== undefined ? (this.data.show_my_name === 1) : false;
     }
+
+    // Smart Grouping: Hide name if consecutive
+    if (isConsecutive) {
+        showName = false;
+    }
+
     const senderHtml = showName ? `<div class="message-sender">${char.name}</div>` : '';
 
     // Image HTML (No Bubble Wrapper)
