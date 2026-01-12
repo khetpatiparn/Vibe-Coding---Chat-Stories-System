@@ -26,6 +26,8 @@ function initSchema() {
             title TEXT,
             status TEXT DEFAULT 'DRAFT',
             room_name TEXT,
+            show_partner_name INTEGER DEFAULT 1,
+            show_my_name INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
 
@@ -80,16 +82,23 @@ function initSchema() {
             }
         });
 
-        // Migration for projects table (room_name)
+        // Migration for projects table (room_name, show_partner_name, show_my_name)
         db.all("PRAGMA table_info(projects)", (err, rows) => {
             if (!err) {
                 const hasRoomName = rows.some(r => r.name === 'room_name');
                 if (!hasRoomName) {
-                    console.log('Migrating: Adding room_name to projects table...');
-                    db.run("ALTER TABLE projects ADD COLUMN room_name TEXT", (err) => {
-                        if (err) console.error("Migration failed (room_name):", err);
-                        else console.log("Migration successful: room_name added.");
-                    });
+                    console.log('Migrating: Adding room_name, show_partner_name, show_my_name to projects table...');
+                    db.run("ALTER TABLE projects ADD COLUMN room_name TEXT");
+                    db.run("ALTER TABLE projects ADD COLUMN show_partner_name INTEGER DEFAULT 1");
+                    db.run("ALTER TABLE projects ADD COLUMN show_my_name INTEGER DEFAULT 0");
+                } else {
+                    // Check individual new columns just in case
+                     const hasPartnerName = rows.some(r => r.name === 'show_partner_name');
+                     if (!hasPartnerName) {
+                         console.log('Migrating: Adding name visibility columns...');
+                         db.run("ALTER TABLE projects ADD COLUMN show_partner_name INTEGER DEFAULT 1");
+                         db.run("ALTER TABLE projects ADD COLUMN show_my_name INTEGER DEFAULT 0");
+                     }
                 }
             }
         });
@@ -192,6 +201,17 @@ const Project = {
                 else resolve();
             });
         });
+    },
+
+    updateSettings: (id, settings) => {
+         return new Promise((resolve, reject) => {
+             // settings = { show_partner_name, show_my_name }
+             const sql = `UPDATE projects SET show_partner_name = ?, show_my_name = ? WHERE id = ?`;
+             db.run(sql, [settings.show_partner_name, settings.show_my_name, id], function(err) {
+                 if (err) reject(err);
+                 else resolve();
+             });
+         });
     }
 };
 
@@ -350,6 +370,8 @@ async function exportStoryJSON(projectId) {
         id: project.id,
         title: project.title,
         room_name: project.room_name, // Room name for header
+        show_partner_name: project.show_partner_name, // [NEW] Checkbox
+        show_my_name: project.show_my_name, // [NEW] Checkbox
         status: project.status,
         characters,
         dialogues

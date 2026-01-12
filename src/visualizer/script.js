@@ -160,17 +160,35 @@ class ChatStory {
         <img src="${this.resolvePath(char.avatar)}" alt="${char.name}">
       </div>`;
 
+    // Toggle sender name visibility
+    // If show_partner_name is undefined, default True. If show_my_name undefined, default False.
+    let showName = false;
+    if (sideClass === 'left') {
+        showName = this.data.show_partner_name !== undefined ? (this.data.show_partner_name === 1) : true;
+    } else {
+        showName = this.data.show_my_name !== undefined ? (this.data.show_my_name === 1) : false;
+    }
+
+    const senderHtml = showName ? `<div class="message-sender">${char.name}</div>` : '';
+
     const bubbleHtml = `
       <div class="message-bubble">
         ${item.image_path ? `<img src="${item.image_path.startsWith('data:') ? item.image_path : this.resolvePath(item.image_path)}" class="chat-image" style="max-width: 130px; max-height: 130px; border-radius: 8px; display: block; margin: 4px auto; object-fit: cover;">` : ''}
         ${item.message ? `<div>${item.message}</div>` : ''}
       </div>`;
 
+    // Wrapper for Name + Bubble
+    const contentWrapper = `
+      <div class="message-content-wrapper">
+          ${senderHtml}
+          ${bubbleHtml}
+      </div>`;
+
     // Swap order for right side
     if (sideClass === "right") {
-      msgDiv.innerHTML = bubbleHtml + avatarHtml;
+      msgDiv.innerHTML = contentWrapper + avatarHtml;
     } else {
-      msgDiv.innerHTML = avatarHtml + bubbleHtml;
+      msgDiv.innerHTML = avatarHtml + contentWrapper;
     }
 
     this.container.appendChild(msgDiv);

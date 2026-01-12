@@ -87,6 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Room Name Input - Auto-save on change
     document.getElementById('room-name-input').onchange = saveRoomName;
     
+    // Toggle Buttons - Auto-save
+    document.getElementById('toggle-partner-name').onchange = saveSettings;
+    document.getElementById('toggle-my-name').onchange = saveSettings;
+    
     // Story Settings Modal
     document.getElementById('btn-cancel-settings').onclick = () => {
         document.getElementById('modal-story-settings').classList.add('hidden');
@@ -187,6 +191,33 @@ function openStorySettings() {
     renderCharacterSelector();
     
     document.getElementById('modal-story-settings').classList.remove('hidden');
+}
+
+// Save Settings (Auto-save)
+async function saveSettings() {
+    if (!currentProject) return;
+    
+    const show_partner_name = document.getElementById('toggle-partner-name').checked ? 1 : 0;
+    const show_my_name = document.getElementById('toggle-my-name').checked ? 1 : 0;
+    
+    try {
+        await fetch(`${API_BASE}/projects/${currentProject}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ show_partner_name, show_my_name })
+        });
+        
+        // Update local state
+        const project = projects.find(p => p.id === currentProject);
+        if (project) {
+            project.show_partner_name = show_partner_name;
+            project.show_my_name = show_my_name;
+            reloadPreview();
+        }
+        showToast('Settings saved', 'success');
+    } catch(e) {
+        console.error('Failed to save settings:', e);
+    }
 }
 
 // Render Character Selector (default + custom)
@@ -342,6 +373,13 @@ async function selectProject(id) {
         
         // Load Room Name
         document.getElementById('room-name-input').value = data.room_name || '';
+        
+        // Load Toggles
+        const valPartner = data.show_partner_name !== undefined ? data.show_partner_name : 1;
+        document.getElementById('toggle-partner-name').checked = valPartner === 1;
+        
+        const valMe = data.show_my_name !== undefined ? data.show_my_name : 0;
+        document.getElementById('toggle-my-name').checked = valMe === 1;
         
         // Update dialogue counter
         const dialogueCounter = document.getElementById('dialogue-counter');
