@@ -117,6 +117,18 @@ async function captureFrames(story, outputName = 'story') {
         timeout: 60000
     });
     
+    // ✅ FIX: Inject CSS to disable transitions and control time
+    await page.addStyleTag({
+        content: `
+            *, *::before, *::after {
+                animation-play-state: paused !important; /* Control via delay */
+            }
+            .cinematic-bar, #camera-wrapper {
+                transition: none !important; /* Manual control during render */
+            }
+        `
+    });
+
     // ✅ FIX 1: Inject CSS to PAUSE animations
     await page.addStyleTag({
         content: `
@@ -217,7 +229,40 @@ async function captureFrames(story, outputName = 'story') {
                     typingIndicator.classList.add('hidden');
                 }
 
-                // ✅ FIX 4: Manually Advance Message Pop-in
+                // ✅ FIX 4: Manually Advance Message Pop-in & Cinematic Focus
+                let isCinematic = false;
+                
+                // Check Cinematic Focus Window (2.5s duration)
+                for (const item of timeline) {
+                    if (item.dialogue.camera_effect === 'zoom_in' && 
+                        currentTime >= item.appearTime && 
+                        currentTime < (item.appearTime + 2.5)) {
+                        isCinematic = true;
+                        break;
+                    }
+                }
+
+                // Apply Cinematic State Manually
+                const camTop = document.getElementById('cinematic-bar-top');
+                const camBottom = document.getElementById('cinematic-bar-bottom');
+                const wrapper = document.getElementById('camera-wrapper');
+
+                if (isCinematic) {
+                    if(camTop) camTop.style.height = '15%';
+                    if(camBottom) camBottom.style.height = '15%';
+                    if(wrapper) {
+                        wrapper.style.transform = 'scale(1.15) translateY(-5%)';
+                        wrapper.style.filter = 'contrast(1.1) saturate(1.2)';
+                    }
+                } else {
+                    if(camTop) camTop.style.height = '0%';
+                    if(camBottom) camBottom.style.height = '0%';
+                    if(wrapper) {
+                        wrapper.style.transform = 'none';
+                        wrapper.style.filter = 'none';
+                    }
+                }
+
                 document.querySelectorAll('.message').forEach(msg => {
                     const appearTime = parseFloat(msg.dataset.appearTime || 0);
                     const elapsed = currentTime - appearTime;

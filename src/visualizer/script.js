@@ -201,14 +201,35 @@ class ChatStory {
   }
 
   triggerEffect(effectName) {
-    // Add class
-    const className = `effect-${effectName}`;
-    this.cameraWrapper.classList.add(className);
+    const parentFrame = document.getElementById('phone-frame') || document.body;
+    const cameraWrapper = document.getElementById('camera-wrapper'); /* Need this for standard effects */
 
-    // Remove after animation ends (approx 500ms)
-    setTimeout(() => {
-        this.cameraWrapper.classList.remove(className);
-    }, 600);
+    // Reset previous states
+    if (cameraWrapper) cameraWrapper.className = ''; 
+    parentFrame.classList.remove('effect-active-cinematic'); 
+
+    // 1. Handle Cinematic Focus (Tension & Release)
+    if (effectName === 'zoom_in' || effectName === 'zoom-in') {
+        // Tension: Squeeze & Zoom
+        parentFrame.classList.add('effect-active-cinematic');
+        
+        // Release: Auto-remove after 2.5s
+        setTimeout(() => {
+            parentFrame.classList.remove('effect-active-cinematic');
+        }, 2500);
+        return; 
+    } 
+    
+    // 2. Handle Other Effects (standard)
+    if (effectName && effectName !== 'normal' && cameraWrapper) {
+        const className = `effect-${effectName}`;
+        cameraWrapper.classList.add(className);
+
+        // Remove after animation ends
+        setTimeout(() => {
+            cameraWrapper.classList.remove(className);
+        }, 600);
+    }
   }
 
   scrollToBottom() {

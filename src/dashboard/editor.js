@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-render').onclick = renderVideo;
     document.getElementById('btn-add-dialogue').onclick = addDialogue;
     document.getElementById('btn-generate-ai').onclick = openStorySettings;
+    document.getElementById('btn-export-json').onclick = exportProjectAsJSON;
     
     // Story Settings Modal
     document.getElementById('btn-cancel-settings').onclick = () => {
@@ -425,6 +426,52 @@ async function renderVideo() {
         btn.textContent = originalText;
         btn.disabled = false;
     }
+}
+
+// ===================================
+// Export JSON (Data Backup)
+// ===================================
+function exportProjectAsJSON() {
+    if (!currentProject) {
+        showToast('กรุณาเลือก Project ก่อน', 'error');
+        return;
+    }
+    
+    // Collect project data
+    const projectInfo = projects.find(p => p.id === currentProject);
+    const exportData = {
+        exportedAt: new Date().toISOString(),
+        project: {
+            id: currentProject,
+            title: projectInfo?.title || 'Untitled',
+            status: projectInfo?.status || 'DRAFT'
+        },
+        characters: window.currentProjectCharacters || {},
+        dialogues: currentDialogues.map(d => ({
+            id: d.id,
+            sender: d.sender,
+            message: d.message,
+            delay: d.delay,
+            reaction_delay: d.reaction_delay,
+            typing_speed: d.typing_speed,
+            camera_effect: d.camera_effect,
+            seq_order: d.seq_order,
+            image_path: d.image_path
+        }))
+    };
+    
+    // Create and download file
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projectInfo?.title || 'story'}_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast('📦 Export สำเร็จ!', 'success');
 }
 
 // ===================================
@@ -957,18 +1004,24 @@ async function performEditSender(id, newSender, index) {
     const projectChars = window.currentProjectCharacters || {};
     // Re-render immediately (optional, or wait for reload)
     
-    await fetch(`${API_BASE}/dialogues/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            sender: newSender,
-            message: currentDlg.message,
-            camera_effect: currentDlg.camera_effect
-        })
-    });
-    
-    // Reload Project to sync everything
-    selectProject(currentProject);
+    try {
+        await fetch(`${API_BASE}/projects/${currentProject}/dialogues/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                sender: newSender,
+                message: currentDlg.message,
+                camera_effect: currentDlg.camera_effect
+            })
+        });
+        
+        // Reload Project to sync everything
+        selectProject(currentProject);
+        showToast('Character changed!', 'success');
+    } catch (err) {
+        console.error('Failed to change character:', err);
+        showToast('Failed to change character', 'error');
+    }
 }
 
 window.toggleSender = function(index, id) {
@@ -997,9 +1050,41 @@ window.updateDialogue = async function(textarea, index, id) {
    } catch(e) { console.error(e); }
 }
 
-window.cycleEffect = function(index) {
-    // Visual toggle only for demo
-    alert(`Change effect for item ${index} (Not implemented in backend yet)`);
+// Camera Effects List (matches style.css classes)
+const CAMERA_EFFECTS = ['normal', 'zoom-in', 'zoom-shake', 'shake', 'darken'];
+
+window.cycleEffect = async function(index, id) {
+    const dialogue = currentDialogues[index];
+    if (!dialogue) return;
+    
+    // Get current effect and cycle to next
+    const currentEffect = dialogue.camera_effect || 'normal';
+    const currentIndex = CAMERA_EFFECTS.indexOf(currentEffect);
+    const nextIndex = (currentIndex + 1) % CAMERA_EFFECTS.length;
+    const newEffect = CAMERA_EFFECTS[nextIndex];
+    
+    // Update local state
+    dialogue.camera_effect = newEffect;
+    
+    // Update UI element text (meta-tag with camera emoji)
+    const effectSpan = document.querySelector(`.dialogue-item[data-id="${id || dialogue.id}"] .meta-tag`);
+    if (effectSpan) {
+        effectSpan.textContent = `🎥 ${newEffect}`;
+    }
+    
+    // Save to database
+    try {
+        await fetch(`${API_BASE}/projects/${currentProject}/dialogues/${dialogue.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ camera_effect: newEffect })
+        });
+        reloadPreview();
+        showToast(`Effect: ${newEffect}`, 'success');
+    } catch (err) {
+        console.error('Failed to save effect:', err);
+        showToast('Failed to save effect', 'error');
+    }
 }
 
 

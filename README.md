@@ -15,8 +15,8 @@
 - [✅] แก้ไข render video เมื่ออัปโหลดรูป
 - [✅] การเพิ่มระบบเสียง (Audio Integration)
 - [ ] การใช้ Camera Effects
-- [ ] การแสดงสถานะ "กำลังพิมพ์..." (Typing Indicator)
-- [ ] การปรับ "Delay" (จังหวะการอ่าน)
+- [✅] การแสดงสถานะ "กำลังพิมพ์..." (Typing Indicator)
+- [✅] การปรับ "Delay" (จังหวะการอ่าน)
 - [ ] ปุ่ม "Export JSON" (ปุ่มกันตาย) สำหรับ export database
 
 ## version 1.2

@@ -316,7 +316,39 @@ body.rendering .message.right {
    Camera Effects
    ============================================ */
 
+/* Cinematic Bars (Letterboxing) - Tension & Release */
+.cinematic-bar {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 0%;
+  background-color: black;
+  z-index: 99;
+  transition: height 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+#cinematic-bar-top {
+  top: 80px; /* Below header */
+}
+
+#cinematic-bar-bottom {
+  bottom: 0;
+}
+
+/* Active Cinematic State (Tension) */
+.effect-active-cinematic .cinematic-bar {
+  height: 15%; /* Squeeze screen more */
+}
+
+.effect-active-cinematic #camera-wrapper {
+  transform: scale(1.15) translateY(-5%); /* Zoom & Shift Up */
+  filter: contrast(1.1) saturate(1.2); /* Boost tension */
+  transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Standard Effects */
 .effect-zoom-in {
+  /* Legacy/Fallback if needed, but logic currently maps 'zoom_in' to cinematic class */
   transform: scale(1.3);
 }
 
