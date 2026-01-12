@@ -23,10 +23,9 @@ class ChatStory {
   init() {
     this.setupHeader();
     this.applyTheme();
-    // Clear existing messages
-    this.container.innerHTML = '<div id="typing-indicator" class="hidden">...</div>';
-    // Re-select typing indicator after clear
-    this.typingIndicator = document.getElementById("typing-indicator");
+    // Clear existing messages only
+    this.container.innerHTML = ''; 
+    // Do not re-inject typing indicator logic here, relying on index.html structure
   }
 
   setupHeader() {
@@ -128,7 +127,12 @@ class ChatStory {
     this.typingIndicator.classList.remove("hidden");
     // Update typing avatar
     if (char && char.avatar && this.typingAvatar) {
-        this.typingAvatar.src = this.resolvePath(char.avatar);
+        const resolvedPath = this.resolvePath(char.avatar);
+        this.typingAvatar.src = resolvedPath;
+        // console.log('Typing Avatar Updated:', char.name, resolvedPath);
+    } else {
+        // Fallback or Debug
+        // console.warn('Typing Avatar Missing Char or Avatar:', char);
     }
   }
 
