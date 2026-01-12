@@ -246,6 +246,35 @@ body.rendering .message.right {
   object-fit: cover;
 }
 
+/* Sender Name */
+.message-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+.message.left .message-content-wrapper {
+  align-items: flex-start;
+  margin-left: 8px;
+}
+
+.message.right .message-content-wrapper {
+  align-items: flex-end;
+  margin-right: 8px;
+}
+
+.message-sender {
+  font-size: 0.75rem; /* Small text */
+  color: #555; /* Dark gray for visibility */
+  margin-bottom: 2px;
+  margin-left: 8px;
+}
+
+.message.right .message-sender {
+  margin-right: 8px;
+  margin-left: 0;
+}
+
 .message-time {
   font-size: 0.65rem;
   color: var(--text-light);

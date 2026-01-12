@@ -70,10 +70,26 @@
                         <input type="text" id="room-name-input" placeholder="ชื่อห้องแชท"
                             style="background: var(--bg-dark); border: 1px solid var(--border); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.9rem; width: 150px;">
                     </div>
+
+                    <!-- Visibility Toggles (Simplified) -->
+                    <div
+                        style="margin-left: 15px; display: inline-flex; align-items: center; gap: 10px; border-left: 1px solid var(--border); padding-left: 15px;">
+                        <label
+                            style="color: var(--text-gray); font-size: 0.8rem; display: flex; align-items: center; gap: 5px; cursor: pointer;"
+                            title="Show Partner Name">
+                            <input type="checkbox" id="toggle-partner-name" checked>
+                            <span>L-Name</span>
+                        </label>
+                        <label
+                            style="color: var(--text-gray); font-size: 0.8rem; display: flex; align-items: center; gap: 5px; cursor: pointer;"
+                            title="Show My Name">
+                            <input type="checkbox" id="toggle-my-name">
+                            <span>R-Name</span>
+                        </label>
+                    </div>
                 </div>
                 <div class="actions">
-                    <button id="btn-generate-ai" class="btn-secondary" style="display: none;">Generate with AI
-                        🤖</button>
+                    <button id="btn-generate-ai" class="btn-secondary">Settings ⚙️</button>
                     <button id="btn-save" class="btn-secondary">Save Draft</button>
                     <button id="btn-export-json" class="btn-secondary">Export JSON 📦</button>
                     <button id="btn-render" class="btn-primary">Approve & Render 🎬</button>
@@ -212,6 +228,14 @@
     <div id="modal-story-settings" class="modal hidden">
         <div class="modal-content modal-wide">
             <h2>Story Settings</h2>
+
+            <div class="form-group">
+                <label>Appearance</label>
+                <div
+                    style="background: var(--bg-dark); padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
+                    <p style="color: var(--text-gray); font-size: 0.8rem;">Use toggles in top bar</p>
+                </div>
+            </div>
 
             <div class="form-group">
                 <label>Characters (Select at least 2)</label>

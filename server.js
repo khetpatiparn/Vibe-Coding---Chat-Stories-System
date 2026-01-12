@@ -132,16 +132,26 @@ app.get('/api/projects/:id', async (req, res) => {
     }
 });
 
-// 2.1 Update Project Title & Room Name
+// 2.1 Update Project Title, Room Name & Settings
 app.put('/api/projects/:id', async (req, res) => {
     try {
-        const { title, room_name } = req.body;
+        const { title, room_name, show_partner_name, show_my_name } = req.body;
+        
         if (title !== undefined) {
             await Project.updateTitle(req.params.id, title);
         }
         if (room_name !== undefined) {
             await Project.updateRoomName(req.params.id, room_name);
         }
+        if (show_partner_name !== undefined || show_my_name !== undefined) {
+            // Fetch current project to merge
+            const current = await Project.getById(req.params.id);
+            await Project.updateSettings(req.params.id, {
+                show_partner_name: show_partner_name !== undefined ? show_partner_name : current.show_partner_name,
+                show_my_name: show_my_name !== undefined ? show_my_name : current.show_my_name
+            });
+        }
+
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
