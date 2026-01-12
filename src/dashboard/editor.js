@@ -444,6 +444,44 @@ function renderProjectList() {
     `).join('');
 }
 
+// Helper: Calculate Delay (Thai-friendly)
+function calculateAutoDelay(message) {
+    if (!message) return 1.0;
+    const baseDelay = 1.0;
+    // Thai characters take time to read. 0.05s per char seems reasonable.
+    // e.g. "สวัสดีครับ" (10 chars) = 1.0 + 0.5 = 1.5s
+    const charCount = message.length;
+    return parseFloat((baseDelay + (charCount * 0.05)).toFixed(2));
+}
+
+function updateDelay(input, index, id) {
+    const value = parseFloat(input.value);
+    // Optimistic update
+    currentDialogues[index].delay = value;
+    
+    // Save to DB
+    fetch(`${API_BASE}/projects/${currentProject}/dialogues/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delay: value })
+    }).catch(err => console.error('Failed to save delay:', err));
+}
+
+function resetToAutoDelay(index, id) {
+    const message = currentDialogues[index].message;
+    const autoDelay = calculateAutoDelay(message);
+    
+    // Update local
+    currentDialogues[index].delay = autoDelay;
+    
+    // Update UI
+    const input = document.querySelector(`.dialogue-item[data-id="${id}"] .delay-input`);
+    if (input) input.value = autoDelay;
+    
+    // Save to DB
+    updateDelay({ value: autoDelay }, index, id);
+}
+
 function renderDialogues(dialogues, characters) {
     elDialogueList.innerHTML = dialogues.map((d, index) => {
         // Find avatar (sender might be 'boss' or 'me')
@@ -452,6 +490,9 @@ function renderDialogues(dialogues, characters) {
         let avatarSrc = char.avatar;
         // Fix path for web server
         if (avatarSrc.startsWith('assets')) avatarSrc = '/' + avatarSrc; // Make absolute
+        
+        // Calculate delay if not set
+        const delayValue = d.delay || calculateAutoDelay(d.message);
         
         return `
         <div class="dialogue-item" data-id="${d.id}" draggable="true">
@@ -486,6 +527,16 @@ function renderDialogues(dialogues, characters) {
                     onchange="updateDialogue(this, ${index}, ${d.id})">${d.message}</textarea>
                 <div class="dialogue-meta">
                     <span class="meta-tag" onclick="cycleEffect(${index}, ${d.id})">🎥 ${d.camera_effect}</span>
+                    
+                    <!-- Delay Control -->
+                    <div class="delay-control" style="display:inline-flex; align-items:center; gap:5px; margin-left:10px;">
+                        <span style="font-size:0.8rem; color:var(--text-gray);">⏳</span>
+                        <input type="number" step="0.1" class="delay-input" 
+                            value="${delayValue}" 
+                            onchange="updateDelay(this, ${index}, ${d.id})"
+                            style="width:50px; padding:2px; border-radius:4px; border:1px solid var(--border); background:var(--bg-dark); color:white; font-size:0.8rem; text-align:center;">
+                        <button class="btn-icon" onclick="resetToAutoDelay(${index}, ${d.id})" title="Auto Calculate (Reset)" style="font-size:0.7rem; padding:2px 5px;">🔄</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1275,6 +1326,8 @@ window.addDialogue = addDialogue;
 window.toggleSender = toggleSender;
 window.deleteDialogue = deleteDialogue;
 window.deleteProject = deleteProject;
+window.updateDelay = updateDelay; // NEW
+window.resetToAutoDelay = resetToAutoDelay; // NEW
 
 // ===================================
 // Image Upload for Dialogues (Base64)
@@ -1342,18 +1395,25 @@ window.removeDialogueImage = async function(index, id) {
 // Update Dialogue Text (called on textarea blur/change)
 window.updateDialogue = async function(textarea, index, id) {
     const message = textarea.value;
+    const newDelay = calculateAutoDelay(message);
     
     try {
         const res = await fetch(`${API_BASE}/projects/${currentProject}/dialogues/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: message })
+            body: JSON.stringify({ message: message, delay: newDelay })
         });
         const data = await res.json();
         
         if (data.success) {
             // Update local state
             currentDialogues[index].message = message;
+            currentDialogues[index].delay = newDelay;
+            
+            // Update Delay Input UI
+            const delayInput = document.querySelector(`.dialogue-item[data-id="${id}"] .delay-input`);
+            if (delayInput) delayInput.value = newDelay;
+            
             reloadPreview();
         } else {
             console.error('Failed to save message:', data.error);

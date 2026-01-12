@@ -78,19 +78,31 @@ class ChatStory {
     const senderChar = this.data.characters[item.sender];
     const isLeft = senderChar && senderChar.side === "left";
     
-    // Minimum delay for readability (1.5 seconds)
-    const minDelay = 0.5;
-    const actualDelay = Math.max(item.delay || 0.5, minDelay);
+    // Default fallback if delay missing
+    const defaultDelay = 1.0 + (item.message ? item.message.length * 0.05 : 0);
+    // Use item.delay from DB, or auto-calculated default
+    const totalDelay = (item.delay || defaultDelay);
     
+    // 80/20 Rule
+    const typingDuration = totalDelay * 0.8;
+    const pauseDuration = totalDelay * 0.2;
+
     // 1. Delays & Typing (Skip if instant)
     if (!isInstant) {
         if (isLeft) {
-          this.showTyping(senderChar);
-          const typingTime = actualDelay * 1000; 
-          await this.wait(typingTime);
-          this.hideTyping();
+            // Show typing indicator with correct avatar
+            this.showTyping(senderChar);
+            
+            // Wait for typing duration (80%)
+            await this.wait(typingDuration * 1000);
+            
+            // Hide typing and wait for pause (20%)
+            this.hideTyping();
+            await this.wait(pauseDuration * 1000);
+            
         } else {
-            await this.wait(actualDelay * 1000);
+            // Right side (Me) - just wait full delay
+            await this.wait(totalDelay * 1000);
         }
     }
 
@@ -115,12 +127,9 @@ class ChatStory {
   showTyping(char) {
     this.typingIndicator.classList.remove("hidden");
     // Update typing avatar
-    if (char) {
-        // Ensure typing avatar exists in DOM if we want to change it
-        // Currently style.css/html might not support dynamic typing avatar easily
-        // We'll skip updating typing avatar src for now to keep it simple
+    if (char && char.avatar && this.typingAvatar) {
+        this.typingAvatar.src = this.resolvePath(char.avatar);
     }
-    this.playSound('typing'); 
   }
 
   hideTyping() {

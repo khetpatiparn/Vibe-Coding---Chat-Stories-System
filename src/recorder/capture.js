@@ -15,14 +15,20 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 // ============================================
 // Configuration
 // ============================================
+// ============================================
+// Configuration
+// ============================================
 const CONFIG = {
     width: 1080,
     height: 1920,
     fps: 30,
     framesDir: './output/frames',
     outputDir: './output',
-    delayPerMessage: 1.5, // Seconds per message (reading time)
-    endingBuffer: 2 // Extra seconds after last message
+    endingBuffer: 2, // Extra seconds after last message
+    // Delay Settings
+    baseDelay: 1.0, 
+    delayPerChar: 0.05,
+    typingRatio: 0.8
 };
 
 // ============================================
@@ -30,7 +36,7 @@ const CONFIG = {
 // ============================================
 function calculateTimeline(story) {
     const timeline = [];
-    let currentTime = 0;
+    let currentTime = 1.0; // Start with small buffer
     
     if (!story.dialogues || story.dialogues.length === 0) {
         return { timeline: [], totalDuration: 5 };
@@ -38,11 +44,27 @@ function calculateTimeline(story) {
     
     for (let i = 0; i < story.dialogues.length; i++) {
         const dialogue = story.dialogues[i];
-        const delay = Math.max(dialogue.delay || 1.5, CONFIG.delayPerMessage);
+        
+        // Calculate delay
+        let delay = dialogue.delay;
+        if (!delay) {
+             const charCount = dialogue.message ? dialogue.message.length : 0;
+             delay = CONFIG.baseDelay + (charCount * CONFIG.delayPerChar);
+        }
+        // Ensure minimum delay
+        delay = Math.max(delay, 0.5);
+
+        // 80/20 Rule
+        const typingDuration = delay * CONFIG.typingRatio;
+        const typingStart = currentTime;
+        const typingEnd = currentTime + typingDuration;
+        const appearTime = currentTime + delay;
         
         timeline.push({
             index: i,
-            appearTime: currentTime,
+            typingStart: typingStart,
+            typingEnd: typingEnd,
+            appearTime: appearTime,
             dialogue: dialogue
         });
         
@@ -52,9 +74,6 @@ function calculateTimeline(story) {
     const totalDuration = currentTime + CONFIG.endingBuffer;
     
     console.log(`Timeline: ${timeline.length} messages over ${totalDuration.toFixed(1)} seconds`);
-    timeline.forEach(t => {
-        console.log(`  [${t.appearTime.toFixed(1)}s] Message ${t.index + 1}: "${t.dialogue.message?.substring(0, 30)}..."`);
-    });
     
     return { timeline, totalDuration };
 }
@@ -132,7 +151,6 @@ async function captureFrames(story, outputName = 'story') {
                 box-shadow: none !important;
             }
             .message-bubble {
-                /*border: 2px solid green;*/
                 font-size: 0.95rem !important;
             }
             #chat-container {
@@ -144,9 +162,7 @@ async function captureFrames(story, outputName = 'story') {
                 padding-bottom: 15px !important;
                 height: auto !important;
             }
-            /* Ensure images have proper spacing inside bubbles */
             .chat-image {
-                /*border: 2px solid #000;*/
                 max-width: 100%;
                 height: auto;
                 border-radius: 8px;
@@ -172,7 +188,11 @@ async function captureFrames(story, outputName = 'story') {
             
             // Function for Puppeteer to call with current time
             window.setCurrentTime = function(currentTime) {
+                let isAnyTyping = false;
+                let typingChar = null;
+
                 for (const item of timeline) {
+                    // 1. Show Messages
                     if (currentTime >= item.appearTime && !shownMessages.has(item.index)) {
                         shownMessages.add(item.index);
                         const dialogue = storyData.dialogues[item.index];
@@ -181,6 +201,36 @@ async function captureFrames(story, outputName = 'story') {
                         story.scrollToBottom();
                         console.log(`[${currentTime.toFixed(1)}s] Showing message ${item.index + 1}`);
                     }
+                    
+                    // 2. Check for Typing Status (80% phase)
+                    if (currentTime >= item.typingStart && currentTime < item.typingEnd) {
+                        const dialogue = storyData.dialogues[item.index];
+                        const senderChar = storyData.characters[dialogue.sender];
+                        
+                        // Only show typing for LEFT side
+                        if (senderChar && senderChar.side === 'left') {
+                            isAnyTyping = true;
+                            typingChar = senderChar;
+                        }
+                    }
+                }
+                
+                // Update Typing UI
+                const typingIndicator = document.getElementById('typing-indicator');
+                if (isAnyTyping) {
+                    typingIndicator.classList.remove('hidden');
+                    // Update avatar
+                    const avatarImg = document.querySelector('.typing-avatar img');
+                    if (avatarImg && typingChar) {
+                        // Resolve path logic (basic)
+                        let avatarSrc = typingChar.avatar;
+                        if (avatarSrc && avatarSrc.startsWith('assets')) avatarSrc = '/' + avatarSrc;
+                        if (avatarImg.src !== avatarSrc && !avatarImg.src.endsWith(avatarSrc)) {
+                             avatarImg.src = avatarSrc;
+                        }
+                    }
+                } else {
+                    typingIndicator.classList.add('hidden');
                 }
             };
             
