@@ -915,6 +915,20 @@ function reloadPreview() {
     const timestamp = new Date().getTime();
     const tiktokParam = window.tiktokMode ? '&tiktokMode=true' : '';
     elPreviewFrame.src = `/visualizer/index.html?projectId=${currentProject}&t=${timestamp}${tiktokParam}`;
+    
+    // Restart BGM if enabled
+    if (bgmEnabled && selectedBgmPath) {
+        if (currentBgm) {
+            currentBgm.pause();
+            currentBgm.currentTime = 0;
+            currentBgm.play().catch(e => console.log('BGM play error:', e));
+        } else {
+            currentBgm = new Audio('/' + selectedBgmPath);
+            currentBgm.loop = true;
+            currentBgm.volume = bgmVolume;
+            currentBgm.play().catch(e => console.log('BGM play error:', e));
+        }
+    }
 }
 
 // TikTok Mode Toggle
