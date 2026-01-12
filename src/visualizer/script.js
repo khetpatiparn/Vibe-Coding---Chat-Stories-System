@@ -12,6 +12,10 @@ class ChatStory {
     this.cameraWrapper = document.getElementById("camera-wrapper");
     this.typingIndicator = document.getElementById("typing-indicator");
     this.typingAvatar = document.querySelector(".typing-avatar img");
+    
+    // Audio settings (synced from parent dashboard)
+    this.sfxEnabled = true;
+    this.sfxPath = null;
 
     this.init();
   }
@@ -153,6 +157,30 @@ class ChatStory {
     }
 
     this.container.appendChild(msgDiv);
+    
+    // Play pop sound when message appears
+    this.playPopSound();
+  }
+  
+  playPopSound() {
+    // Try to get SFX settings from parent window (dashboard)
+    try {
+      if (window.parent && window.parent !== window) {
+        const sfxEnabled = window.parent.sfxEnabled !== false;
+        const sfxPath = window.parent.selectedSfxPath;
+        const sfxVolume = window.parent.sfxVolume || 0.5;
+        
+        console.log('[Pop] Enabled:', sfxEnabled, 'Path:', sfxPath, 'Vol:', sfxVolume);
+        
+        if (sfxEnabled && sfxPath) {
+          const audio = new Audio('/' + sfxPath);
+          audio.volume = sfxVolume;
+          audio.play().catch(e => console.log('Pop sound blocked:', e));
+        }
+      }
+    } catch(e) {
+      console.log('Pop sound error:', e);
+    }
   }
 
   triggerEffect(effectName) {

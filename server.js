@@ -11,7 +11,7 @@ const open = require('open'); // Optional: opens browser on start
 const multer = require('multer');
 const fs = require('fs-extra');
 
-const { db, Project, Dialogue, Character, CustomCharacter, importStoryJSON, exportStoryJSON } = require('./database');
+const { db, Project, Dialogue, Character, CustomCharacter, SoundCollection, Sound, importStoryJSON, exportStoryJSON } = require('./database');
 const { generateStory, continueStory } = require('./src/ai/screenwriter');
 const { recordStory } = require('./src/recorder/capture');
 
@@ -71,6 +71,31 @@ const chatStorage = multer.diskStorage({
     }
 });
 const uploadChat = multer({ storage: chatStorage, fileFilter: fileFilter, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+
+// Sound Upload Configuration
+const soundStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const type = req.body.type || 'sfx';
+        const collection = req.body.collection || 'default';
+        const uploadDir = `assets/sounds/${type}/${collection}/`;
+        fs.ensureDirSync(uploadDir);
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'sound-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+const soundFilter = (req, file, cb) => {
+    const allowedTypes = /mp3|wav|ogg|m4a/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    if (extname) {
+        return cb(null, true);
+    } else {
+        cb(new Error('Only audio files (mp3, wav, ogg, m4a) are allowed!'));
+    }
+};
+const uploadSound = multer({ storage: soundStorage, fileFilter: soundFilter, limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB limit
 
 // Upload Endpoint
 app.post('/api/upload/image', uploadChat.single('image'), (req, res) => {
@@ -445,20 +470,22 @@ app.post('/api/projects/:id/reorder', async (req, res) => {
 app.post('/api/render/:id', async (req, res) => {
     try {
         const projectId = req.params.id;
+        const { bgMusicPath, sfxPath, bgmVolume, sfxVolume } = req.body;
+        
         console.log(`🎥 Rendering project ${projectId}...`);
+        if (bgMusicPath) console.log(`🎵 With BGM: ${bgMusicPath} (vol: ${bgmVolume})`);
+        if (sfxPath) console.log(`🔔 With SFX: ${sfxPath} (vol: ${sfxVolume})`);
         
         await Project.updateStatus(projectId, 'RENDERING');
         
         const story = await exportStoryJSON(projectId);
         
-        // Adjust avatar paths for Node.js context (if needed) or keep relative
-        // Capture expects specific structure. 
-        
-        // Make sure assets paths are correct relative to project root
-        // If story.characters has "assets/...", it works if run from root.
-        
         const videoPath = await recordStory(story, {
-            outputName: `project_${projectId}_${Date.now()}`
+            outputName: `project_${projectId}_${Date.now()}`,
+            bgMusicPath: bgMusicPath || null,
+            sfxPath: sfxPath || null,
+            bgmVolume: bgmVolume || 0.3,
+            sfxVolume: sfxVolume || 0.5
         });
 
         await Project.updateStatus(projectId, 'COMPLETED');
@@ -589,6 +616,136 @@ app.delete('/api/characters/custom/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// ============================================
+// Sound Library API
+// ============================================
+
+// Get all sound collections
+app.get('/api/sounds/collections', async (req, res) => {
+    try {
+        const collections = await SoundCollection.getAll();
+        res.json(collections);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get collections by type (bgm or sfx)
+app.get('/api/sounds/collections/:type', async (req, res) => {
+    try {
+        const collections = await SoundCollection.getByType(req.params.type);
+        res.json(collections);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create a new collection
+app.post('/api/sounds/collections', async (req, res) => {
+    try {
+        const { name, type } = req.body;
+        if (!name || !type) {
+            return res.status(400).json({ error: 'Name and type are required' });
+        }
+        const id = await SoundCollection.create(name, type);
+        res.json({ success: true, id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete a collection
+app.delete('/api/sounds/collections/:id', async (req, res) => {
+    try {
+        // First delete all sounds in the collection
+        const sounds = await Sound.getByCollection(req.params.id);
+        for (const sound of sounds) {
+            try {
+                fs.unlinkSync(sound.filename);
+            } catch (e) {
+                console.warn('Could not delete sound file:', e.message);
+            }
+            await Sound.delete(sound.id);
+        }
+        await SoundCollection.delete(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get all sounds
+app.get('/api/sounds', async (req, res) => {
+    try {
+        const sounds = await Sound.getAll();
+        res.json(sounds);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get sounds by type (bgm or sfx)
+app.get('/api/sounds/type/:type', async (req, res) => {
+    try {
+        const sounds = await Sound.getByType(req.params.type);
+        res.json(sounds);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get sounds by collection
+app.get('/api/sounds/collection/:collectionId', async (req, res) => {
+    try {
+        const sounds = await Sound.getByCollection(req.params.collectionId);
+        res.json(sounds);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Upload a new sound
+app.post('/api/sounds/upload', uploadSound.single('sound'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: 'No file uploaded' });
+        }
+        
+        const { name, collectionId, type } = req.body;
+        if (!name || !type) {
+            return res.status(400).json({ error: 'Name and type are required' });
+        }
+        
+        const filename = req.file.path.replace(/\\/g, '/');
+        const id = await Sound.create(collectionId || null, name, filename, type);
+        
+        console.log(`Sound uploaded: ${name} -> ${filename}`);
+        res.json({ success: true, id, path: filename });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete a sound
+app.delete('/api/sounds/:id', async (req, res) => {
+    try {
+        const sound = await Sound.getById(req.params.id);
+        if (sound) {
+            // Delete file
+            try {
+                fs.unlinkSync(sound.filename);
+            } catch (e) {
+                console.warn('Could not delete sound file:', e.message);
+            }
+            await Sound.delete(req.params.id);
+        }
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 // ============================================
 // Start Server

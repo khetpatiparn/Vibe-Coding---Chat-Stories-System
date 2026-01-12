@@ -223,29 +223,81 @@ async function captureFrames(story, outputName = 'story') {
 // ============================================
 // Assemble Video with FFmpeg
 // ============================================
-async function assembleVideo(framesDir, outputName = 'story', bgMusicPath = null) {
+async function assembleVideo(framesDir, outputName = 'story', audioOptions = {}) {
     const outputPath = path.join(CONFIG.outputDir, `${outputName}.mp4`);
     const framePattern = path.join(framesDir, 'frame_%06d.png');
     
     await fs.ensureDir(CONFIG.outputDir);
+    
+    const { bgMusicPath, sfxPath, timeline, bgmVolume = 0.3, sfxVolume = 0.5 } = audioOptions;
     
     return new Promise((resolve, reject) => {
         console.log('Assembling video...');
         
         let command = ffmpeg()
             .input(framePattern)
-            .inputFPS(CONFIG.fps)
-            .outputOptions([
-                '-c:v libx264',
-                '-pix_fmt yuv420p',
-                '-preset fast',
-                '-crf 23'
-            ]);
+            .inputFPS(CONFIG.fps);
         
-        if (bgMusicPath && fs.existsSync(bgMusicPath)) {
+        // If we have both BGM and SFX with timeline, use complex filter
+        if (bgMusicPath && fs.existsSync(bgMusicPath) && sfxPath && fs.existsSync(sfxPath) && timeline && timeline.length > 0) {
+            console.log('Mixing BGM and SFX at dialogue timestamps...');
+            
+            // Add BGM input
+            command.input(bgMusicPath);
+            
+            // For SFX, we need to overlay at each dialogue timestamp
+            // Create filter complex string
+            let filterComplex = `[1:a]volume=${bgmVolume}[bgm];`;
+            let mixInputs = '[bgm]';
+            
+            // Add SFX input once, we'll use adelay to offset copies
+            command.input(sfxPath);
+            
+            // Create delayed copies of SFX for each dialogue
+            for (let i = 0; i < Math.min(timeline.length, 20); i++) { // Limit to 20 to avoid command line too long
+                const delayMs = Math.round(timeline[i].appearTime * 1000);
+                filterComplex += `[2:a]adelay=${delayMs}|${delayMs},volume=${sfxVolume}[sfx${i}];`;
+                mixInputs += `[sfx${i}]`;
+            }
+            
+            // Mix all audio together
+            filterComplex += `${mixInputs}amix=inputs=${Math.min(timeline.length, 20) + 1}:duration=first:dropout_transition=0[aout]`;
+            
+            command
+                .complexFilter(filterComplex)
+                .outputOptions([
+                    '-map', '0:v',
+                    '-map', '[aout]',
+                    '-c:v', 'libx264',
+                    '-pix_fmt', 'yuv420p',
+                    '-preset', 'fast',
+                    '-crf', '23',
+                    '-c:a', 'aac',
+                    '-b:a', '128k',
+                    '-shortest'
+                ]);
+        } else if (bgMusicPath && fs.existsSync(bgMusicPath)) {
+            // BGM only
             command = command
                 .input(bgMusicPath)
-                .outputOptions(['-c:a aac', '-b:a 128k', '-shortest']);
+                .outputOptions([
+                    '-c:v', 'libx264',
+                    '-pix_fmt', 'yuv420p',
+                    '-preset', 'fast',
+                    '-crf', '23',
+                    '-c:a', 'aac',
+                    '-b:a', '128k',
+                    '-shortest',
+                    '-filter:a', `volume=${bgmVolume}`
+                ]);
+        } else {
+            // No audio
+            command.outputOptions([
+                '-c:v', 'libx264',
+                '-pix_fmt', 'yuv420p',
+                '-preset', 'fast',
+                '-crf', '23'
+            ]);
         }
         
         command
@@ -269,7 +321,19 @@ async function recordStory(story, options = {}) {
         
         if (frameCount === 0) throw new Error('No frames captured');
         
-        const videoPath = await assembleVideo(framesDir, outputName, options.bgMusicPath);
+        // Calculate timeline for SFX placement
+        const { timeline } = calculateTimeline(story);
+        
+        // Pass audio options to assembleVideo
+        const audioOptions = {
+            bgMusicPath: options.bgMusicPath,
+            sfxPath: options.sfxPath,
+            bgmVolume: options.bgmVolume || 0.3,
+            sfxVolume: options.sfxVolume || 0.5,
+            timeline: timeline
+        };
+        
+        const videoPath = await assembleVideo(framesDir, outputName, audioOptions);
         
         if (!options.keepFrames) {
             await fs.remove(framesDir);

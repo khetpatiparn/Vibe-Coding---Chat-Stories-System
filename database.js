@@ -80,6 +80,31 @@ function initSchema() {
             if (err) console.error('Failed to create custom_characters table:', err);
             else console.log('✅ custom_characters table ready');
         });
+
+        // 5. Sound Collections Table (BGM categories, SFX categories)
+        db.run(`CREATE TABLE IF NOT EXISTS sound_collections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (err) console.error('Failed to create sound_collections table:', err);
+            else console.log('✅ sound_collections table ready');
+        });
+
+        // 6. Sounds Table (individual sound files)
+        db.run(`CREATE TABLE IF NOT EXISTS sounds (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            collection_id INTEGER,
+            name TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            type TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(collection_id) REFERENCES sound_collections(id) ON DELETE CASCADE
+        )`, (err) => {
+            if (err) console.error('Failed to create sounds table:', err);
+            else console.log('✅ sounds table ready');
+        });
         
         console.log('Database schema initialized.');
     });
@@ -360,12 +385,131 @@ const CustomCharacter = {
     }
 };
 
+// ============================================
+// Sound Collection Helper
+// ============================================
+const SoundCollection = {
+    create: (name, type) => {
+        return new Promise((resolve, reject) => {
+            db.run('INSERT INTO sound_collections (name, type) VALUES (?, ?)', [name, type], function(err) {
+                if (err) reject(err);
+                else resolve(this.lastID);
+            });
+        });
+    },
+
+    getAll: () => {
+        return new Promise((resolve, reject) => {
+            db.all('SELECT * FROM sound_collections ORDER BY type, name', [], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+    },
+
+    getByType: (type) => {
+        return new Promise((resolve, reject) => {
+            db.all('SELECT * FROM sound_collections WHERE type = ? ORDER BY name', [type], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+    },
+
+    getById: (id) => {
+        return new Promise((resolve, reject) => {
+            db.get('SELECT * FROM sound_collections WHERE id = ?', [id], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+    },
+
+    delete: (id) => {
+        return new Promise((resolve, reject) => {
+            db.run('DELETE FROM sound_collections WHERE id = ?', [id], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    }
+};
+
+// ============================================
+// Sound Helper
+// ============================================
+const Sound = {
+    create: (collectionId, name, filename, type) => {
+        return new Promise((resolve, reject) => {
+            db.run('INSERT INTO sounds (collection_id, name, filename, type) VALUES (?, ?, ?, ?)', 
+                [collectionId, name, filename, type], function(err) {
+                if (err) reject(err);
+                else resolve(this.lastID);
+            });
+        });
+    },
+
+    getAll: () => {
+        return new Promise((resolve, reject) => {
+            db.all(`SELECT s.*, sc.name as collection_name 
+                    FROM sounds s 
+                    LEFT JOIN sound_collections sc ON s.collection_id = sc.id 
+                    ORDER BY s.type, sc.name, s.name`, [], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+    },
+
+    getByCollection: (collectionId) => {
+        return new Promise((resolve, reject) => {
+            db.all('SELECT * FROM sounds WHERE collection_id = ? ORDER BY name', [collectionId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+    },
+
+    getByType: (type) => {
+        return new Promise((resolve, reject) => {
+            db.all(`SELECT s.*, sc.name as collection_name 
+                    FROM sounds s 
+                    LEFT JOIN sound_collections sc ON s.collection_id = sc.id 
+                    WHERE s.type = ? 
+                    ORDER BY sc.name, s.name`, [type], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+    },
+
+    getById: (id) => {
+        return new Promise((resolve, reject) => {
+            db.get('SELECT * FROM sounds WHERE id = ?', [id], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+    },
+
+    delete: (id) => {
+        return new Promise((resolve, reject) => {
+            db.run('DELETE FROM sounds WHERE id = ?', [id], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    }
+};
+
 module.exports = {
     db,
     Project,
     Character,
     Dialogue,
     CustomCharacter,
+    SoundCollection,
+    Sound,
     importStoryJSON,
     exportStoryJSON
 };

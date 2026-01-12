@@ -402,18 +402,25 @@ async function renderVideo() {
     btn.textContent = 'Rendering... 🎬';
     btn.disabled = true;
     
+    // Get audio settings (respects toggle state)
+    const audioSettings = getAudioSettings();
+    
     try {
-        const res = await fetch(`${API_BASE}/render/${currentProject}`, { method: 'POST' });
+        const res = await fetch(`${API_BASE}/render/${currentProject}`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(audioSettings)
+        });
         const data = await res.json();
         
         if (data.success) {
-            alert('Video rendered successfully! Saved to: ' + data.videoPath);
+            showToast('🎬 Render สำเร็จ! ' + data.videoPath.split('/').pop(), 'success');
             loadProjects(); // Update status
         } else {
-            alert('Render error: ' + data.error);
+            showToast('❌ Render ล้มเหลว: ' + data.error, 'error');
         }
     } catch (err) {
-        alert('Network Error');
+        showToast('❌ Network Error', 'error');
     } finally {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -1341,3 +1348,168 @@ window.updateDialogue = async function(textarea, index, id) {
         console.error('Error saving message:', err);
     }
 };
+
+// ============================================
+// Audio Settings
+// ============================================
+let currentBgm = null;
+let currentSfx = null;
+let selectedBgmPath = '';
+let selectedSfxPath = '';
+let bgmEnabled = true;
+let sfxEnabled = true;
+
+// Expose to window for iframe access
+window.selectedSfxPath = selectedSfxPath;
+window.sfxEnabled = sfxEnabled;
+window.sfxVolume = 0.5; // Default
+
+// Toast Notification Function
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    
+    const icons = {
+        success: '✅',
+        error: '❌',
+        info: 'ℹ️',
+        warning: '⚠️'
+    };
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
+        <span>${message}</span>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Remove after animation
+    setTimeout(() => toast.remove(), 3000);
+}
+
+async function loadAudioOptions() {
+    try {
+        // Load BGM
+        const bgmRes = await fetch(`${API_BASE}/sounds/type/bgm`);
+        const bgmSounds = await bgmRes.json();
+        const bgmSelect = document.getElementById('select-bgm');
+        if (bgmSelect) {
+            bgmSelect.innerHTML = '<option value="">ปิด</option>';
+            for (const sound of bgmSounds) {
+                bgmSelect.innerHTML += `<option value="${sound.filename}">${sound.collection_name ? sound.collection_name + ' - ' : ''}${sound.name}</option>`;
+            }
+        }
+        
+        // Load SFX
+        const sfxRes = await fetch(`${API_BASE}/sounds/type/sfx`);
+        const sfxSounds = await sfxRes.json();
+        const sfxSelect = document.getElementById('select-sfx');
+        if (sfxSelect) {
+            sfxSelect.innerHTML = '<option value="">ปิด</option>';
+            for (const sound of sfxSounds) {
+                sfxSelect.innerHTML += `<option value="${sound.filename}">${sound.collection_name ? sound.collection_name + ' - ' : ''}${sound.name}</option>`;
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load audio options:', err);
+    }
+}
+
+function onBgmChange() {
+    selectedBgmPath = document.getElementById('select-bgm').value;
+    
+    // Stop current BGM if playing
+    if (currentBgm) {
+        currentBgm.pause();
+        currentBgm = null;
+    }
+    
+    if (selectedBgmPath && bgmEnabled) {
+        // Start playing new BGM
+        currentBgm = new Audio('/' + selectedBgmPath);
+        currentBgm.loop = true;
+        currentBgm.volume = bgmVolume;
+        currentBgm.play().catch(e => console.log('BGM autoplay blocked:', e));
+        showToast('🎵 กำลังเล่น: ' + selectedBgmPath.split('/').pop(), 'success');
+    } else if (selectedBgmPath) {
+        showToast('เลือก BGM: ' + selectedBgmPath.split('/').pop(), 'success');
+    }
+}
+
+function onSfxChange() {
+    selectedSfxPath = document.getElementById('select-sfx').value;
+    window.selectedSfxPath = selectedSfxPath; // Sync for iframe
+    if (selectedSfxPath) {
+        showToast('เลือก SFX: ' + selectedSfxPath.split('/').pop(), 'success');
+    }
+}
+
+function toggleBgm() {
+    bgmEnabled = !bgmEnabled;
+    const btn = document.getElementById('toggle-bgm');
+    if (btn) {
+        btn.classList.toggle('active', bgmEnabled);
+    }
+    
+    // Control playback
+    if (currentBgm) {
+        if (bgmEnabled) {
+            currentBgm.play().catch(e => console.log('BGM play error:', e));
+        } else {
+            currentBgm.pause();
+        }
+    } else if (bgmEnabled && selectedBgmPath) {
+        // Start playing if we have a selection
+        currentBgm = new Audio('/' + selectedBgmPath);
+        currentBgm.loop = true;
+        currentBgm.volume = bgmVolume;
+        currentBgm.play().catch(e => console.log('BGM play error:', e));
+    }
+    
+    showToast(bgmEnabled ? '🔊 เปิด BGM แล้ว' : '🔇 ปิด BGM แล้ว', bgmEnabled ? 'success' : 'info');
+}
+
+function toggleSfx() {
+    sfxEnabled = !sfxEnabled;
+    window.sfxEnabled = sfxEnabled; // Sync for iframe
+    const btn = document.getElementById('toggle-sfx');
+    if (btn) {
+        btn.classList.toggle('active', sfxEnabled);
+    }
+    showToast(sfxEnabled ? 'เปิด SFX แล้ว' : 'ปิด SFX แล้ว', sfxEnabled ? 'success' : 'info');
+}
+
+// Volume controls
+let bgmVolume = 0.3;
+let sfxVolume = 0.5;
+
+function onBgmVolumeChange(value) {
+    bgmVolume = value / 100;
+    window.bgmVolume = bgmVolume;
+    // Update live BGM volume
+    if (currentBgm) {
+        currentBgm.volume = bgmVolume;
+    }
+}
+
+function onSfxVolumeChange(value) {
+    sfxVolume = value / 100;
+    window.sfxVolume = sfxVolume;
+}
+
+// Get audio settings for render
+function getAudioSettings() {
+    return {
+        bgMusicPath: bgmEnabled ? selectedBgmPath : null,
+        sfxPath: sfxEnabled ? selectedSfxPath : null,
+        bgmVolume: bgmVolume,
+        sfxVolume: sfxVolume
+    };
+}
+
+// Load audio options when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    loadAudioOptions();
+});
