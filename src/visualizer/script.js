@@ -29,11 +29,12 @@ class ChatStory {
   }
 
   setupHeader() {
-    // Default boss logic or from first char
-    const boss = this.data.characters.boss || Object.values(this.data.characters)[0];
-    if (boss) {
-      this.headerName.innerText = boss.name;
-      this.headerAvatar.src = this.resolvePath(boss.avatar);
+    // Use room_name if set, otherwise use default placeholder
+    if (this.data.room_name && this.data.room_name.trim() !== '') {
+      this.headerName.innerText = this.data.room_name;
+    } else {
+      // Default placeholder - user can set it in dashboard
+      this.headerName.innerText = 'ชื่อห้องแชท';
     }
   }
 
@@ -163,7 +164,6 @@ class ChatStory {
       <div class="message-bubble">
         ${item.image_path ? `<img src="${item.image_path.startsWith('data:') ? item.image_path : this.resolvePath(item.image_path)}" class="chat-image" style="max-width: 130px; max-height: 130px; border-radius: 8px; display: block; margin: 4px auto; object-fit: cover;">` : ''}
         ${item.message ? `<div>${item.message}</div>` : ''}
-        <div class="message-time" style="text-align: right; opacity: 0.7; font-size: 0.7em;">${this.getCurrentTime()}</div>
       </div>`;
 
     // Swap order for right side

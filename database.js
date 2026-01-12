@@ -25,6 +25,7 @@ function initSchema() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
             status TEXT DEFAULT 'DRAFT',
+            room_name TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
 
@@ -76,6 +77,20 @@ function initSchema() {
                         }
                     }
                 });
+            }
+        });
+
+        // Migration for projects table (room_name)
+        db.all("PRAGMA table_info(projects)", (err, rows) => {
+            if (!err) {
+                const hasRoomName = rows.some(r => r.name === 'room_name');
+                if (!hasRoomName) {
+                    console.log('Migrating: Adding room_name to projects table...');
+                    db.run("ALTER TABLE projects ADD COLUMN room_name TEXT", (err) => {
+                        if (err) console.error("Migration failed (room_name):", err);
+                        else console.log("Migration successful: room_name added.");
+                    });
+                }
             }
         });
 
@@ -164,6 +179,15 @@ const Project = {
     updateTitle: (id, title) => {
         return new Promise((resolve, reject) => {
             db.run(`UPDATE projects SET title = ? WHERE id = ?`, [title, id], function(err) {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    },
+
+    updateRoomName: (id, roomName) => {
+        return new Promise((resolve, reject) => {
+            db.run(`UPDATE projects SET room_name = ? WHERE id = ?`, [roomName, id], function(err) {
                 if (err) reject(err);
                 else resolve();
             });
@@ -325,6 +349,7 @@ async function exportStoryJSON(projectId) {
     return {
         id: project.id,
         title: project.title,
+        room_name: project.room_name, // Room name for header
         status: project.status,
         characters,
         dialogues

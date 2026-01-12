@@ -84,6 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-generate-ai').onclick = openStorySettings;
     document.getElementById('btn-export-json').onclick = exportProjectAsJSON;
     
+    // Room Name Input - Auto-save on change
+    document.getElementById('room-name-input').onchange = saveRoomName;
+    
     // Story Settings Modal
     document.getElementById('btn-cancel-settings').onclick = () => {
         document.getElementById('modal-story-settings').classList.add('hidden');
@@ -337,6 +340,9 @@ async function selectProject(id) {
         window.currentProjectCharacters = data.characters;
         console.log('Loaded Project Characters:', window.currentProjectCharacters);
         
+        // Load Room Name
+        document.getElementById('room-name-input').value = data.room_name || '';
+        
         // Update dialogue counter
         const dialogueCounter = document.getElementById('dialogue-counter');
         const dialogueCount = document.getElementById('dialogue-count');
@@ -472,6 +478,24 @@ function exportProjectAsJSON() {
     URL.revokeObjectURL(url);
     
     showToast('📦 Export สำเร็จ!', 'success');
+}
+
+// Save Room Name (Auto-save)
+async function saveRoomName() {
+    if (!currentProject) return;
+    const value = document.getElementById('room-name-input').value.trim();
+    
+    try {
+        await fetch(`${API_BASE}/projects/${currentProject}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room_name: value })
+        });
+        reloadPreview();
+        showToast('💬 Room name saved', 'success');
+    } catch(e) {
+        console.error('Failed to save room name:', e);
+    }
 }
 
 // ===================================

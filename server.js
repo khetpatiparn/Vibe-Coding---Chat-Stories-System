@@ -132,11 +132,16 @@ app.get('/api/projects/:id', async (req, res) => {
     }
 });
 
-// 2.1 Update Project Title
+// 2.1 Update Project Title & Room Name
 app.put('/api/projects/:id', async (req, res) => {
     try {
-        const { title } = req.body;
-        await Project.updateTitle(req.params.id, title);
+        const { title, room_name } = req.body;
+        if (title !== undefined) {
+            await Project.updateTitle(req.params.id, title);
+        }
+        if (room_name !== undefined) {
+            await Project.updateRoomName(req.params.id, room_name);
+        }
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

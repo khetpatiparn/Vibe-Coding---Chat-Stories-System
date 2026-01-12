@@ -146,11 +146,6 @@ body.rendering .message.right {
   font-size: 1.1rem;
 }
 
-.header-status {
-  font-size: 0.8rem;
-  opacity: 0.8;
-}
-
 /* Camera Wrapper - For Effects */
 #camera-wrapper {
   flex: 1;
@@ -236,7 +231,7 @@ body.rendering .message.right {
   border-bottom-right-radius: 5px;
   box-shadow: 0 2px 5px var(--shadow-soft);
   overflow: hidden; /* Prevent image overflow */
-  max-width: 70%;
+  /* max-width: 70%; */
 }
 
 /* Chat Images inside bubbles */
