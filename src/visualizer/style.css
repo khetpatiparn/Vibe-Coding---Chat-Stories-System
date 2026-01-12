@@ -214,7 +214,7 @@ body.rendering .message.right {
 .message-bubble {
   padding: 10px 14px; /* Reduced for smaller text */
   border-radius: 18px;
-  font-size: 0.85rem; /* Reduced from 1rem (~15% smaller) */
+  font-size: 0.95rem; /* Reduced from 1rem (~15% smaller) */
   line-height: 1.4;
   position: relative;
   word-wrap: break-word;
@@ -236,6 +236,7 @@ body.rendering .message.right {
   border-bottom-right-radius: 5px;
   box-shadow: 0 2px 5px var(--shadow-soft);
   overflow: hidden; /* Prevent image overflow */
+  max-width: 70%;
 }
 
 /* Chat Images inside bubbles */
