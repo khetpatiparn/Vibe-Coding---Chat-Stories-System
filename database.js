@@ -46,6 +46,7 @@ function initSchema() {
             sender TEXT,
             message TEXT,
             delay REAL,
+            reaction_delay REAL DEFAULT 0.5,
             typing_speed TEXT,
             camera_effect TEXT,
             seq_order INTEGER,
@@ -62,6 +63,15 @@ function initSchema() {
                             db.run("ALTER TABLE dialogues ADD COLUMN image_path TEXT", (err) => {
                                 if (err) console.error("Migration failed:", err);
                                 else console.log("Migration successful: image_path added.");
+                            });
+                        }
+                        
+                        const hasReaction = rows.some(r => r.name === 'reaction_delay');
+                        if (!hasReaction) {
+                            console.log('Migrating: Adding reaction_delay to dialogues table...');
+                            db.run("ALTER TABLE dialogues ADD COLUMN reaction_delay REAL DEFAULT 0.5", (err) => {
+                                if (err) console.error("Migration failed (reaction_delay):", err);
+                                else console.log("Migration successful: reaction_delay added.");
                             });
                         }
                     }
@@ -208,7 +218,7 @@ const Dialogue = {
     updateData: (id, updates) => {
         return new Promise((resolve, reject) => {
             const keys = Object.keys(updates).filter(k => 
-                ['sender', 'message', 'delay', 'typing_speed', 'camera_effect', 'image_path'].includes(k)
+                ['sender', 'message', 'delay', 'reaction_delay', 'typing_speed', 'camera_effect', 'image_path'].includes(k)
             );
             
             if (keys.length === 0) return resolve(0);
@@ -305,6 +315,7 @@ async function exportStoryJSON(projectId) {
         sender: d.sender,
         message: d.message,
         delay: d.delay,
+        reaction_delay: d.reaction_delay, // [NEW] Reaction Time
         typing_speed: d.typing_speed,
         camera_effect: d.camera_effect,
         seq_order: d.seq_order,

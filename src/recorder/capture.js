@@ -18,6 +18,12 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 // ============================================
 // Configuration
 // ============================================
+// ============================================
+// Configuration
+// ============================================
+// ============================================
+// Configuration
+// ============================================
 const CONFIG = {
     width: 1080,
     height: 1920,
@@ -29,6 +35,7 @@ const CONFIG = {
     baseDelay: 1.0, 
     delayPerChar: 0.05,
     typingRatio: 0.8
+    // reactionTime default moved to logic
 };
 
 // ============================================
@@ -45,20 +52,25 @@ function calculateTimeline(story) {
     for (let i = 0; i < story.dialogues.length; i++) {
         const dialogue = story.dialogues[i];
         
-        // Calculate delay
-        let delay = dialogue.delay;
-        if (!delay) {
+        // 1. Reaction Time (Default 0.5s)
+        const reaction = (dialogue.reaction_delay !== undefined && dialogue.reaction_delay !== null) 
+                         ? dialogue.reaction_delay 
+                         : 0.5;
+        
+        // 2. Typing Duration (From DB or Auto-Calc)
+        let typingTotal = dialogue.delay;
+        if (!typingTotal) {
              const charCount = dialogue.message ? dialogue.message.length : 0;
-             delay = CONFIG.baseDelay + (charCount * CONFIG.delayPerChar);
+             typingTotal = CONFIG.baseDelay + (charCount * CONFIG.delayPerChar);
         }
-        // Ensure minimum delay
-        delay = Math.max(delay, 0.5);
-
-        // 80/20 Rule
-        const typingDuration = delay * CONFIG.typingRatio;
-        const typingStart = currentTime;
-        const typingEnd = currentTime + typingDuration;
-        const appearTime = currentTime + delay;
+        
+        // Timeline Calculation:
+        // [Reaction Gap] --> [Typing (80%)] --> [Pause (20%)] --> [Appear]
+        const typingDuration = typingTotal * CONFIG.typingRatio;
+        
+        const typingStart = currentTime + reaction;
+        const typingEnd = typingStart + typingDuration;
+        const appearTime = currentTime + reaction + typingTotal;
         
         timeline.push({
             index: i,
@@ -68,7 +80,7 @@ function calculateTimeline(story) {
             dialogue: dialogue
         });
         
-        currentTime += delay;
+        currentTime += (reaction + typingTotal);
     }
     
     const totalDuration = currentTime + CONFIG.endingBuffer;
@@ -202,7 +214,7 @@ async function captureFrames(story, outputName = 'story') {
                         console.log(`[${currentTime.toFixed(1)}s] Showing message ${item.index + 1}`);
                     }
                     
-                    // 2. Check for Typing Status (80% phase)
+                    // 2. Check for Typing Status
                     if (currentTime >= item.typingStart && currentTime < item.typingEnd) {
                         const dialogue = storyData.dialogues[item.index];
                         const senderChar = storyData.characters[dialogue.sender];
@@ -222,10 +234,12 @@ async function captureFrames(story, outputName = 'story') {
                     // Update avatar
                     const avatarImg = document.querySelector('.typing-avatar img');
                     if (avatarImg && typingChar) {
-                        // Resolve path logic (basic)
                         let avatarSrc = typingChar.avatar;
+                        // Use resolvePath logic duplicate or simple check
                         if (avatarSrc && avatarSrc.startsWith('assets')) avatarSrc = '/' + avatarSrc;
-                        if (avatarImg.src !== avatarSrc && !avatarImg.src.endsWith(avatarSrc)) {
+                        
+                        // Update only if changed
+                        if (!avatarImg.src.endsWith(avatarSrc)) {
                              avatarImg.src = avatarSrc;
                         }
                     }

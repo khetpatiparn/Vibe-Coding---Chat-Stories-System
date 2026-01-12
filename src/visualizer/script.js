@@ -79,29 +79,33 @@ class ChatStory {
     
     // Default fallback if delay missing
     const defaultDelay = 1.0 + (item.message ? item.message.length * 0.05 : 0);
-    // Use item.delay from DB, or auto-calculated default
-    const totalDelay = (item.delay || defaultDelay);
     
-    // 80/20 Rule
-    const typingDuration = totalDelay * 0.8;
-    const pauseDuration = totalDelay * 0.2;
+    // Additive Logic: Reaction + Typing
+    const reactionTime = (item.reaction_delay !== undefined && item.reaction_delay !== null) 
+                         ? parseFloat(item.reaction_delay) 
+                         : 0.5;
+    const typingTotal = (item.delay || defaultDelay);
+    const totalDuration = reactionTime + typingTotal;
 
     // 1. Delays & Typing (Skip if instant)
     if (!isInstant) {
         if (isLeft) {
+            // Gap: Reading Time (Silent)
+            await this.wait(reactionTime * 1000);
+
             // Show typing indicator with correct avatar
             this.showTyping(senderChar);
             
-            // Wait for typing duration (80%)
-            await this.wait(typingDuration * 1000);
+            // Phase 1: Typing (80% of typingTotal)
+            await this.wait(typingTotal * 0.8 * 1000);
             
-            // Hide typing and wait for pause (20%)
+            // Phase 2: Sending Pause (20% of typingTotal)
             this.hideTyping();
-            await this.wait(pauseDuration * 1000);
+            await this.wait(typingTotal * 0.2 * 1000);
             
         } else {
-            // Right side (Me) - just wait full delay
-            await this.wait(totalDelay * 1000);
+            // Right side (Me) - wait full duration (Reaction + Typing)
+            await this.wait(totalDuration * 1000);
         }
     }
 

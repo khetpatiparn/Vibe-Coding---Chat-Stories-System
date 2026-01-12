@@ -454,32 +454,65 @@ function calculateAutoDelay(message) {
     return parseFloat((baseDelay + (charCount * 0.05)).toFixed(2));
 }
 
-function updateDelay(input, index, id) {
+async function updateDelay(input, index, id) {
     const value = parseFloat(input.value);
-    // Optimistic update
     currentDialogues[index].delay = value;
     
-    // Save to DB
-    fetch(`${API_BASE}/projects/${currentProject}/dialogues/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ delay: value })
-    }).catch(err => console.error('Failed to save delay:', err));
+    try {
+        await fetch(`${API_BASE}/projects/${currentProject}/dialogues/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delay: value })
+        });
+        reloadPreview();
+    } catch (err) {
+        console.error('Failed to save delay:', err);
+    }
 }
 
-function resetToAutoDelay(index, id) {
+async function updateReaction(input, index, id) {
+    const value = parseFloat(input.value);
+    currentDialogues[index].reaction_delay = value;
+    
+    try {
+        await fetch(`${API_BASE}/projects/${currentProject}/dialogues/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reaction_delay: value })
+        });
+        reloadPreview();
+    } catch (err) {
+        console.error('Failed to save reaction:', err);
+    }
+}
+
+async function resetToAutoDelay(index, id) {
     const message = currentDialogues[index].message;
     const autoDelay = calculateAutoDelay(message);
+    const defaultReaction = 0.5;
     
     // Update local
     currentDialogues[index].delay = autoDelay;
+    currentDialogues[index].reaction_delay = defaultReaction;
     
     // Update UI
-    const input = document.querySelector(`.dialogue-item[data-id="${id}"] .delay-input`);
-    if (input) input.value = autoDelay;
+    const delayInput = document.querySelector(`.dialogue-item[data-id="${id}"] .delay-input`);
+    if (delayInput) delayInput.value = autoDelay;
+    
+    const reactionInput = document.querySelector(`.dialogue-item[data-id="${id}"] .reaction-input`);
+    if (reactionInput) reactionInput.value = defaultReaction;
     
     // Save to DB
-    updateDelay({ value: autoDelay }, index, id);
+    try {
+        await fetch(`${API_BASE}/projects/${currentProject}/dialogues/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delay: autoDelay, reaction_delay: defaultReaction })
+        });
+        reloadPreview();
+    } catch (err) {
+        console.error('Failed to reset delays:', err);
+    }
 }
 
 function renderDialogues(dialogues, characters) {
@@ -488,11 +521,11 @@ function renderDialogues(dialogues, characters) {
         const char = characters[d.sender] || { name: d.sender, avatar: 'assets/avatars/default.png' };
         
         let avatarSrc = char.avatar;
-        // Fix path for web server
         if (avatarSrc.startsWith('assets')) avatarSrc = '/' + avatarSrc; // Make absolute
         
         // Calculate delay if not set
         const delayValue = d.delay || calculateAutoDelay(d.message);
+        const reactionValue = d.reaction_delay !== undefined ? d.reaction_delay : 0.5;
         
         return `
         <div class="dialogue-item" data-id="${d.id}" draggable="true">
@@ -528,14 +561,23 @@ function renderDialogues(dialogues, characters) {
                 <div class="dialogue-meta">
                     <span class="meta-tag" onclick="cycleEffect(${index}, ${d.id})">🎥 ${d.camera_effect}</span>
                     
+                    <!-- Reaction Control (New) -->
+                    <div class="reaction-control" style="display:inline-flex; align-items:center; gap:5px; margin-left:10px;">
+                        <span style="font-size:0.8rem; color:var(--text-gray);" title="Reaction Time (Silent Gap)">⏱️</span>
+                        <input type="number" step="0.1" class="reaction-input" 
+                            value="${reactionValue}" 
+                            onchange="updateReaction(this, ${index}, ${d.id})"
+                            style="width:50px; padding:2px; border-radius:4px; border:1px solid var(--border); background:var(--bg-dark); color:white; font-size:0.8rem; text-align:center;">
+                    </div>
+
                     <!-- Delay Control -->
                     <div class="delay-control" style="display:inline-flex; align-items:center; gap:5px; margin-left:10px;">
-                        <span style="font-size:0.8rem; color:var(--text-gray);">⏳</span>
+                        <span style="font-size:0.8rem; color:var(--text-gray);" title="Typing Duration">💬</span>
                         <input type="number" step="0.1" class="delay-input" 
                             value="${delayValue}" 
                             onchange="updateDelay(this, ${index}, ${d.id})"
                             style="width:50px; padding:2px; border-radius:4px; border:1px solid var(--border); background:var(--bg-dark); color:white; font-size:0.8rem; text-align:center;">
-                        <button class="btn-icon" onclick="resetToAutoDelay(${index}, ${d.id})" title="Auto Calculate (Reset)" style="font-size:0.7rem; padding:2px 5px;">🔄</button>
+                        <button class="btn-icon" onclick="resetToAutoDelay(${index}, ${d.id})" title="Auto Calculate Reaction & Delay" style="font-size:0.7rem; padding:2px 5px;">🔄</button>
                     </div>
                 </div>
             </div>
@@ -1326,8 +1368,9 @@ window.addDialogue = addDialogue;
 window.toggleSender = toggleSender;
 window.deleteDialogue = deleteDialogue;
 window.deleteProject = deleteProject;
-window.updateDelay = updateDelay; // NEW
-window.resetToAutoDelay = resetToAutoDelay; // NEW
+window.updateDelay = updateDelay;
+window.updateReaction = updateReaction; // NEW
+window.resetToAutoDelay = resetToAutoDelay;
 
 // ===================================
 // Image Upload for Dialogues (Base64)
