@@ -241,12 +241,13 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
         // If we have both BGM and SFX with timeline, use complex filter
         if (bgMusicPath && fs.existsSync(bgMusicPath) && sfxPath && fs.existsSync(sfxPath) && timeline && timeline.length > 0) {
             console.log('Mixing BGM and SFX at dialogue timestamps...');
+            console.log(`BGM Volume: ${bgmVolume}, SFX Volume: ${sfxVolume}`);
             
             // Add BGM input
             command.input(bgMusicPath);
             
             // For SFX, we need to overlay at each dialogue timestamp
-            // Create filter complex string
+            // Create filter complex string - use volume directly (1.0 = 100%)
             let filterComplex = `[1:a]volume=${bgmVolume}[bgm];`;
             let mixInputs = '[bgm]';
             
@@ -254,14 +255,17 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
             command.input(sfxPath);
             
             // Create delayed copies of SFX for each dialogue
-            for (let i = 0; i < Math.min(timeline.length, 20); i++) { // Limit to 20 to avoid command line too long
+            const sfxCount = Math.min(timeline.length, 20);
+            for (let i = 0; i < sfxCount; i++) {
                 const delayMs = Math.round(timeline[i].appearTime * 1000);
                 filterComplex += `[2:a]adelay=${delayMs}|${delayMs},volume=${sfxVolume}[sfx${i}];`;
                 mixInputs += `[sfx${i}]`;
             }
             
             // Mix all audio together
-            filterComplex += `${mixInputs}amix=inputs=${Math.min(timeline.length, 20) + 1}:duration=first:dropout_transition=0[aout]`;
+            // IMPORTANT: normalize=0 prevents amix from dividing volume by number of inputs
+            // This makes render volume match preview volume
+            filterComplex += `${mixInputs}amix=inputs=${sfxCount + 1}:duration=first:dropout_transition=0:normalize=0[aout]`;
             
             command
                 .complexFilter(filterComplex)
