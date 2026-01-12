@@ -234,16 +234,21 @@ body.rendering .message.right {
   /* max-width: 70%; */
 }
 
-/* Chat Images inside bubbles */
+/* Chat Images (Standalone) */
 .chat-image {
-  max-width: 100% !important;
-  max-height: 150px !important;
+  max-width: 180px !important;
+  max-height: 250px !important;
   width: auto;
   height: auto;
-  border-radius: 8px;
+  border-radius: 12px;
   display: block;
   margin-bottom: 4px;
   object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Nice floating shadow */
+  transition: transform 0.2s ease;
+}
+.chat-image:hover {
+    transform: scale(1.02);
 }
 
 /* Sender Name */
