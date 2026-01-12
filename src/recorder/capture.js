@@ -18,7 +18,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const CONFIG = {
     width: 1080,
     height: 1920,
-    fps: 30,
+    fps: 60,
     framesDir: './output/frames',
     outputDir: './output',
     endingBuffer: 2,
@@ -49,7 +49,11 @@ function calculateTimeline(story) {
         
         // 2. Typing Duration
         let typingTotal = dialogue.delay;
-        if (!typingTotal) {
+        
+        // Time Divider Fixed Duration (Effect time)
+        if (dialogue.sender === 'time_divider') {
+            typingTotal = 2.5; // 2s display + transitions
+        } else if (!typingTotal) {
              const charCount = dialogue.message ? dialogue.message.length : 0;
              typingTotal = CONFIG.baseDelay + (charCount * CONFIG.delayPerChar);
         }
@@ -155,6 +159,9 @@ async function captureFrames(story, outputName = 'story') {
             /* 🛑 FREEZE ANIMATIONS FOR SYNC */
             .typing-bubble .dot { animation-play-state: paused !important; }
             .message { animation-play-state: paused !important; }
+            
+            /* Time Divider Overlay - No Transition in Render */
+            .time-divider-overlay { transition: none !important; }
         `
     });
     
@@ -261,6 +268,35 @@ async function captureFrames(story, outputName = 'story') {
                         wrapper.style.transform = 'none';
                         wrapper.style.filter = 'none';
                     }
+                }
+
+                // Time Divider Overlay Check
+                let activeOverlay = false;
+                let overlayText = '';
+                
+                for (const item of timeline) {
+                    if (item.dialogue.sender === 'time_divider') {
+                        if (currentTime >= item.typingStart && currentTime < item.appearTime) {
+                            activeOverlay = true;
+                            overlayText = item.dialogue.message;
+                            break;
+                        }
+                    }
+                }
+                
+                // Apply Time Divider Overlay State
+                let overlay = document.getElementById('time-divider-overlay');
+                if (activeOverlay) {
+                    if (!overlay) {
+                        overlay = document.createElement('div');
+                        overlay.id = 'time-divider-overlay';
+                        overlay.className = 'time-divider-overlay active';
+                        document.body.appendChild(overlay);
+                    }
+                    overlay.innerText = overlayText;
+                    overlay.style.opacity = '1';
+                } else {
+                    if (overlay) overlay.style.opacity = '0';
                 }
 
                 document.querySelectorAll('.message').forEach(msg => {

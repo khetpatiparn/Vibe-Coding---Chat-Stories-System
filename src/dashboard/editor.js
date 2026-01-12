@@ -627,7 +627,15 @@ async function resetToAutoDelay(index, id) {
 function renderDialogues(dialogues, characters) {
     elDialogueList.innerHTML = dialogues.map((d, index) => {
         // Find avatar (sender might be 'boss' or 'me')
-        const char = characters[d.sender] || { name: d.sender, avatar: 'assets/avatars/default.png' };
+        let char = characters[d.sender];
+        if (d.sender === 'time_divider') {
+             char = { 
+                 name: 'Time Divider', 
+                 avatar: 'https://ui-avatars.com/api/?name=T+D&background=000&color=fff&rounded=true' 
+             };
+        } else if (!char) {
+             char = { name: d.sender, avatar: 'assets/avatars/default.png' };
+        }
         
         let avatarSrc = char.avatar;
         if (avatarSrc.startsWith('assets')) avatarSrc = '/' + avatarSrc; // Make absolute
@@ -954,13 +962,20 @@ function openCharacterSelector(mode, id = null, index = null) {
     const availableDefaults = DEFAULT_ROLES.filter(def => !projectCharsObj[def.role]);
     
     if (availableDefaults.length > 0) {
-        // Optional header or separator?
-        // html += '<h3>Default Characters</h3>';
-        
         availableDefaults.forEach(def => {
              html += renderCharCard(def.role, { name: def.name, avatar: def.avatar }, false, true);
         });
     }
+
+    // 4. Time Divider Option
+    const isDividerSelected = (mode === 'edit' && currentDialogues[index] && currentDialogues[index].sender === 'time_divider');
+    html += `
+        <div class="character-card-large ${isDividerSelected ? 'selected' : ''}" onclick="selectCharacter('time_divider', false)">
+            <div style="width:60px;height:60px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 10px;">⏰</div>
+            <div class="character-card-name">Time Divider</div>
+            <div class="character-card-role">Scene Break</div>
+        </div>
+    `;
     
     if (html === '') {
         html = '<p style="color:var(--text-gray);text-align:center;width:100%;">No characters found.</p>';
@@ -1020,6 +1035,20 @@ window.selectCharacter = async function(key, isNew = false) {
     modalCharacterSelector.classList.add('hidden');
     
     if (!selectorContext) return;
+
+    // Time Divider Handler
+    if (key === 'time_divider') {
+        try {
+            if (selectorContext.mode === 'add') {
+                await addDialogue('time_divider');
+            } else if (selectorContext.mode === 'edit') {
+                await performEditSender(selectorContext.id, 'time_divider', selectorContext.index);
+            }
+        } catch(e) {
+            console.error(e);
+        }
+        return;
+    }
     
     // If New Global Character, Add to Project first
     if (isNew) {

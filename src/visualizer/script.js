@@ -80,6 +80,20 @@ class ChatStory {
     const senderChar = this.data.characters[item.sender];
     const isLeft = senderChar && senderChar.side === "left";
     
+    // Time Divider Handling
+    if (item.sender === 'time_divider') {
+        if (!isInstant) {
+            // Respect reaction delay (Reading time for previous message)
+            const delay = item.reaction_delay !== undefined ? parseFloat(item.reaction_delay) : 1.0;
+            await this.wait(delay * 1000);
+
+            // Play Effect
+            await this.playTimeDividerEffect(item.message);
+        }
+        this.addMessage(item, null);
+        return;
+    }
+
     // Default fallback if delay missing
     const defaultDelay = 1.0 + (item.message ? item.message.length * 0.05 : 0);
     
@@ -167,6 +181,17 @@ class ChatStory {
   }
 
   addMessage(item, char) {
+    // Time Divider Static Render
+    if (item.sender === 'time_divider') {
+        const div = document.createElement('div');
+        div.className = 'time-divider';
+        div.innerText = item.message;
+        this.container.appendChild(div);
+        
+        this.lastSender = null; // Reset grouping after divider
+        return;
+    }
+
     const msgDiv = document.createElement("div");
     
     // Grouping Logic
@@ -311,6 +336,27 @@ class ChatStory {
     // new Audio(`../../assets/sounds/${type}.mp3`).play().catch(e => {});
   }
 
+  async playTimeDividerEffect(text) {
+    let overlay = document.getElementById('time-divider-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'time-divider-overlay';
+        overlay.className = 'time-divider-overlay';
+        document.body.appendChild(overlay);
+    }
+    
+    overlay.innerText = text;
+    overlay.classList.add('active'); // Fade in
+    
+    // Wait for display time (2 seconds)
+    await this.wait(2000);
+    
+    overlay.classList.remove('active'); // Fade out
+    
+    // Wait for fade out transition (0.5s)
+    await this.wait(500); 
+  }
+
   wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -371,8 +417,20 @@ window.onload = async () => {
             
             // Function for Puppeteer to call with current time
             window.setCurrentTime = function(currentTime) {
-                // Show all messages that should appear by this time
+                // 1. Time Divider Effect Check (Continuous State)
+                let activeOverlay = false;
+                let overlayText = "";
+                
                 for (const item of timeline) {
+                    if (item.dialogue.sender === 'time_divider') {
+                        // Effect Window: From start of "action" (after reaction) until message appears
+                        if (currentTime >= item.typingStart && currentTime < item.appearTime) {
+                            activeOverlay = true;
+                            overlayText = item.dialogue.message;
+                        }
+                    }
+                    
+                    // 2. Show messages (One-time trigger)
                     if (currentTime >= item.appearTime && !shownMessages.has(item.index)) {
                         shownMessages.add(item.index);
                         const dialogue = storyData.dialogues[item.index];
@@ -381,6 +439,21 @@ window.onload = async () => {
                         story.scrollToBottom();
                         console.log(`[${currentTime.toFixed(1)}s] Showing message ${item.index + 1}`);
                     }
+                }
+                
+                // 3. Apply Overlay State
+                let overlay = document.getElementById('time-divider-overlay');
+                if (activeOverlay) {
+                    if (!overlay) {
+                        overlay = document.createElement('div');
+                        overlay.id = 'time-divider-overlay';
+                        overlay.className = 'time-divider-overlay';
+                        document.body.appendChild(overlay);
+                    }
+                    overlay.innerText = overlayText;
+                    overlay.classList.add('active'); // Force Opacity 1
+                } else {
+                    if (overlay) overlay.classList.remove('active'); // Force Opacity 0
                 }
             };
             
