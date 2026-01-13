@@ -26,7 +26,7 @@ const MODEL_PRIORITY = [
     'gemini-3-flash-preview',     // Fast and smart
     'gemini-2.5-flash',           // Stable, good price/performance
     'gemini-2.5-pro',             // Pro fallback
-    'gemini-2.0-flash'            // Last resort
+    'gemini-2.5-flash-lite'       // Last resort
 ];
 
 let currentModelIndex = 0;
@@ -36,6 +36,7 @@ let model = genAI.getGenerativeModel({ model: MODEL_PRIORITY[currentModelIndex] 
 // Story Categories
 // ============================================
 const CATEGORIES = {
+    auto: 'ธรรมชาติ ปล่อยไหล ตามเนื้อเรื่อง',
     funny: 'ตลก ขำๆ มุกแป้ก',
     drama: 'ดราม่า อกหัก เศร้า',
     horror: 'สยองขวัญ ผี หลอน',
@@ -49,14 +50,15 @@ const CATEGORIES = {
 // ============================================
 function buildPrompt(category, affiliateProduct = null, characters = ['me', 'boss'], customPrompt = null, characterData = []) {
     const categoryInstructions = {
-        funny: 'สร้างเรื่องตลก สนุกสนาน มีมุกเสี่ยว ใช้อีโมจิน่ารัก',
-        drama: 'สร้างเรื่องดราม่า มีความขัดแย้ง ตึงเครียด',
-        horror: 'สร้างเรื่องหลอน น่ากลัว มีบรรยากาศสยองขวัญ',
+        auto: 'Respond naturally according to the situation, topic, and character personalities. Let the tone emerge organically from the context - could be funny, serious, emotional, or casual depending on the topic.',
+        funny: 'สร้างเรื่องตลก สนุกสนาน มีมุกเสี่ยว แต่ให้ดูเป็นธรรมชาติ',
+        drama: 'สร้างเรื่องดราม่า มีความขัดแย้ง ตึงเครียด อารมณ์หนักๆ',
+        horror: 'สร้างเรื่องหลอน น่ากลัว มีบรรยากาศสยองขวัญ ลึกลับ',
         office: 'สร้างเรื่องในพื้นที่ออฟฟิศ กับเจ้านาย ใช้สแลงทำงาน',
         love: 'สร้างเรื่องความรัก หวานหยิบ มีโรแมนติก'
     };
     
-    let instruction = categoryInstructions[category] || categoryInstructions['funny'];
+    let instruction = categoryInstructions[category] || categoryInstructions['auto'];
 
     // Tie-In (New Mode)
     if (category === 'tie_in') {
@@ -127,9 +129,43 @@ GOAL: The viewer should feel like they are eavesdropping on a real conversation,
         }
     });
     
-    let promptText = `${instruction}
+    // ============================================
+    // ADVANCED ROLE-PLAY ENGINE SYSTEM PROMPT
+    // ============================================
+    
+    // Build System Instruction (Core AI Behavior)
+    const systemInstruction = `### SYSTEM INSTRUCTION ###
 
-ให้สร้างบทสนทนาสำหรับตัวละครเหล่านี้: ${selectedCharsText}`;
+You are an advanced role-play engine designed to generate realistic, human-like Thai chat conversations.
+
+**CORE OBJECTIVE:**
+Generate a conversation that flows naturally based *strictly* on the provided "Topic/Scenario" and the relationship between the "Characters". Do NOT force a specific tone (like funny or dramatic) unless the topic calls for it.
+
+**DYNAMIC TONE ANALYSIS (Internal Step):**
+Before generating, analyze the inputs:
+1. **Analyze Relationship:** Are they friends? (Use casual slang/rude words). Are they Boss/Subordinate? (Use polite/formal language).
+2. **Analyze Sentiment:** Look at the "Topic".
+   - If the topic is sad (e.g., "แมวตาย", "เลิกกับแฟน") -> Set Tone to: Sad, Empathetic.
+   - If the topic is exciting (e.g., "ถูกหวย", "ได้งานใหม่") -> Set Tone to: Excited, Hyper, use 55555.
+   - If the topic is work-related (e.g., "ประชุม", "งานด่วน") -> Set Tone to: Professional, maybe bored.
+   - If the topic is casual (e.g., "กินอะไรดี") -> Set Tone to: Chill, relaxed.
+
+**STYLE GUIDELINES (Based on Human-like Speech):**
+1. **Imperfections:** Real humans make typos, use filler words (e.g., อืมม, เอ้อ, อะ, แบบว่า), and don't always use perfect grammar. ADD THESE.
+2. **Length:** Keep messages SHORT and punchy, like a real chat app (LINE/Messenger). Avoid long paragraphs. 1-2 sentences per message MAX.
+3. **No Robot-Speak:** Never use phrases like "มีอะไรให้ช่วยไหม?" or formal customer service language. Act purely as the character.
+4. **Reaction:** If something surprising happens, react emotionally (e.g., "WTF?!", "อะไรวะ?!", "55555", "จริงป่ะ??").
+5. **Thai Chat Style:** Use Thai internet slang: 555, มึง/กู (between close friends), นะ, อ่ะ, ป่ะ, มั้ย, etc.
+
+**ABSOLUTELY NO EMOJI.** Real Thai people rarely use emoji in casual chat.`;
+
+    let promptText = `${systemInstruction}
+
+---
+
+**SCENARIO:** ${instruction}
+
+**CHARACTERS:** ${selectedCharsText}`;
 
     // Build Character Personality Descriptions
     const personalityDescriptions = characters.map(charId => {
@@ -152,9 +188,9 @@ GOAL: The viewer should feel like they are eavesdropping on a real conversation,
             if (customChar.dialect) desc += ` Dialect: ${customChar.dialect} (MUST use regional vocabulary).`;
             if (customChar.typing_habit) {
                 if (customChar.typing_habit === 'rapid_fire') {
-                    desc += ` Typing: Rapid Fire (แตกเป็นหลายข้อความ, 1-2 ประโยคต่อ bubble, ส่งรัวๆ).`;
+                    desc += ` Typing: Rapid Fire (แตกเป็นหลายข้อความรัวๆ, 1-2 ประโยคต่อ bubble).`;
                 } else if (customChar.typing_habit === 'long_paragraphs') {
-                    desc += ` Typing: Long Paragraphs (detailed messages, 2-4 sentences per bubble).`;
+                    desc += ` Typing: Long (2-4 sentences per bubble).`;
                 }
             }
             
@@ -167,27 +203,35 @@ GOAL: The viewer should feel like they are eavesdropping on a real conversation,
     if (personalityDescriptions.length > 0) {
         promptText += `
 
-CHARACTER PROFILES (สำคัญมาก - ต้อง Roleplay ตามนี้เป๊ะๆ):
+**CHARACTER PROFILES (Roleplay ตามนี้เป๊ะๆ):**
 ${personalityDescriptions.join('\n')}
 
-IMPORTANT INSTRUCTIONS:
-1. ใช้ศัพท์ตามช่วงวัย: Gen Z = ฉ่ำ, ตึงๆ, นอยอ่า | Boomer = จ๊ะ/จ้ะ, ทานข้าวรึยัง
-2. ใช้ศัพท์ตามอาชีพ: โปรแกรมเมอร์ = Debug, Error | แม่ค้า = F มาจ้า, ตำเลย
-3. สอดแทรก Catchphrase อย่างเป็นธรรมชาติ (2-3 ครั้งต่อบทสนทนา)
-4. Match Personality precisely (ปากจัด = พูดตรงๆ แรงๆ, ขี้อาย = พิมพ์สั้นๆ)
-5. DIALECT RULES (ถ้าระบุ): อีสาน = เฮ็ดอีหยัง, บ่ | เหนือ = ยะหยัง, เจ้า | ใต้ = หนิ, มึง, กู
-6. TYPING HABIT: Rapid Fire = แตกเป็นหลายข้อความ 1-2 ประโยคต่อ bubble | Long = รวมเป็นก้อนใหญ่`;
+**CHARACTER RULES:**
+1. ใช้ศัพท์ตามช่วงวัย: Gen Z = ฉ่ำ, ตึงๆ, นอยอ่า, ปัง | Boomer = จ๊ะ/จ้ะ, ทานข้าวรึยัง
+2. ใช้ศัพท์ตามอาชีพ: โปรแกรมเมอร์ = Debug, Error, Deploy | แม่ค้า = F มาจ้า, ตำเลย
+3. สอดแทรก Catchphrase อย่างเป็นธรรมชาติ (2-3 ครั้ง ไม่ใช่ทุกข้อความ)
+4. DIALECT (ถ้าระบุ): อีสาน = เฮ็ดอีหยัง, บ่, ตมจ | เหนือ = ยะหยัง, เจ้า, ก๊ะ | ใต้ = หนิ, ไอ้บ้า`;
     }
 
     if (customPrompt && category !== 'tie_in') {
-        promptText += `\n\nหัวข้อเรื่อง: ${customPrompt}`;
+        promptText += `
+
+**TOPIC/SITUATION:** ${customPrompt}`;
     }
     
-    promptText += `\n\nให้สร้าง 8-12 ข้อความ ใช้ภาษาพูดธรรมชาติของคนไทย ห้ามใช้ emoji มีตัวสะกดผิดบ้างเล็กน้อย
+    promptText += `
 
-ตัวอย่าง JSON ที่ต้องส่งกลับ:
+---
+
+**OUTPUT REQUIREMENTS:**
+- Generate 8-12 messages
+- Use natural Thai spoken language with typos and filler words
+- NO EMOJI at all
+- Keep each message SHORT (1-2 sentences max)
+
+**JSON FORMAT:**
 {
-  "title": "ชื่อเรื่อง",
+  "title": "ชื่อเรื่องที่ดึงดูดใจ",
   "characters": ${JSON.stringify(characterJSON, null, 2)},
   "dialogues": [
     {
