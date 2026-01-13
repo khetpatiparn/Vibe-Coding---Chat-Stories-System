@@ -174,6 +174,8 @@ async function loadCustomCharacters() {
     try {
         const res = await fetch(`${API_BASE}/characters/custom`);
         window.customCharacters = await res.json();
+        // Fix: Sync local variable with window variable
+        customCharacters = window.customCharacters;
         console.log(`✅ Loaded ${window.customCharacters.length} custom characters`);
     } catch (err) {
         console.error('Failed to load custom characters:', err);
