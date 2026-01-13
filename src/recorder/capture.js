@@ -18,7 +18,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const CONFIG = {
     width: 1080,
     height: 1920,
-    fps: 60,
+    fps: 30,
     framesDir: './output/frames',
     outputDir: './output',
     endingBuffer: 2,
@@ -319,8 +319,11 @@ async function captureFrames(story, outputName = 'story') {
         const currentTime = frame / CONFIG.fps;
         await page.evaluate((time) => window.setCurrentTime(time), currentTime);
         
-        const framePath = path.join(framesDir, `frame_${String(frame).padStart(6, '0')}.png`);
-        await page.screenshot({ path: framePath, type: 'png' });
+        // const framePath = path.join(framesDir, `frame_${String(frame).padStart(6, '0')}.png`);
+        // await page.screenshot({ path: framePath, type: 'png' });
+        // บรรทัด 219-220 (ลบอันเก่า ใส่ 2 บรรทัดนี้แทน)
+        const framePath = path.join(framesDir, `frame_${String(frame).padStart(6, '0')}.jpg`);
+        await page.screenshot({ path: framePath, type: 'jpeg', quality: 90 });
         
         if (frame % 30 === 0) process.stdout.write(`\rRecording: ${currentTime.toFixed(1)}s / ${totalDuration.toFixed(1)}s`);
     }
@@ -335,8 +338,9 @@ async function captureFrames(story, outputName = 'story') {
 // ============================================
 async function assembleVideo(framesDir, outputName = 'story', audioOptions = {}) {
     const outputPath = path.join(CONFIG.outputDir, `${outputName}.mp4`);
-    const framePattern = path.join(framesDir, 'frame_%06d.png');
-    
+    // const framePattern = path.join(framesDir, 'frame_%06d.png');
+    const framePattern = path.join(framesDir, 'frame_%06d.jpg'); // แก้ .png เป็น .jpg
+
     await fs.ensureDir(CONFIG.outputDir);
     
     const { bgMusicPath, sfxPath, timeline, bgmVolume = 0.3, sfxVolume = 0.5 } = audioOptions;
@@ -377,7 +381,7 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
             .outputOptions([
                 '-c:v', 'libx264',
                 '-pix_fmt', 'yuv420p',
-                '-preset', 'fast',
+                '-preset', 'ultrafast',
                 '-crf', '23',
                 '-c:a', 'aac',
                 '-b:a', '128k',
