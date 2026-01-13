@@ -98,9 +98,15 @@
     <!-- Add/Edit Character Modal -->
     <div id="modal-character" class="modal hidden">
         <div class="modal-content">
-            <h2 id="modal-title">Add New Character</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 id="modal-title" style="margin: 0;">Add New Character</h2>
+                <button type="button" id="btn-ai-generate-personality" class="btn-primary"
+                    style="padding: 8px 16px; font-size: 0.85rem;">
+                    🤖 AI Generate Personality
+                </button>
+            </div>
 
-            <form id="char-form">
+            <form id="char-form" autocomplete="off">
                 <div class="form-group">
                     <label>Character Name (Internal ID)</label>
                     <input type="text" id="char-name" placeholder="e.g., alice, john, sister" pattern="[a-z0-9_]+"
@@ -119,6 +125,88 @@
                     <input type="file" id="char-avatar" accept="image/*" required>
                     <small style="color: var(--text-gray);">PNG, JPG, GIF, WebP - Max 5MB</small>
                     <div id="image-preview" class="upload-preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Gender</label>
+                    <select id="char-gender"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                        <option value="">-- Select Gender --</option>
+                        <option value="Male">Male (ผู้ชาย)</option>
+                        <option value="Female">Female (ผู้หญิง)</option>
+                        <option value="Other">Other (อื่นๆ)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Personality / นิสัย</label>
+                    <input type="text" id="char-personality"
+                        placeholder="e.g., Cheerful, Grumpy, Shy, Sarcastic, ปากจัด, ขี้อาย" maxlength="100"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                    <small style="color: var(--text-gray);">Describe how this character behaves</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Speaking Style / สไตล์การพิมพ์</label>
+                    <input type="text" id="char-speaking-style"
+                        placeholder="e.g., Uses slang, Formal, Lots of emojis, พิมพ์ผิดๆ ถูกๆ" maxlength="100"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                    <small style="color: var(--text-gray);">How this character types messages</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Age Group / ช่วงวัย ⭐</label>
+                    <select id="char-age-group"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                        <option value="">-- Select Age Group --</option>
+                        <option value="Child">Child (เด็ก)</option>
+                        <option value="Teenager (Gen Z)">Teenager / Gen Z (วัยรุ่น)</option>
+                        <option value="Young Adult (Gen Y)">Young Adult / Gen Y (วัยทำงาน)</option>
+                        <option value="Adult (Gen X)">Adult / Gen X (ผู้ใหญ่)</option>
+                        <option value="Senior (Boomer)">Senior / Boomer (ผู้สูงอายุ)</option>
+                    </select>
+                    <small style="color: var(--text-gray);">Determines vocabulary style (ฉ่ำ, ตึงๆ vs จ๊ะ/จ้ะ)</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Occupation / อาชีพ</label>
+                    <input type="text" id="char-occupation"
+                        placeholder="e.g., นักเรียน, โปรแกรมเมอร์, แม่ค้าออนไลน์, หมอ" maxlength="50"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                    <small style="color: var(--text-gray);">Adds profession-specific vocabulary</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Catchphrase / คำติดปาก 🏆</label>
+                    <input type="text" id="char-catchphrase"
+                        placeholder="e.g., นะจ๊ะ, งับ, ว่ะเพื่อน, ตึงๆ, อะครับพี่น้อง" maxlength="50"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                    <small style="color: var(--text-gray);">Signature phrase used naturally in sentences</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Dialect / ภาษาถิ่น 🏳️‍🌈</label>
+                    <select id="char-dialect"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                        <option value="">กลาง (Standard Thai)</option>
+                        <option value="Isan">อีสาน (Isan) - เฮ็ดอีหยังอยู่</option>
+                        <option value="Northern">เหนือ (Northern) - ยะหยังเจ้า</option>
+                        <option value="Southern">ใต้ (Southern) - หนิใด</option>
+                        <option value="Suphan">สุพรรณ (Suphan) - หว่า/เหวย</option>
+                    </select>
+                    <small style="color: var(--text-gray);">AI จะเปลี่ยนคลังคำศัพท์ทั้งหมดตามภาษาถิ่น</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Typing Habit / นิสัยการพิมพ์ 📱</label>
+                    <select id="char-typing-habit"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                        <option value="">Normal - ปกติ (1-2 ประโยค)</option>
+                        <option value="rapid_fire">Rapid Fire - พิมพ์สั้นๆ รัวๆ (วัยรุ่นใจร้อน)</option>
+                        <option value="long_paragraphs">Long Paragraphs - พิมพ์ยาวเป็นพรืด (ผู้ใหญ่/เจ้านาย)</option>
+                    </select>
+                    <small style="color: var(--text-gray);">กำหนดว่า AI จะแตกเป็นหลาย Bubble
+                        หรือรวมเป็นก้อนเดียว</small>
                 </div>
 
                 <div class="modal-actions">

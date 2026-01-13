@@ -20,12 +20,13 @@ if (!GEMINI_API_KEY) {
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Model priority list (from best to most quota-friendly)
-// Updated based on actual available models for this API key
+// Gemini 3 Pro (best) → Gemini 3 Flash (fast) → Gemini 2.5 (stable)
 const MODEL_PRIORITY = [
-    'gemini-2.5-flash',           // Latest generation, try first
-    'gemini-2.0-flash-lite',      // Lighter version, better quota
-    'gemini-flash-latest',        // Auto-alias to latest available
-    'gemini-2.5-flash-lite'       // Fallback lite version
+    'gemini-3-pro-preview',       // Best - Latest generation
+    'gemini-3-flash-preview',     // Fast and smart
+    'gemini-2.5-flash',           // Stable, good price/performance
+    'gemini-2.5-pro',             // Pro fallback
+    'gemini-2.0-flash'            // Last resort
 ];
 
 let currentModelIndex = 0;
@@ -39,7 +40,8 @@ const CATEGORIES = {
     drama: 'ดราม่า อกหัก เศร้า',
     horror: 'สยองขวัญ ผี หลอน',
     office: 'ชีวิตออฟฟิศ บอสดุ',
-    love: 'รักหวานแหวว จีบกัน'
+    love: 'รักหวานแหวว จีบกัน',
+    tie_in: 'เนียนขายของ ธรรมชาติ'
 };
 
 // ============================================
@@ -54,7 +56,22 @@ function buildPrompt(category, affiliateProduct = null, characters = ['me', 'bos
         love: 'สร้างเรื่องความรัก หวานหยิบ มีโรแมนติก'
     };
     
-    const instruction = categoryInstructions[category] || categoryInstructions['funny'];
+    let instruction = categoryInstructions[category] || categoryInstructions['funny'];
+
+    // Tie-In (New Mode)
+    if (category === 'tie_in') {
+        const productInfo = customPrompt || 'สินค้าหรือบริการ (Product/Service)';
+        instruction = `CONTEXT: Two close friends are chatting. The conversation must be entertaining (funny or dramatic) on its own.
+
+THE PRODUCT: ${productInfo}
+
+RULE 1 (The Setup): Start with a relatable life situation or problem (e.g., waiting for someone, feeling tired, skin breakout, hungry). Do NOT mention the product immediately.
+RULE 2 (The Tie-in): Midway through, Character B casually mentions the product as a personal recommendation or a 'life hack' they just found.
+RULE 3 (The Flow): Character A should react naturally (e.g., 'Really? Is it good?' or 'Send me the link').
+RULE 4 (The Anti-Sales): Do NOT use phrases like 'Buy now', 'Special promotion', or 'I highly recommend'. Use phrases like 'I tried this, it's kinda cool', 'It saved my life yesterday'.
+
+GOAL: The viewer should feel like they are eavesdropping on a real conversation, not watching an ad.`;
+    }
     
     // Build character map (default characters)
     const defaultCharacterMap = {
@@ -114,11 +131,59 @@ function buildPrompt(category, affiliateProduct = null, characters = ['me', 'bos
 
 ให้สร้างบทสนทนาสำหรับตัวละครเหล่านี้: ${selectedCharsText}`;
 
-    if (customPrompt) {
+    // Build Character Personality Descriptions
+    const personalityDescriptions = characters.map(charId => {
+        const customChar = characterData.find(c => c.id === charId && c.is_custom);
+        
+        if (customChar && (customChar.gender || customChar.personality || customChar.speaking_style || customChar.age_group || customChar.occupation || customChar.catchphrase || customChar.dialect || customChar.typing_habit)) {
+            let desc = `- ${customChar.display_name}`;
+            
+            // Age and Occupation in parentheses
+            const identifiers = [];
+            if (customChar.age_group) identifiers.push(customChar.age_group);
+            if (customChar.occupation) identifiers.push(customChar.occupation);
+            if (identifiers.length > 0) desc += ` (${identifiers.join(', ')})`;
+            
+            desc += ':';
+            if (customChar.gender) desc += ` ${customChar.gender}.`;
+            if (customChar.personality) desc += ` Personality: ${customChar.personality}.`;
+            if (customChar.speaking_style) desc += ` Speaking Style: ${customChar.speaking_style}.`;
+            if (customChar.catchphrase) desc += ` Catchphrase: "${customChar.catchphrase}".`;
+            if (customChar.dialect) desc += ` Dialect: ${customChar.dialect} (MUST use regional vocabulary).`;
+            if (customChar.typing_habit) {
+                if (customChar.typing_habit === 'rapid_fire') {
+                    desc += ` Typing: Rapid Fire (แตกเป็นหลายข้อความ, 1-2 ประโยคต่อ bubble, ส่งรัวๆ).`;
+                } else if (customChar.typing_habit === 'long_paragraphs') {
+                    desc += ` Typing: Long Paragraphs (detailed messages, 2-4 sentences per bubble).`;
+                }
+            }
+            
+            return desc;
+        }
+        return null;
+    }).filter(d => d !== null);
+    
+    // Add personality section if any custom characters have traits
+    if (personalityDescriptions.length > 0) {
+        promptText += `
+
+CHARACTER PROFILES (สำคัญมาก - ต้อง Roleplay ตามนี้เป๊ะๆ):
+${personalityDescriptions.join('\n')}
+
+IMPORTANT INSTRUCTIONS:
+1. ใช้ศัพท์ตามช่วงวัย: Gen Z = ฉ่ำ, ตึงๆ, นอยอ่า | Boomer = จ๊ะ/จ้ะ, ทานข้าวรึยัง
+2. ใช้ศัพท์ตามอาชีพ: โปรแกรมเมอร์ = Debug, Error | แม่ค้า = F มาจ้า, ตำเลย
+3. สอดแทรก Catchphrase อย่างเป็นธรรมชาติ (2-3 ครั้งต่อบทสนทนา)
+4. Match Personality precisely (ปากจัด = พูดตรงๆ แรงๆ, ขี้อาย = พิมพ์สั้นๆ)
+5. DIALECT RULES (ถ้าระบุ): อีสาน = เฮ็ดอีหยัง, บ่ | เหนือ = ยะหยัง, เจ้า | ใต้ = หนิ, มึง, กู
+6. TYPING HABIT: Rapid Fire = แตกเป็นหลายข้อความ 1-2 ประโยคต่อ bubble | Long = รวมเป็นก้อนใหญ่`;
+    }
+
+    if (customPrompt && category !== 'tie_in') {
         promptText += `\n\nหัวข้อเรื่อง: ${customPrompt}`;
     }
     
-    promptText += `\n\nให้สร้าง 8-12 ข้อความ ใช้ภาษาคนรุ่นใหม่ มีอีโมจิ มีตัวสะกดผิดบ้าง ให้ธรรมชาติ
+    promptText += `\n\nให้สร้าง 8-12 ข้อความ ใช้ภาษาพูดธรรมชาติของคนไทย ห้ามใช้ emoji มีตัวสะกดผิดบ้างเล็กน้อย
 
 ตัวอย่าง JSON ที่ต้องส่งกลับ:
 {
@@ -198,15 +263,18 @@ async function generateStory(options = {}) {
             return story;
             
         } catch (error) {
-            const isQuotaError = error.message.includes('quota') || 
+            const isRetryableError = error.message.includes('quota') || 
                                  error.message.includes('429') || 
                                  error.message.includes('Too Many Requests') ||
-                                 error.message.includes('RESOURCE_EXHAUSTED');
+                                 error.message.includes('RESOURCE_EXHAUSTED') ||
+                                 error.message.includes('503') ||
+                                 error.message.includes('Service Unavailable') ||
+                                 error.message.includes('overloaded');
             
             const isLastModel = (modelIndex === MODEL_PRIORITY.length - 1);
             
-            if (isQuotaError && !isLastModel) {
-                console.warn(`⚠️ ${currentModel} quota exceeded, trying next model...`);
+            if (isRetryableError && !isLastModel) {
+                console.warn(`⚠️ ${currentModel} failed (${error.message.includes('503') ? 'overloaded' : 'quota'}), trying next model...`);
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 continue; 
             }

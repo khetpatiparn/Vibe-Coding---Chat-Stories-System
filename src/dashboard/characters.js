@@ -16,6 +16,14 @@ const charForm = document.getElementById('char-form');
 const charNameInput = document.getElementById('char-name');
 const charDisplayNameInput = document.getElementById('char-display-name');
 const charAvatarInput = document.getElementById('char-avatar');
+const charGenderInput = document.getElementById('char-gender');
+const charPersonalityInput = document.getElementById('char-personality');
+const charSpeakingStyleInput = document.getElementById('char-speaking-style');
+const charAgeGroupInput = document.getElementById('char-age-group');
+const charOccupationInput = document.getElementById('char-occupation');
+const charCatchphraseInput = document.getElementById('char-catchphrase');
+const charDialectInput = document.getElementById('char-dialect');
+const charTypingHabitInput = document.getElementById('char-typing-habit');
 const imagePreview = document.getElementById('image-preview');
 const customGrid = document.getElementById('custom-characters-grid');
 const charCount = document.getElementById('char-count');
@@ -70,6 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
             deleteCallback = null;
         }
     };
+    
+    // AI Generate Personality button
+    document.getElementById('btn-ai-generate-personality').onclick = generatePersonalityWithAI;
 });
 
 // ===================================
@@ -108,6 +119,7 @@ function renderCustomCharacters() {
             <div class="char-info">
                 <h3>${escapeHtml(char.display_name)}</h3>
                 <span class="char-subtitle">${escapeHtml(char.name)}</span>
+                ${char.personality ? `<span class="char-personality" style="font-size: 0.75rem; color: var(--primary); display: block; margin-top: 4px;">${escapeHtml(char.personality)}</span>` : ''}
             </div>
             <div class="card-actions">
                 <button class="btn-edit" onclick="openEditModal(${char.id})">✏️ Edit</button>
@@ -128,6 +140,14 @@ function openAddModal() {
     editingCharacterId = null;
     modalTitle.textContent = 'Add New Character';
     charForm.reset();
+    charGenderInput.value = '';
+    charPersonalityInput.value = '';
+    charSpeakingStyleInput.value = '';
+    charAgeGroupInput.value = '';
+    charOccupationInput.value = '';
+    charCatchphraseInput.value = '';
+    charDialectInput.value = '';
+    charTypingHabitInput.value = '';
     imagePreview.innerHTML = '';
     charNameInput.disabled = false;
     charAvatarInput.required = true;
@@ -147,6 +167,14 @@ function openEditModal(id) {
     charNameInput.value = char.name;
     charNameInput.disabled = true; // Can't change internal name
     charDisplayNameInput.value = char.display_name;
+    charGenderInput.value = char.gender || '';
+    charPersonalityInput.value = char.personality || '';
+    charSpeakingStyleInput.value = char.speaking_style || '';
+    charAgeGroupInput.value = char.age_group || '';
+    charOccupationInput.value = char.occupation || '';
+    charCatchphraseInput.value = char.catchphrase || '';
+    charDialectInput.value = char.dialect || '';
+    charTypingHabitInput.value = char.typing_habit || '';
     charAvatarInput.required = false; // Optional when editing
     
     // Show current avatar
@@ -163,6 +191,56 @@ function closeModal() {
     charForm.reset();
     imagePreview.innerHTML = '';
     editingCharacterId = null;
+}
+
+// ===================================
+// AI Generate Personality
+// ===================================
+async function generatePersonalityWithAI() {
+    const displayName = charDisplayNameInput.value.trim();
+    const gender = charGenderInput.value;
+    
+    if (!displayName) {
+        alert('กรุณากรอก Display Name ก่อนเพื่อให้ AI เข้าใจบริบทของตัวละคร');
+        charDisplayNameInput.focus();
+        return;
+    }
+    
+    const btn = document.getElementById('btn-ai-generate-personality');
+    const originalText = btn.textContent;
+    btn.textContent = 'กำลังสร้าง...';
+    btn.disabled = true;
+    
+    try {
+        const res = await fetch(`${API_BASE}/generate-character-personality`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ displayName, gender })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success && data.personality) {
+            // Auto-fill all personality fields
+            charGenderInput.value = data.personality.gender || charGenderInput.value;
+            charPersonalityInput.value = data.personality.personality || '';
+            charSpeakingStyleInput.value = data.personality.speaking_style || '';
+            charAgeGroupInput.value = data.personality.age_group || '';
+            charOccupationInput.value = data.personality.occupation || '';
+            charCatchphraseInput.value = data.personality.catchphrase || '';
+            charDialectInput.value = data.personality.dialect || '';
+            charTypingHabitInput.value = data.personality.typing_habit || '';
+            
+            alert('✅ สร้าง Personality สำเร็จ! ตรวจสอบและแก้ไขได้ตามต้องการ');
+        } else {
+            alert('❌ ไม่สามารถสร้าง Personality ได้: ' + (data.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('❌ Error: ' + err.message);
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
 }
 
 // ===================================
@@ -260,6 +338,9 @@ async function createCharacter(name, displayName, avatarFile) {
     formData.append('name', name);
     formData.append('display_name', displayName);
     formData.append('avatar', avatarFile);
+    formData.append('gender', charGenderInput.value || '');
+    formData.append('personality', charPersonalityInput.value || '');
+    formData.append('speaking_style', charSpeakingStyleInput.value || '');
     
     const res = await fetch(`${API_BASE}/characters/custom`, {
         method: 'POST',
@@ -278,6 +359,14 @@ async function createCharacter(name, displayName, avatarFile) {
 async function updateCharacter(id, displayName, avatarFile) {
     const formData = new FormData();
     formData.append('display_name', displayName);
+    formData.append('gender', charGenderInput.value || '');
+    formData.append('personality', charPersonalityInput.value || '');
+    formData.append('speaking_style', charSpeakingStyleInput.value || '');
+    formData.append('age_group', charAgeGroupInput.value || '');
+    formData.append('occupation', charOccupationInput.value || '');
+    formData.append('catchphrase', charCatchphraseInput.value || '');
+    formData.append('dialect', charDialectInput.value || '');
+    formData.append('typing_habit', charTypingHabitInput.value || '');
     
     if (avatarFile) {
         formData.append('avatar', avatarFile);

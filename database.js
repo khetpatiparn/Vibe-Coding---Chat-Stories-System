@@ -109,10 +109,49 @@ function initSchema() {
             name TEXT NOT NULL UNIQUE,
             display_name TEXT NOT NULL,
             avatar_path TEXT NOT NULL,
+            gender TEXT,
+            personality TEXT,
+            speaking_style TEXT,
+            age_group TEXT,
+            occupation TEXT,
+            catchphrase TEXT,
+            dialect TEXT,
+            typing_habit TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error('Failed to create custom_characters table:', err);
-            else console.log('✅ custom_characters table ready');
+            else {
+                console.log('✅ custom_characters table ready');
+                
+                // Migration: Add new columns if they don't exist
+                db.all("PRAGMA table_info(custom_characters)", (err, rows) => {
+                    if (!err) {
+                        const hasGender = rows.some(r => r.name === 'gender');
+                        if (!hasGender) {
+                            console.log('Migrating: Adding personality columns...');
+                            db.run("ALTER TABLE custom_characters ADD COLUMN gender TEXT");
+                            db.run("ALTER TABLE custom_characters ADD COLUMN personality TEXT");
+                            db.run("ALTER TABLE custom_characters ADD COLUMN speaking_style TEXT");
+                        }
+                        
+                        const hasAgeGroup = rows.some(r => r.name === 'age_group');
+                        if (!hasAgeGroup) {
+                            console.log('Migrating: Adding age/occupation/catchphrase...');
+                            db.run("ALTER TABLE custom_characters ADD COLUMN age_group TEXT");
+                            db.run("ALTER TABLE custom_characters ADD COLUMN occupation TEXT");
+                            db.run("ALTER TABLE custom_characters ADD COLUMN catchphrase TEXT");
+                        }
+                        
+                        const hasDialect = rows.some(r => r.name === 'dialect');
+                        if (!hasDialect) {
+                            console.log('Migrating: Adding dialect/typing_habit...');
+                            db.run("ALTER TABLE custom_characters ADD COLUMN dialect TEXT");
+                            db.run("ALTER TABLE custom_characters ADD COLUMN typing_habit TEXT");
+                            console.log('✅ All character columns ready');
+                        }
+                    }
+                });
+            }
         });
 
         // 5. Sound Collections Table (BGM categories, SFX categories)
@@ -400,11 +439,11 @@ const CustomCharacter = {
         });
     },
     
-    async add(name, displayName, avatarPath) {
+    async add(name, displayName, avatarPath, gender = null, personality = null, speakingStyle = null, ageGroup = null, occupation = null, catchphrase = null, dialect = null, typingHabit = null) {
         return new Promise((resolve, reject) => {
             db.run(
-                'INSERT INTO custom_characters (name, display_name, avatar_path) VALUES (?, ?, ?)',
-                [name, displayName, avatarPath],
+                'INSERT INTO custom_characters (name, display_name, avatar_path, gender, personality, speaking_style, age_group, occupation, catchphrase, dialect, typing_habit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [name, displayName, avatarPath, gender, personality, speakingStyle, ageGroup, occupation, catchphrase, dialect, typingHabit],
                 function(err) {
                     if (err) reject(err);
                     else resolve(this.lastID);
@@ -413,10 +452,10 @@ const CustomCharacter = {
         });
     },
     
-    async update(id, displayName, avatarPath) {
+    async update(id, displayName, avatarPath, gender = null, personality = null, speakingStyle = null, ageGroup = null, occupation = null, catchphrase = null, dialect = null, typingHabit = null) {
         return new Promise((resolve, reject) => {
-            let query = 'UPDATE custom_characters SET display_name = ?';
-            let params = [displayName];
+            let query = 'UPDATE custom_characters SET display_name = ?, gender = ?, personality = ?, speaking_style = ?, age_group = ?, occupation = ?, catchphrase = ?, dialect = ?, typing_habit = ?';
+            let params = [displayName, gender, personality, speakingStyle, ageGroup, occupation, catchphrase, dialect, typingHabit];
             
             if (avatarPath) {
                 query += ', avatar_path = ?';

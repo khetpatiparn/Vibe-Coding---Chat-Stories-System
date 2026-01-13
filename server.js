@@ -641,6 +641,70 @@ app.post('/api/projects/:id/import', async (req, res) => {
 });
 
 // ============================================
+// AI Character Personality Generator
+// ============================================
+app.post('/api/generate-character-personality', async (req, res) => {
+    const { displayName, gender } = req.body;
+    
+    if (!displayName) {
+        return res.status(400).json({ error: 'Display name is required' });
+    }
+    
+    const prompt = `สร้าง Personality Profile สำหรับตัวละครชื่อ "${displayName}" ${gender ? `(${gender})` : ''}
+
+ให้ตอบเป็น JSON เท่านั้น ห้ามมี markdown:
+{
+  "gender": "Male" หรือ "Female" หรือ "Other",
+  "personality": "บุคลิกภาพ 2-3 คำ เช่น ปากจัด, ขี้อาย, กวนตีน, ใจดี",
+  "speaking_style": "สไตล์การพิมพ์ เช่น พิมพ์รวบ, ใช้คำย่อเยอะ, พิมพ์ผิดบ่อย",
+  "age_group": "เลือกจาก: Child, Teenager (Gen Z), Young Adult (Gen Y), Adult (Gen X), Senior (Boomer)",
+  "occupation": "อาชีพ 1-2 คำ เช่น นักศึกษา, พนักงานออฟฟิศ, แม่ค้าออนไลน์",
+  "catchphrase": "คำติดปาก 1-3 คำ เช่น bro, นะจ๊ะ, ว่ะ, งับ",
+  "dialect": "เลือกจาก: (ว่าง=กลาง), Isan, Northern, Southern, Suphan",
+  "typing_habit": "เลือกจาก: (ว่าง=Normal), rapid_fire, long_paragraphs"
+}
+
+กรุณาสร้างบุคลิกที่สมเหตุสมผลกับชื่อ "${displayName}" และทำให้ดูเป็นธรรมชาติ`;
+
+    // Models to try in order (Gemini 3 Pro first, then Flash, then 2.5)
+    const modelsToTry = ['gemini-3-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
+    
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    
+    let lastError = null;
+    
+    for (const modelName of modelsToTry) {
+        try {
+            console.log(`🤖 Trying ${modelName} for personality generation...`);
+            const model = genAI.getGenerativeModel({ model: modelName });
+            
+            const result = await model.generateContent(prompt);
+            const text = result.response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            
+            const personality = JSON.parse(text);
+            console.log(`✅ Personality generated with ${modelName}`);
+            
+            return res.json({ success: true, personality });
+        } catch (err) {
+            console.error(`❌ ${modelName} failed:`, err.message);
+            lastError = err;
+            
+            // Wait before trying next model if rate limited or overloaded
+            const isRetryable = err.status === 429 || err.status === 503 || 
+                               err.message.includes('overloaded') || err.message.includes('quota');
+            if (isRetryable) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+    }
+    
+    // All models failed
+    console.error('AI Personality Generation Error: All models failed');
+    res.status(500).json({ error: 'API quota exceeded. Please try again in a few minutes or fill in manually.' });
+});
+
+// ============================================
 // Custom Character APIs
 // ============================================
 
@@ -657,7 +721,7 @@ app.get('/api/characters/custom', async (req, res) => {
 // Create custom character (with file upload)
 app.post('/api/characters/custom', upload.single('avatar'), async (req, res) => {
     try {
-        const { name, display_name } = req.body;
+        const { name, display_name, gender, personality, speaking_style, age_group, occupation, catchphrase, dialect, typing_habit } = req.body;
         
         if (!name || !display_name || !req.file) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -671,7 +735,19 @@ app.post('/api/characters/custom', upload.single('avatar'), async (req, res) => 
         }
         
         const avatarPath = `assets/avatars/custom/${req.file.filename}`;
-        const characterId = await CustomCharacter.add(name, display_name, avatarPath);
+        const characterId = await CustomCharacter.add(
+            name, 
+            display_name, 
+            avatarPath,
+            gender || null,
+            personality || null,
+            speaking_style || null,
+            age_group || null,
+            occupation || null,
+            catchphrase || null,
+            dialect || null,
+            typing_habit || null
+        );
         
         res.json({ 
             success: true, 
@@ -696,7 +772,7 @@ app.post('/api/characters/custom', upload.single('avatar'), async (req, res) => 
 app.put('/api/characters/custom/:id', upload.single('avatar'), async (req, res) => {
     try {
         const { id } = req.params;
-        const { display_name } = req.body;
+        const { display_name, gender, personality, speaking_style, age_group, occupation, catchphrase, dialect, typing_habit } = req.body;
         
         if (!display_name) {
             return res.status(400).json({ error: 'Display name is required' });
@@ -719,7 +795,19 @@ app.put('/api/characters/custom/:id', upload.single('avatar'), async (req, res) 
             }
         }
         
-        await CustomCharacter.update(id, display_name, avatarPath);
+        await CustomCharacter.update(
+            id, 
+            display_name, 
+            avatarPath,
+            gender || null,
+            personality || null,
+            speaking_style || null,
+            age_group || null,
+            occupation || null,
+            catchphrase || null,
+            dialect || null,
+            typing_habit || null
+        );
         
         res.json({ success: true });
     } catch (err) {

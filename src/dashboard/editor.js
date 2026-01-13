@@ -274,7 +274,16 @@ async function generateWithAI() {
                 name: custom.name,
                 display_name: custom.display_name,
                 avatar_path: custom.avatar_path,
-                is_custom: true
+                is_custom: true,
+                // Personality fields for AI prompt
+                gender: custom.gender || null,
+                personality: custom.personality || null,
+                speaking_style: custom.speaking_style || null,
+                age_group: custom.age_group || null,
+                occupation: custom.occupation || null,
+                catchphrase: custom.catchphrase || null,
+                dialect: custom.dialect || null,
+                typing_habit: custom.typing_habit || null
             } : null;
         }
         return {
