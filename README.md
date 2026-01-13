@@ -39,6 +39,7 @@
 
 ### version 1.4
 
-- [ ] fix bug choose charactor
+- [✅] fix bug choose charactor
+- [✅] change UI AI Continue
 - [ ] ข้อความแบบ "ลบออก (Unsend)"
 - [ ] ปรับให้ข้อมูลที่ export สามารถเอามา train เพื่อสร้าง AI สามารถสร้าง story ได้เป็นธรรมชาติมากขึ้น เพราะข้อมูลแชทก็มีส่วนที่เรา manual เองด้วย
