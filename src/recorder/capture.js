@@ -153,7 +153,7 @@ async function captureFrames(story, outputName = 'story') {
             }
             .message-bubble { font-size: 0.95rem !important; }
             #chat-container { padding-bottom: 150px !important; padding-right: 15px !important; }
-            #chat-header { padding-top: 80px !important; padding-bottom: 15px !important; height: auto !important; }
+            #chat-header { padding-top: 60px !important; padding-bottom: 15px !important; height: auto !important; }
             .chat-image { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 0 auto; }
 
             /* 🛑 FREEZE ANIMATIONS FOR SYNC */

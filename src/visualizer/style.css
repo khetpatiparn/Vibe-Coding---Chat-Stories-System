@@ -112,7 +112,7 @@ body.rendering .message.right {
 #chat-header {
   background: linear-gradient(135deg, #075e54, #128c7e);
   padding: 15px 20px;
-  padding-top: 80px; /* Safe zone for TikTok search bar */
+  padding-top: 60px; /* Safe zone for TikTok search bar */
   padding-bottom: 15px;
   display: flex;
   align-items: center;
