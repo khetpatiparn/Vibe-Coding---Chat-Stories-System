@@ -83,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-add-dialogue').onclick = addDialogue;
     document.getElementById('btn-generate-ai').onclick = openStorySettings;
     document.getElementById('btn-export-json').onclick = exportProjectAsJSON;
+    document.getElementById('btn-import-json').onclick = openImportModal;
     
     // Room Name Input - Auto-save on change
     document.getElementById('room-name-input').onchange = saveRoomName;
@@ -516,6 +517,241 @@ function exportProjectAsJSON() {
     URL.revokeObjectURL(url);
     
     showToast('📦 Export สำเร็จ!', 'success');
+}
+
+// ===================================
+// Import JSON (Restore)
+// ===================================
+let importData = null;
+
+function openImportModal() {
+    const modal = document.getElementById('modal-import-json');
+    const preview = document.getElementById('import-preview');
+    const fileInput = document.getElementById('import-file-input');
+    const confirmBtn = document.getElementById('btn-confirm-import');
+    
+    // Reset state
+    importData = null;
+    preview.style.display = 'none';
+    confirmBtn.disabled = true;
+    fileInput.value = '';
+    
+    // Reset mode selection
+    document.querySelectorAll('.import-mode-option').forEach(opt => {
+        opt.classList.remove('selected');
+        if (opt.dataset.mode === 'new') {
+            opt.classList.add('selected');
+            opt.querySelector('input').checked = true;
+        }
+    });
+    
+    modal.classList.remove('hidden');
+    
+    // Set up event listeners
+    setupImportModalListeners();
+}
+
+function setupImportModalListeners() {
+    const modal = document.getElementById('modal-import-json');
+    const fileInput = document.getElementById('import-file-input');
+    const cancelBtn = document.getElementById('btn-cancel-import');
+    const confirmBtn = document.getElementById('btn-confirm-import');
+    const modeOptions = document.querySelectorAll('.import-mode-option');
+    
+    // Close modal
+    cancelBtn.onclick = () => {
+        modal.classList.add('hidden');
+        importData = null;
+    };
+    
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+            importData = null;
+        }
+    };
+    
+    // File selection
+    fileInput.onchange = handleFileSelect;
+    
+    // Mode selection styling
+    modeOptions.forEach(opt => {
+        opt.onclick = () => {
+            modeOptions.forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+            opt.querySelector('input').checked = true;
+            
+            // Disable replace mode if no project selected
+            if (opt.dataset.mode === 'replace' && !currentProject) {
+                showToast('⚠️ กรุณาเลือก Project ก่อน เพื่อใช้โหมดแทนที่', 'error');
+                modeOptions.forEach(o => {
+                    o.classList.remove('selected');
+                    if (o.dataset.mode === 'new') {
+                        o.classList.add('selected');
+                        o.querySelector('input').checked = true;
+                    }
+                });
+            }
+        };
+    });
+    
+    // Confirm import
+    confirmBtn.onclick = executeImport;
+    
+    // Drag and drop
+    const dropZone = document.querySelector('.file-upload-label');
+    
+    dropZone.ondragover = (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--primary)';
+        dropZone.style.background = 'rgba(147, 51, 234, 0.1)';
+    };
+    
+    dropZone.ondragleave = (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--border)';
+        dropZone.style.background = 'var(--bg-dark)';
+    };
+    
+    dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--border)';
+        dropZone.style.background = 'var(--bg-dark)';
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].name.endsWith('.json')) {
+            fileInput.files = files;
+            handleFileSelect({ target: fileInput });
+        } else {
+            showToast('⚠️ กรุณาเลือกไฟล์ .json', 'error');
+        }
+    };
+}
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            // Validate structure
+            if (!data.dialogues || !Array.isArray(data.dialogues)) {
+                throw new Error('Invalid JSON structure: missing dialogues array');
+            }
+            
+            // Store for later
+            importData = data;
+            
+            // Show preview
+            showImportPreview(data);
+            
+        } catch (err) {
+            showToast('❌ ไฟล์ JSON ไม่ถูกต้อง: ' + err.message, 'error');
+            importData = null;
+        }
+    };
+    
+    reader.readAsText(file);
+}
+
+function showImportPreview(data) {
+    const previewEl = document.getElementById('import-preview');
+    const contentEl = document.getElementById('import-preview-content');
+    const confirmBtn = document.getElementById('btn-confirm-import');
+    
+    // Build preview HTML
+    const title = data.project?.title || data.title || 'Unknown Title';
+    const dialogueCount = data.dialogues?.length || 0;
+    const charCount = Object.keys(data.characters || {}).length;
+    const exportDate = data.exportedAt ? new Date(data.exportedAt).toLocaleString('th-TH') : 'Unknown';
+    
+    contentEl.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div><strong>📖 Title:</strong> ${title}</div>
+            <div><strong>📅 Exported:</strong> ${exportDate}</div>
+            <div><strong>💬 Dialogues:</strong> ${dialogueCount}</div>
+            <div><strong>👥 Characters:</strong> ${charCount}</div>
+        </div>
+        ${dialogueCount > 0 ? `
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--border);">
+            <strong>ตัวอย่าง Dialogues:</strong>
+            <ul style="margin: 5px 0 0 20px; list-style: disc;">
+                ${data.dialogues.slice(0, 3).map(d => `<li>${d.sender}: ${(d.message || '').substring(0, 40)}${d.message?.length > 40 ? '...' : ''}</li>`).join('')}
+                ${dialogueCount > 3 ? `<li style="color: var(--text-gray);">... และอีก ${dialogueCount - 3} ข้อความ</li>` : ''}
+            </ul>
+        </div>
+        ` : ''}
+    `;
+    
+    previewEl.style.display = 'block';
+    confirmBtn.disabled = false;
+}
+
+async function executeImport() {
+    if (!importData) {
+        showToast('⚠️ ไม่มีข้อมูลให้ Import', 'error');
+        return;
+    }
+    
+    const mode = document.querySelector('input[name="import-mode"]:checked').value;
+    const confirmBtn = document.getElementById('btn-confirm-import');
+    const originalText = confirmBtn.textContent;
+    
+    confirmBtn.textContent = 'กำลัง Import...';
+    confirmBtn.disabled = true;
+    
+    try {
+        let response;
+        
+        if (mode === 'new') {
+            // Create new project with imported data
+            response = await fetch(`${API_BASE}/import`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(importData)
+            });
+        } else if (mode === 'replace') {
+            // Replace dialogues in current project
+            if (!currentProject) {
+                throw new Error('No project selected');
+            }
+            response = await fetch(`${API_BASE}/projects/${currentProject}/import`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(importData)
+            });
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('modal-import-json').classList.add('hidden');
+            importData = null;
+            
+            // Reload and select the project
+            await loadProjects();
+            
+            if (mode === 'new' && result.projectId) {
+                await selectProject(result.projectId);
+            } else {
+                await selectProject(currentProject);
+            }
+            
+            showToast(`✅ Import สำเร็จ! (${result.dialogueCount || 0} dialogues)`, 'success');
+        } else {
+            throw new Error(result.error || 'Unknown error');
+        }
+        
+    } catch (err) {
+        showToast('❌ Import ล้มเหลว: ' + err.message, 'error');
+    } finally {
+        confirmBtn.textContent = originalText;
+        confirmBtn.disabled = false;
+    }
 }
 
 // Save Room Name (Auto-save)

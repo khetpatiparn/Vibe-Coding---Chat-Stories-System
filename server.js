@@ -515,6 +515,132 @@ app.post('/api/render/:id', async (req, res) => {
 });
 
 // ============================================
+// Import/Export APIs
+// ============================================
+
+// Import JSON as new project
+app.post('/api/import', async (req, res) => {
+    try {
+        const data = req.body;
+        
+        // Validate structure
+        if (!data.dialogues || !Array.isArray(data.dialogues)) {
+            return res.status(400).json({ error: 'Invalid JSON: missing dialogues array' });
+        }
+        
+        const title = data.project?.title || data.title || 'Imported Story';
+        
+        // Create new project
+        const projectId = await Project.create(title);
+        
+        // Import characters (if available)
+        if (data.characters && typeof data.characters === 'object') {
+            for (const [role, char] of Object.entries(data.characters)) {
+                await Character.add(projectId, {
+                    role: role,
+                    name: char.name || role,
+                    avatar: char.avatar || 'assets/avatars/default.png',
+                    side: char.side || 'left'
+                });
+            }
+        } else {
+            // Add default characters
+            await Character.add(projectId, { role: 'me', name: 'ฉัน', avatar: 'assets/avatars/person1.png', side: 'right' });
+            await Character.add(projectId, { role: 'boss', name: 'เจ้านาย', avatar: 'assets/avatars/boss.png', side: 'left' });
+        }
+        
+        // Import dialogues
+        let order = 0;
+        for (const d of data.dialogues) {
+            await Dialogue.add(projectId, {
+                sender: d.sender || 'me',
+                message: d.message || '',
+                delay: d.delay || 1.0,
+                reaction_delay: d.reaction_delay || 0.5,
+                typing_speed: d.typing_speed || 'normal',
+                camera_effect: d.camera_effect || 'normal',
+                image_path: d.image_path || null
+            }, d.seq_order !== undefined ? d.seq_order : order++);
+        }
+        
+        console.log(`✅ Imported ${data.dialogues.length} dialogues as new project ID: ${projectId}`);
+        res.json({ success: true, projectId, dialogueCount: data.dialogues.length });
+        
+    } catch (err) {
+        console.error('Import failed:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Import JSON into existing project (replace dialogues)
+app.post('/api/projects/:id/import', async (req, res) => {
+    try {
+        const projectId = req.params.id;
+        const data = req.body;
+        
+        // Validate
+        if (!data.dialogues || !Array.isArray(data.dialogues)) {
+            return res.status(400).json({ error: 'Invalid JSON: missing dialogues array' });
+        }
+        
+        // Check project exists
+        const project = await Project.getById(projectId);
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+        
+        // Clear existing dialogues
+        await new Promise((resolve, reject) => {
+            db.run('DELETE FROM dialogues WHERE project_id = ?', [projectId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+        
+        // Optionally update characters if provided
+        if (data.characters && typeof data.characters === 'object') {
+            // Clear existing and add new
+            await new Promise((resolve, reject) => {
+                db.run('DELETE FROM characters WHERE project_id = ?', [projectId], (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+            
+            for (const [role, char] of Object.entries(data.characters)) {
+                await Character.add(projectId, {
+                    role: role,
+                    name: char.name || role,
+                    avatar: char.avatar || 'assets/avatars/default.png',
+                    side: char.side || 'left'
+                });
+            }
+        }
+        
+        // Import dialogues
+        let order = 0;
+        for (const d of data.dialogues) {
+            await Dialogue.add(projectId, {
+                sender: d.sender || 'me',
+                message: d.message || '',
+                delay: d.delay || 1.0,
+                reaction_delay: d.reaction_delay || 0.5,
+                typing_speed: d.typing_speed || 'normal',
+                camera_effect: d.camera_effect || 'normal',
+                image_path: d.image_path || null
+            }, d.seq_order !== undefined ? d.seq_order : order++);
+        }
+        
+        console.log(`✅ Replaced dialogues in project ${projectId} with ${data.dialogues.length} imported dialogues`);
+        res.json({ success: true, dialogueCount: data.dialogues.length });
+        
+    } catch (err) {
+        console.error('Import to project failed:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ============================================
 // Custom Character APIs
 // ============================================
 
