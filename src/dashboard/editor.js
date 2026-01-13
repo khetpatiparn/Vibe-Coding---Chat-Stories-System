@@ -173,11 +173,11 @@ let customCharacters = [];
 async function loadCustomCharacters() {
     try {
         const res = await fetch(`${API_BASE}/characters/custom`);
-        customCharacters = await res.json();
-        console.log(`✅ Loaded ${customCharacters.length} custom characters`);
+        window.customCharacters = await res.json();
+        console.log(`✅ Loaded ${window.customCharacters.length} custom characters`);
     } catch (err) {
         console.error('Failed to load custom characters:', err);
-        customCharacters = [];
+        window.customCharacters = [];
     }
 }
 
@@ -871,7 +871,7 @@ async function resetToAutoDelay(index, id) {
 
 function renderDialogues(dialogues, characters) {
     elDialogueList.innerHTML = dialogues.map((d, index) => {
-        // Find avatar (sender might be 'boss' or 'me')
+        // Find avatar (sender might be 'boss', 'me', or 'custom_XX')
         let char = characters[d.sender];
         if (d.sender === 'time_divider') {
              char = { 
@@ -879,7 +879,21 @@ function renderDialogues(dialogues, characters) {
                  avatar: 'https://ui-avatars.com/api/?name=T+D&background=000&color=fff&rounded=true' 
              };
         } else if (!char) {
-             char = { name: d.sender, avatar: 'assets/avatars/default.png' };
+            // Try to find from custom characters if sender starts with 'custom_'
+            if (d.sender.startsWith('custom_')) {
+                const customId = parseInt(d.sender.split('_')[1]);
+                const customChar = (window.customCharacters || []).find(c => c.id === customId);
+                if (customChar) {
+                    char = { 
+                        name: customChar.display_name, 
+                        avatar: customChar.avatar_path || 'assets/avatars/person1.png'
+                    };
+                } else {
+                    char = { name: d.sender, avatar: 'assets/avatars/person1.png' };
+                }
+            } else {
+                char = { name: d.sender, avatar: 'assets/avatars/person1.png' };
+            }
         }
         
         let avatarSrc = char.avatar;
@@ -1571,10 +1585,20 @@ window.deleteProject = async function(event, id) {
 
 let previewDialogues = [];
 
-function openContinueSettings() {
+async function openContinueSettings() {
     if (!currentProject) {
         alert('Please select a project first.');
         return;
+    }
+    
+    // Fetch custom characters from API first
+    try {
+        const res = await fetch(`${API_BASE}/characters/custom`);
+        window.customCharacters = await res.json();
+        console.log('✅ Loaded custom characters:', window.customCharacters.length);
+    } catch (err) {
+        console.error('Failed to load custom characters:', err);
+        window.customCharacters = [];
     }
     
     // Render Character Checkboxes
@@ -1584,30 +1608,77 @@ function openContinueSettings() {
     const projectCharsObj = window.currentProjectCharacters || {};
     const projectCharKeys = Object.keys(projectCharsObj);
     
-    // Map to array format
+    // 2. All Custom Characters (Global)
+    // Filter out those already in project to avoid duplicates
+    const availableCustom = (window.customCharacters || []).filter(c => {
+        const role = `custom_${c.id}`;
+        return !projectCharsObj[role];
+    });
+
+    // 3. Default Characters
+    const DEFAULT_ROLES = [
+        { role: 'me', name: 'ฉัน', avatar: 'assets/avatars/person1.png' },
+        { role: 'boss', name: 'เจ้านาย', avatar: 'assets/avatars/boss.png' },
+        { role: 'employee', name: 'ลูกน้อง', avatar: 'assets/avatars/employee.png' },
+        { role: 'friend', name: 'เพื่อน', avatar: 'assets/avatars/friend.png' },
+        { role: 'girlfriend', name: 'แฟน', avatar: 'assets/avatars/girlfriend.png' },
+        { role: 'ghost', name: 'ผี', avatar: 'assets/avatars/ghost.png' }
+    ];
+    // Filter out those already in project
+    const availableDefaults = DEFAULT_ROLES.filter(def => !projectCharsObj[def.role]);
+
+    // Build HTML
+    let html = '';
+
+    // Map project character keys to objects for rendering
     const projectChars = projectCharKeys.map(key => ({
         id: key,
         name: projectCharsObj[key].name,
-        avatar: projectCharsObj[key].avatar,
-        checked: true // Default to checked for existing chars
+        avatar: projectCharsObj[key].avatar
     }));
-    
-    // Handle empty case
-    if (projectChars.length === 0) {
-        container.innerHTML = '<p style="color:var(--text-gray);">No characters in this project yet.</p>';
-    } else {
-        container.innerHTML = projectChars.map(char => {
+
+    // A. Project Characters (Checked by default)
+    if (projectChars.length > 0) {
+        html += `<div style="background: rgba(147, 51, 234, 0.1); border: 1px solid rgba(147, 51, 234, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+            <div style="font-size: 0.75rem; color: #a855f7; margin-bottom: 8px; font-weight: 600;">📍 IN PROJECT</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px;">`;
+        html += projectChars.map(char => {
             let avatar = char.avatar || 'assets/avatars/default.png';
             if (avatar.startsWith('assets')) avatar = '/' + avatar;
-            
             return `
-            <label class="character-option">
-                <input type="checkbox" name="continue-char" value="${char.id}" checked>
-                <img src="${avatar}" style="width:20px;height:20px;border-radius:50%;margin:0 5px;vertical-align:middle;object-fit:cover;">
-                <span>${char.name}</span>
-            </label>
-            `;
+                <label class="character-option" style="display: flex; align-items: center; padding: 8px; background: var(--bg-dark); border-radius: 6px; cursor: pointer;">
+                    <input type="checkbox" name="continue-char" value="${char.id}" checked style="margin-right: 8px;">
+                    <img src="${avatar}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 6px;">
+                    <span style="font-size: 0.85rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${char.name}</span>
+                </label>`;
         }).join('');
+        html += '</div></div>';
+    }
+
+    // B. Guest Characters (Only Custom Characters from Character Management)
+    if (availableCustom.length > 0) {
+        html += `<div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 12px;">
+            <div style="font-size: 0.75rem; color: #60a5fa; margin-bottom: 8px; font-weight: 600;">🌟 GUEST CHARACTERS (from Character Manager)</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px;">`;
+        
+        html += availableCustom.map(c => {
+            let avatar = c.avatar_path || 'assets/avatars/default.png';
+            if (avatar.startsWith('assets')) avatar = '/' + avatar;
+            return `
+                <label class="character-option" style="display: flex; align-items: center; padding: 8px; background: var(--bg-dark); border-radius: 6px; cursor: pointer;">
+                    <input type="checkbox" name="continue-char" value="custom_${c.id}" style="margin-right: 8px;">
+                    <img src="${avatar}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 6px;">
+                    <span style="font-size: 0.85rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.display_name}</span>
+                </label>`;
+        }).join('');
+        
+        html += '</div></div>';
+    }
+
+    if (html === '') {
+        container.innerHTML = '<p style="color:var(--text-gray);">No characters found.</p>';
+    } else {
+        container.innerHTML = html;
     }
 
     document.getElementById('modal-continue-settings').classList.remove('hidden');
@@ -1623,6 +1694,9 @@ async function generateContinuation() {
     }
     
     const prompt = document.getElementById('continue-prompt').value.trim();
+    const length = document.getElementById('continue-length').value;
+    const mode = document.getElementById('continue-mode').value;
+
     const btn = document.getElementById('btn-generate-continue');
     
     btn.textContent = 'Generating... 🤖';
@@ -1635,7 +1709,9 @@ async function generateContinuation() {
             body: JSON.stringify({
                 projectId: currentProject,
                 characters: selectedChars,
-                topic: prompt
+                topic: prompt,
+                length: length,
+                mode: mode
             })
         });
         
@@ -1681,18 +1757,43 @@ async function commitContinuation() {
     btn.disabled = true;
     
     try {
-        // Sequentially add dialogues
-        // We rely on backend to handle order if we send one by one
-        // Better: We send one by one to use existing 'add' logic which calculates order
-        // BUT current add logic relies on calculating max order.
+        // 1. First, ensure all guest characters used in dialogues are added to the project
+        const usedSenders = [...new Set(previewDialogues.map(d => d.sender))];
+        const projectCharsObj = window.currentProjectCharacters || {};
         
-        // Calculate start order from current dialogues
+        for (const sender of usedSenders) {
+            // Skip if already in project
+            if (projectCharsObj[sender]) continue;
+            
+            // Check if it's a custom character (e.g., custom_10)
+            if (sender.startsWith('custom_')) {
+                const customId = parseInt(sender.split('_')[1]);
+                const customChar = (window.customCharacters || []).find(c => c.id === customId);
+                
+                if (customChar) {
+                    // Add custom character to project
+                    await fetch(`${API_BASE}/projects/${currentProject}/characters`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            role: sender,
+                            name: customChar.display_name,
+                            avatar: customChar.avatar_path,
+                            side: 'left'
+                        })
+                    });
+                    console.log(`✅ Added guest character: ${customChar.display_name}`);
+                }
+            }
+        }
+        
+        // 2. Calculate start order from current dialogues
         let startOrder = 0;
         if (currentDialogues && currentDialogues.length > 0) {
             startOrder = Math.max(...currentDialogues.map(d => d.seq_order !== undefined ? d.seq_order : 0)) + 1;
         }
 
-        // Sequentially add dialogues with explicit order
+        // 3. Sequentially add dialogues with explicit order
         for (let i = 0; i < previewDialogues.length; i++) {
             const d = previewDialogues[i];
             await fetch(`${API_BASE}/projects/${currentProject}/dialogues`, {
@@ -1701,18 +1802,23 @@ async function commitContinuation() {
                 body: JSON.stringify({
                     sender: d.sender,
                     message: d.message,
-                    order: startOrder + i // Explicitly set order
+                    order: startOrder + i
                 })
             });
         }
         
-        // Refresh Project
+        // 4. Refresh Project (this updates characters and dialogues)
         await selectProject(currentProject);
         
-        // Close Modal
+        // 5. Force reload preview with delay to ensure DB is synced
+        setTimeout(() => {
+            reloadPreview();
+        }, 500);
+        
+        // 6. Close Modal
         document.getElementById('modal-ai-preview').classList.add('hidden');
         previewDialogues = [];
-        document.getElementById('continue-prompt').value = ''; // Reset prompt
+        document.getElementById('continue-prompt').value = '';
         
     } catch (err) {
         alert('Failed to add dialogues: ' + err.message);
@@ -1722,25 +1828,36 @@ async function commitContinuation() {
     }
 }
 
-// Event Listeners for Continuation
-// Check if elements exist before adding listeners (safe guard)
-const btnContinueAI = document.getElementById('btn-continue-ai');
-if (btnContinueAI) {
-    btnContinueAI.addEventListener('click', openContinueSettings);
-    document.getElementById('btn-cancel-continue').addEventListener('click', () => {
-        document.getElementById('modal-continue-settings').classList.add('hidden');
-    });
-    document.getElementById('btn-generate-continue').addEventListener('click', generateContinuation);
+// Event Listeners for Continuation - EVENT DELEGATION (More Robust)
+document.addEventListener('click', (e) => {
+    // 1. Open Modal (delegated)
+    if (e.target && (e.target.id === 'btn-continue-ai' || e.target.closest('#btn-continue-ai'))) {
+        console.log('✅ Click detected on Continue AI');
+        openContinueSettings();
+    }
 
-    document.getElementById('btn-cancel-preview').addEventListener('click', () => {
+    // 2. Generate
+    if (e.target && e.target.id === 'btn-generate-continue') {
+        generateContinuation();
+    }
+
+    // 3. Confirm / Add
+    if (e.target && e.target.id === 'btn-confirm-preview') {
+        commitContinuation();
+    }
+
+    // Modal Close handlers (delegated)
+    if (e.target.id === 'btn-cancel-continue') {
+        document.getElementById('modal-continue-settings').classList.add('hidden');
+    }
+    if (e.target.id === 'btn-cancel-preview') {
         document.getElementById('modal-ai-preview').classList.add('hidden');
-    });
-    document.getElementById('btn-retry-preview').addEventListener('click', () => {
+    }
+    if (e.target.id === 'btn-retry-preview') {
         document.getElementById('modal-ai-preview').classList.add('hidden');
         document.getElementById('modal-continue-settings').classList.remove('hidden');
-    });
-    document.getElementById('btn-confirm-preview').addEventListener('click', commitContinuation);
-}
+    }
+});
 
 // Expose globals
 window.selectProject = selectProject;

@@ -347,16 +347,26 @@ async function generateMultipleStories(count = 5, category = 'funny') {
 }
 
 // Generate continuation of story
-async function continueStory(prompt, existingDialogues = [], availableCharacters = []) {
+async function continueStory(prompt, existingDialogues = [], availableCharacters = [], length = 'medium', mode = 'normal') {
     // Format existing dialogues for context
     const history = existingDialogues.map(d => `${d.sender}: ${d.message}`).join('\n');
     
     // Explicit list of allowed characters
     const characterList = availableCharacters.length > 0 ? availableCharacters.join(', ') : 'me, boss';
 
+    // Length Instruction
+    let lengthInstruction = 'Generate 10-20 dialogues.';
+    if (length === 'short') lengthInstruction = 'Generate 5-10 dialogues. Keep it brief.';
+    if (length === 'long') lengthInstruction = 'Generate at least 20 dialogues. detailed and deep conversation.';
+
+    // Mode Instruction
+    let modeInstruction = 'Continue the flow naturally.';
+    if (mode === 'wrap_up') modeInstruction = 'IMPORTANT: The user wants to end this scene. Steer the conversation towards a conclusion, resolution, or a dramatic cliffhanger. Do NOT leave it open-ended.';
+
     const systemPrompt = `You are a screenwriter for a chat story.
     You will be given a history of a conversation and a prompt for what happens next.
-    Generate the next 3-5 dialogues to continue the story.
+    ${lengthInstruction}
+    ${modeInstruction}
     Return ONLY a JSON array of objects with "sender" and "message".
     
     Example:

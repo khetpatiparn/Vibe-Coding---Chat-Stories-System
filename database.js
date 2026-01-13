@@ -402,6 +402,32 @@ async function exportStoryJSON(projectId) {
         seq_order: d.seq_order,
         image_path: d.image_path // [NEW] Image Support
     }));
+
+    // [FIX] Ensure Custom Characters used in dialogues are included in characters list
+    const usedCustomIds = new Set();
+    dlgs.forEach(d => {
+        if (d.sender.startsWith('custom_') && !characters[d.sender]) {
+            const id = parseInt(d.sender.split('_')[1]);
+            usedCustomIds.add(id);
+        }
+    });
+
+    if (usedCustomIds.size > 0) {
+        for (const id of usedCustomIds) {
+            try {
+                const customChar = await CustomCharacter.getById(id);
+                if (customChar) {
+                    characters[`custom_${id}`] = {
+                        name: customChar.display_name,
+                        avatar: customChar.avatar_path,
+                        side: 'left' // Default side for guests
+                    };
+                }
+            } catch (err) {
+                console.error(`Failed to inject custom character ${id}`, err);
+            }
+        }
+    }
     
     return {
         id: project.id,

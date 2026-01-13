@@ -183,19 +183,35 @@ app.post('/api/projects/:id/dialogues', async (req, res) => {
             typing_speed: 'normal'
         };
         
-        // We need to know the order (sequence). Ideally frontend sends it or we find max.
-        // For simplicity, we just use Date.now() or auto-increment order if Logic permits.
-        // Our DB schema has 'seq_order'.
-        // Let's assume frontend sends a reasonable order or we append to end.
-        
-        // For quick fix: just use current max order + 1 (implemented via DB query or just rely on frontend)
-        // Let's trust frontend to reload or simplistic append.
-        
-        // Wait, Database.js `Dialogue.add` takes `(projectId, data, order)`.
         const dialogueId = await Dialogue.add(projectId, newData, order || 999);
         
         res.json({ success: true, id: dialogueId });
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 3.1.5 Add Character to Project
+app.post('/api/projects/:id/characters', async (req, res) => {
+    try {
+        const projectId = req.params.id;
+        const { role, name, avatar, side } = req.body;
+        
+        if (!role || !name) {
+            return res.status(400).json({ error: 'Role and name are required' });
+        }
+        
+        await Character.add(projectId, {
+            role: role,
+            name: name,
+            avatar: avatar || 'assets/avatars/default.png',
+            side: side || 'left'
+        });
+        
+        console.log(`✅ Added character to project ${projectId}: ${name} (${role})`);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Failed to add character:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -419,7 +435,7 @@ app.post('/api/generate', async (req, res) => {
 // 4.1 Generate Continuation (AI)
 app.post('/api/generate/continue', async (req, res) => {
     try {
-        const { projectId, characters, topic } = req.body;
+        const { projectId, characters, topic, length, mode } = req.body;
         
         // 1. Fetch recent dialogues for context (last 10)
         const recentDialogues = await new Promise((resolve, reject) => {
@@ -435,7 +451,7 @@ app.post('/api/generate/continue', async (req, res) => {
         }
 
         // 2. Call AI
-        const newDialogues = await continueStory(topic, recentDialogues, characters);
+        const newDialogues = await continueStory(topic, recentDialogues, characters, length, mode);
         
         res.json({ success: true, dialogues: newDialogues });
         

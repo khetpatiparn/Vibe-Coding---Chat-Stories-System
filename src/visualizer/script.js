@@ -77,8 +77,20 @@ class ChatStory {
   }
 
   async processDialogue(item, isInstant = false) {
-    const senderChar = this.data.characters[item.sender];
-    const isLeft = senderChar && senderChar.side === "left";
+    // Get character data, with fallback for unknown characters
+    let senderChar = this.data.characters[item.sender];
+    
+    // Fallback for unknown characters (e.g., custom_XX that wasn't loaded)
+    if (!senderChar) {
+        console.warn(`Unknown character: ${item.sender}, using fallback`);
+        senderChar = {
+            name: item.sender,
+            avatar: 'assets/avatars/person1.png',
+            side: 'left'
+        };
+    }
+    
+    const isLeft = senderChar.side === "left";
     
     // Time Divider Handling
     if (item.sender === 'time_divider') {

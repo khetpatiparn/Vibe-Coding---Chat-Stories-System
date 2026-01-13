@@ -303,7 +303,7 @@
 
     <!-- AI Continue Settings Modal -->
     <div id="modal-continue-settings" class="modal hidden">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content" style="max-width: 800px;">
             <h2>✨ AI Story Continuation</h2>
             <p class="modal-subtitle">Let AI write the next scene for you.</p>
 
@@ -311,6 +311,27 @@
                 <label>Who is in this scene?</label>
                 <div class="character-selector" id="continue-character-selector">
                     <!-- Checkboxes injected here -->
+                </div>
+            </div>
+
+            <!-- New Controls: Length & Mode -->
+            <div class="form-group" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                <div>
+                    <label>Length</label>
+                    <select id="continue-length"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                        <option value="short">Short (5-10 lines)</option>
+                        <option value="medium" selected>Medium (10-20 lines)</option>
+                        <option value="long">Long (20+ lines)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Mode</label>
+                    <select id="continue-mode"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                        <option value="normal" selected>Normal Flow</option>
+                        <option value="wrap_up">Wrap Up / Conclusion</option>
+                    </select>
                 </div>
             </div>
 
