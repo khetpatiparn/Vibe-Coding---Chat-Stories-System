@@ -161,8 +161,8 @@ app.put('/api/projects/:id', async (req, res) => {
 // 3. Update Dialogue
 app.put('/api/dialogues/:id', async (req, res) => {
     try {
-        const { message, sender, camera_effect } = req.body;
-        await Dialogue.updateAll(req.params.id, { message, sender, camera_effect });
+        const { message, sender } = req.body;
+        await Dialogue.updateAll(req.params.id, { message, sender });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -180,8 +180,7 @@ app.post('/api/projects/:id/dialogues', async (req, res) => {
             sender: sender || 'me',
             message: message || '...',
             delay: 1.0,
-            typing_speed: 'normal',
-            camera_effect: 'normal'
+            typing_speed: 'normal'
         };
         
         // We need to know the order (sequence). Ideally frontend sends it or we find max.
@@ -406,8 +405,7 @@ app.post('/api/generate', async (req, res) => {
                 sender: d.sender,
                 message: d.message,
                 delay: d.delay || 1.0,
-                typing_speed: d.typing_speed || 'normal',
-                camera_effect: d.camera_effect || 'normal'
+                typing_speed: d.typing_speed || 'normal'
             }, i);
         }
         
@@ -437,7 +435,7 @@ app.post('/api/generate/continue', async (req, res) => {
         }
 
         // 2. Call AI
-        const newDialogues = await continueStory(topic, recentDialogues);
+        const newDialogues = await continueStory(topic, recentDialogues, characters);
         
         res.json({ success: true, dialogues: newDialogues });
         
@@ -558,7 +556,6 @@ app.post('/api/import', async (req, res) => {
                 delay: d.delay || 1.0,
                 reaction_delay: d.reaction_delay || 0.5,
                 typing_speed: d.typing_speed || 'normal',
-                camera_effect: d.camera_effect || 'normal',
                 image_path: d.image_path || null
             }, d.seq_order !== undefined ? d.seq_order : order++);
         }
@@ -626,7 +623,6 @@ app.post('/api/projects/:id/import', async (req, res) => {
                 delay: d.delay || 1.0,
                 reaction_delay: d.reaction_delay || 0.5,
                 typing_speed: d.typing_speed || 'normal',
-                camera_effect: d.camera_effect || 'normal',
                 image_path: d.image_path || null
             }, d.seq_order !== undefined ? d.seq_order : order++);
         }

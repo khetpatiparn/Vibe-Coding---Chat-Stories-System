@@ -132,10 +132,7 @@ class ChatStory {
     // 3. Play Sound (Skip if instant)
     if (!isInstant) this.playSound('pop');
 
-    // 4. Apply Camera Effect (Skip if instant or 'normal')
-    if (!isInstant && item.camera_effect && item.camera_effect !== 'normal') {
-        this.triggerEffect(item.camera_effect);
-    }
+
 
     // 5. Scroll to bottom
     this.scrollToBottom();
@@ -288,37 +285,7 @@ class ChatStory {
     }
   }
 
-  triggerEffect(effectName) {
-    const parentFrame = document.getElementById('phone-frame') || document.body;
-    const cameraWrapper = document.getElementById('camera-wrapper'); /* Need this for standard effects */
 
-    // Reset previous states
-    if (cameraWrapper) cameraWrapper.className = ''; 
-    parentFrame.classList.remove('effect-active-cinematic'); 
-
-    // 1. Handle Cinematic Focus (Tension & Release)
-    if (effectName === 'zoom_in' || effectName === 'zoom-in') {
-        // Tension: Squeeze & Zoom
-        parentFrame.classList.add('effect-active-cinematic');
-        
-        // Release: Auto-remove after 2.5s
-        setTimeout(() => {
-            parentFrame.classList.remove('effect-active-cinematic');
-        }, 2500);
-        return; 
-    } 
-    
-    // 2. Handle Other Effects (standard)
-    if (effectName && effectName !== 'normal' && cameraWrapper) {
-        const className = `effect-${effectName}`;
-        cameraWrapper.classList.add(className);
-
-        // Remove after animation ends
-        setTimeout(() => {
-            cameraWrapper.classList.remove(className);
-        }, 600);
-    }
-  }
 
   scrollToBottom() {
     this.container.scrollTop = this.container.scrollHeight;
@@ -373,8 +340,8 @@ const sampleStory = {
     me: { name: "เรา", avatar: "../../assets/avatars/employee.png", side: "right" }
   },
   dialogues: [
-    { sender: "boss", message: "ระบบพร้อมใช้งานแล้ว!", delay: 1, camera_effect: "zoom_in" },
-    { sender: "me", message: "เยี่ยมเลยครับ", delay: 1, camera_effect: "normal" }
+    { sender: "boss", message: "ระบบพร้อมใช้งานแล้ว!", delay: 1 },
+    { sender: "me", message: "เยี่ยมเลยครับ", delay: 1 }
   ]
 };
 

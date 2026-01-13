@@ -238,14 +238,13 @@ ${personalityDescriptions.join('\n')}
       "sender": "${characters[0]}",
       "message": "ข้อความ",
       "delay": 1.0,
-      "typing_speed": "normal",
-      "camera_effect": "normal"
+      "typing_speed": "normal"
     }
   ]
 }
 
 typing_speed: slow (ช้า ดราม่า), normal (ปกติ), fast (เร็ว ตื่นเต้น)
-camera_effect: normal, zoom_in (ซูมเข้า), shake (สั่น), zoom_shake (ซูม+สั่น), darken (มืด)
+
 
 ตอบ JSON เท่านั้น ไม่ต้องอธิบายเพิ่ม`;
 
@@ -348,10 +347,13 @@ async function generateMultipleStories(count = 5, category = 'funny') {
 }
 
 // Generate continuation of story
-async function continueStory(prompt, existingDialogues = []) {
+async function continueStory(prompt, existingDialogues = [], availableCharacters = []) {
     // Format existing dialogues for context
     const history = existingDialogues.map(d => `${d.sender}: ${d.message}`).join('\n');
     
+    // Explicit list of allowed characters
+    const characterList = availableCharacters.length > 0 ? availableCharacters.join(', ') : 'me, boss';
+
     const systemPrompt = `You are a screenwriter for a chat story.
     You will be given a history of a conversation and a prompt for what happens next.
     Generate the next 3-5 dialogues to continue the story.
@@ -367,6 +369,7 @@ async function continueStory(prompt, existingDialogues = []) {
     - Keep messages short and natural (chat style).
     - Use Thai slang/style if the previous context is in Thai.
     - Senders must match the existing characters provided in context or be generic "me", "boss".
+    - IMPORTANT: The characters currently in this scene are: [${characterList}]. You can and should use these characters, even if they do not appear in the previous history.
     `;
 
     const userMessage = `

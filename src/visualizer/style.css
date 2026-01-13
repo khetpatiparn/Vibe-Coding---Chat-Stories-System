@@ -349,57 +349,7 @@ body.rendering .message.right {
   animation-delay: 0.4s;
 }
 
-/* ============================================
-   Camera Effects
-   ============================================ */
 
-/* Cinematic Bars (Letterboxing) - Tension & Release */
-.cinematic-bar {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 0%;
-  background-color: black;
-  z-index: 99;
-  transition: height 0.8s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-#cinematic-bar-top {
-  top: 80px; /* Below header */
-}
-
-#cinematic-bar-bottom {
-  bottom: 0;
-}
-
-/* Active Cinematic State (Tension) */
-.effect-active-cinematic .cinematic-bar {
-  height: 15%; /* Squeeze screen more */
-}
-
-.effect-active-cinematic #camera-wrapper {
-  transform: scale(1.15) translateY(-5%); /* Zoom & Shift Up */
-  filter: contrast(1.1) saturate(1.2); /* Boost tension */
-  transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-/* Standard Effects */
-.effect-zoom-in {
-  /* Legacy/Fallback if needed, but logic currently maps 'zoom_in' to cinematic class */
-  transform: scale(1.3);
-}
-
-.effect-zoom-shake {
-  animation: zoomShake 0.5s ease-in-out;
-}
-
-.effect-shake {
-  animation: shake 0.5s ease-in-out;
-}
-
-.effect-darken {
-  filter: brightness(0.5);
-}
 
 /* ============================================
    Animations
@@ -427,46 +377,7 @@ body.rendering .message.right {
   }
 }
 
-@keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  10%,
-  30%,
-  50%,
-  70%,
-  90% {
-    transform: translateX(-5px);
-  }
-  20%,
-  40%,
-  60%,
-  80% {
-    transform: translateX(5px);
-  }
-}
 
-@keyframes zoomShake {
-  0% {
-    transform: scale(1);
-  }
-  20% {
-    transform: scale(1.3) translateX(-3px);
-  }
-  40% {
-    transform: scale(1.3) translateX(3px);
-  }
-  60% {
-    transform: scale(1.3) translateX(-3px);
-  }
-  80% {
-    transform: scale(1.3) translateX(3px);
-  }
-  100% {
-    transform: scale(1.3) translateX(0);
-  }
-}
 
 /* Cursor Blink for Typing */
 .typing-cursor {

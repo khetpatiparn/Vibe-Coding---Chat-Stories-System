@@ -51,7 +51,6 @@ function initSchema() {
             delay REAL,
             reaction_delay REAL DEFAULT 0.5,
             typing_speed TEXT,
-            camera_effect TEXT,
             seq_order INTEGER,
             image_path TEXT,
             FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -279,10 +278,10 @@ const Character = {
 const Dialogue = {
     add: (projectId, data, order) => {
         return new Promise((resolve, reject) => {
-            const { sender, message, delay, typing_speed, camera_effect } = data;
-            db.run(`INSERT INTO dialogues (project_id, sender, message, delay, typing_speed, camera_effect, seq_order) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)`, 
-                [projectId, sender, message, delay, typing_speed, camera_effect, order], function(err) {
+            const { sender, message, delay, typing_speed } = data;
+            db.run(`INSERT INTO dialogues (project_id, sender, message, delay, typing_speed, seq_order) 
+                VALUES (?, ?, ?, ?, ?, ?)`, 
+                [projectId, sender, message, delay, typing_speed, order], function(err) {
                 if (err) reject(err);
                 else resolve(this.lastID);
             });
@@ -301,7 +300,7 @@ const Dialogue = {
     updateData: (id, updates) => {
         return new Promise((resolve, reject) => {
             const keys = Object.keys(updates).filter(k => 
-                ['sender', 'message', 'delay', 'reaction_delay', 'typing_speed', 'camera_effect', 'image_path'].includes(k)
+                ['sender', 'message', 'delay', 'reaction_delay', 'typing_speed', 'image_path'].includes(k)
             );
             
             if (keys.length === 0) return resolve(0);
@@ -400,7 +399,6 @@ async function exportStoryJSON(projectId) {
         delay: d.delay,
         reaction_delay: d.reaction_delay, // [NEW] Reaction Time
         typing_speed: d.typing_speed,
-        camera_effect: d.camera_effect,
         seq_order: d.seq_order,
         image_path: d.image_path // [NEW] Image Support
     }));

@@ -508,7 +508,7 @@ function exportProjectAsJSON() {
             delay: d.delay,
             reaction_delay: d.reaction_delay,
             typing_speed: d.typing_speed,
-            camera_effect: d.camera_effect,
+            typing_speed: d.typing_speed,
             seq_order: d.seq_order,
             image_path: d.image_path
         }))
@@ -921,7 +921,6 @@ function renderDialogues(dialogues, characters) {
                     oninput="autoResize(this)" placeholder="Type a message..."
                     onchange="updateDialogue(this, ${index}, ${d.id})">${d.message}</textarea>
                 <div class="dialogue-meta">
-                    <span class="meta-tag" onclick="cycleEffect(${index}, ${d.id})">🎥 ${d.camera_effect}</span>
                     
                     <!-- Reaction Control (New) -->
                     <div class="reaction-control" style="display:inline-flex; align-items:center; gap:5px; margin-left:10px;">
@@ -1346,8 +1345,7 @@ async function performEditSender(id, newSender, index) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 sender: newSender,
-                message: currentDlg.message,
-                camera_effect: currentDlg.camera_effect
+                message: currentDlg.message
             })
         });
         
@@ -1374,8 +1372,7 @@ window.updateDialogue = async function(textarea, index, id) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 message: val,
-                sender: dlg.sender,
-                camera_effect: dlg.camera_effect
+                sender: dlg.sender
             })
         });
 
@@ -1386,42 +1383,7 @@ window.updateDialogue = async function(textarea, index, id) {
    } catch(e) { console.error(e); }
 }
 
-// Camera Effects List (matches style.css classes)
-const CAMERA_EFFECTS = ['normal', 'zoom-in', 'zoom-shake', 'shake', 'darken'];
 
-window.cycleEffect = async function(index, id) {
-    const dialogue = currentDialogues[index];
-    if (!dialogue) return;
-    
-    // Get current effect and cycle to next
-    const currentEffect = dialogue.camera_effect || 'normal';
-    const currentIndex = CAMERA_EFFECTS.indexOf(currentEffect);
-    const nextIndex = (currentIndex + 1) % CAMERA_EFFECTS.length;
-    const newEffect = CAMERA_EFFECTS[nextIndex];
-    
-    // Update local state
-    dialogue.camera_effect = newEffect;
-    
-    // Update UI element text (meta-tag with camera emoji)
-    const effectSpan = document.querySelector(`.dialogue-item[data-id="${id || dialogue.id}"] .meta-tag`);
-    if (effectSpan) {
-        effectSpan.textContent = `🎥 ${newEffect}`;
-    }
-    
-    // Save to database
-    try {
-        await fetch(`${API_BASE}/projects/${currentProject}/dialogues/${dialogue.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ camera_effect: newEffect })
-        });
-        reloadPreview();
-        showToast(`Effect: ${newEffect}`, 'success');
-    } catch (err) {
-        console.error('Failed to save effect:', err);
-        showToast('Failed to save effect', 'error');
-    }
-}
 
 
 function reloadPreview() {
