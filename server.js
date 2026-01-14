@@ -375,9 +375,9 @@ app.post('/api/projects/:id/set_main_character', async (req, res) => {
 // 4. Generate New Story (AI)
 app.post('/api/generate', async (req, res) => {
     try {
-        const { category, characters, characterData, customPrompt, projectId } = req.body;
+        const { category, characters, characterData, customPrompt, projectId, relationship } = req.body;
         
-        console.log('Generating story with settings:', { category, characters, customPrompt, projectId });
+        console.log('Generating story with settings:', { category, characters, customPrompt, projectId, relationship });
         console.log('Character data:', characterData);
         
         let targetProjectId = projectId;
@@ -391,8 +391,9 @@ app.post('/api/generate', async (req, res) => {
         const story = await generateStory({
             category: category || 'funny',
             characters: characters || ['me', 'boss'],
-            characterData: characterData || [], // NEW - Pass character data to AI
-            customPrompt: customPrompt || null
+            characterData: characterData || [],
+            customPrompt: customPrompt || null,
+            relationship: relationship || 'friend'  // V2.0: Pass relationship
         });
         
         // Clear existing dialogues if generating for existing project
@@ -452,7 +453,7 @@ app.post('/api/generate', async (req, res) => {
 // 4.1 Generate Continuation (AI)
 app.post('/api/generate/continue', async (req, res) => {
     try {
-        const { projectId, characters, topic, length, mode } = req.body;
+        const { projectId, characters, topic, length, mode, relationship } = req.body;
         
         // 1. Fetch all custom characters to build name mapping
         const customChars = await CustomCharacter.getAll();
@@ -496,8 +497,8 @@ app.post('/api/generate/continue', async (req, res) => {
         // Convert selected character IDs to display names for AI
         const characterNames = characters.map(id => idToName[id] || id);
         
-        // 3. Call AI with display names
-        const newDialogues = await continueStory(topic, dialoguesWithNames, characterNames, length, mode);
+        // 3. Call AI with display names and relationship (V2.0)
+        const newDialogues = await continueStory(topic, dialoguesWithNames, characterNames, length, mode, relationship || 'friend');
         
         // 4. Convert AI response back to internal IDs
         const dialoguesWithIds = newDialogues.map(d => ({

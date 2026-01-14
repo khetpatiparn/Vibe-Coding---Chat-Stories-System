@@ -1,6 +1,6 @@
 /**
- * AI Screenwriter - Gemini API Integration
- * Generates chat story scripts using Google Gemini
+ * AI Screenwriter V2.0 - Thai Chat Simulator
+ * Advanced role-play engine with hyper-realistic Thai linguistics
  */
 
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
@@ -16,96 +16,107 @@ if (!GEMINI_API_KEY) {
     process.exit(1);
 }
 
-// Initialize Gemini with multiple fallback models
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Model priority list (from best to most quota-friendly)
-// Gemini 3 Pro (best) → Gemini 3 Flash (fast) → Gemini 2.5 (stable)
 const MODEL_PRIORITY = [
-    'gemini-3-pro-preview',       // Best - Latest generation
-    'gemini-3-flash-preview',     // Fast and smart
-    'gemini-2.5-flash',           // Stable, good price/performance
-    'gemini-2.5-pro',             // Pro fallback
-    'gemini-2.5-flash-lite'       // Last resort
+    'gemini-3-pro-preview',
+    'gemini-3-flash-preview',
+    'gemini-2.5-flash',
+    'gemini-2.5-pro',
+    'gemini-2.5-flash-lite'
 ];
 
 let currentModelIndex = 0;
 let model = genAI.getGenerativeModel({ model: MODEL_PRIORITY[currentModelIndex] });
 
 // ============================================
-// Story Categories
+// Enhanced Categories (V2.0)
 // ============================================
 const CATEGORIES = {
-    auto: 'ธรรมชาติ ปล่อยไหล ตามเนื้อเรื่อง',
-    funny: 'ตลก ขำๆ มุกแป้ก',
-    drama: 'ดราม่า อกหัก เศร้า',
-    horror: 'สยองขวัญ ผี หลอน',
-    office: 'ชีวิตออฟฟิศ บอสดุ',
-    love: 'รักหวานแหวว จีบกัน',
-    tie_in: 'เนียนขายของ ธรรมชาติ'
+    // Basic Moods
+    auto: 'ธรรมชาติ ปล่อยไหล (Natural Flow)',
+    funny: 'ตลก โบ๊ะบ๊ะ (Comedy/Sitcom)',
+    drama: 'ดราม่า เคลียร์ใจ (Conflict/Drama)',
+    horror: 'เรื่องหลอน The Ghost Radio (Horror/Mystery)',
+    office: 'ชีวิตออฟฟิศ บอสดุ (Office Life)',
+    love: 'จีบกัน หวานๆ (Romance/Flirting)',
+    
+    // New: Social Actions
+    gossip: 'เม้าท์มอย นินทา (Gossiping/Tea Spilling)',
+    consult: 'ปรึกษาปัญหาชีวิต (Life Advice/Consulting)',
+    fight: 'ด่ากัน ทะเลาะรุนแรง (Argument/Confrontation)',
+    debate: 'ถกประเด็นดราม่าสังคม (Social Debate/Trending)',
+    tie_in: 'เนียนขายของ (Natural Tie-in)'
 };
 
 // ============================================
-// Prompt Template
+// Relationship Dynamics (V2.0)
 // ============================================
-function buildPrompt(category, affiliateProduct = null, characters = ['me', 'boss'], customPrompt = null, characterData = []) {
-    const categoryInstructions = {
-        auto: 'Respond naturally according to the situation, topic, and character personalities. Let the tone emerge organically from the context - could be funny, serious, emotional, or casual depending on the topic.',
-        funny: 'สร้างเรื่องตลก สนุกสนาน มีมุกเสี่ยว แต่ให้ดูเป็นธรรมชาติ',
-        drama: 'สร้างเรื่องดราม่า มีความขัดแย้ง ตึงเครียด อารมณ์หนักๆ',
-        horror: 'สร้างเรื่องหลอน น่ากลัว มีบรรยากาศสยองขวัญ ลึกลับ',
-        office: 'สร้างเรื่องในพื้นที่ออฟฟิศ กับเจ้านาย ใช้สแลงทำงาน',
-        love: 'สร้างเรื่องความรัก หวานหยิบ มีโรแมนติก'
-    };
+const RELATIONSHIPS = {
+    stranger: 'คนแปลกหน้า - Use polite, distant, formal pronouns (คุณ/ผม/ดิฉัน)',
+    colleague: 'เพื่อนร่วมงาน - Semi-formal, office particles (ครับ/ค่ะ/พี่/น้อง)',
+    friend: 'เพื่อนทั่วไป - Casual, mixture of polite and slang',
+    close_friend: 'เพื่อนสนิท/The Gang - Rude/Slang allowed (กู/มึง), No filters',
+    couple: 'แฟน/คู่รัก - Affectionate, Teasing, Pet names (ตัวเอง/ที่รัก/บ๊ะ)',
+    enemy: 'คู่กัด/คนไม่ถูกกัน - Sarcastic, Passive-aggressive, Short replies'
+};
+
+// ============================================
+// Master Prompt Builder (V2.0)
+// ============================================
+function buildPrompt(category, affiliateProduct = null, characters = ['me', 'boss'], customPrompt = null, characterData = [], relationship = 'friend') {
     
+    // Category -> Detailed Direction
+    const categoryInstructions = {
+        auto: 'Focus on natural flow. Let the topic dictate the tone.',
+        funny: 'Situation: Hilarious misunderstanding or chaotic event. Tone: Playful, high energy, lots of "555".',
+        drama: 'Situation: Emotional conflict or sad news. Tone: Serious, heavy, shorter sentences, pauses "...".',
+        horror: 'Situation: Sharing a scary experience or sensing something paranormal. Tone: Suspenseful, hesitant, panicked.',
+        office: 'Situation: Office life drama, deadlines, annoying colleagues. Tone: Mix of formal and frustration.',
+        love: 'Situation: Flirting or deep romantic talk. Tone: Sweet, shy, or bold depending on character.',
+        gossip: 'Situation: Secretly talking about someone else (Third party). Tone: Exciting, "Tea Spilling", whispered vibe.',
+        consult: 'Situation: Character A has a dilemma, Character B gives advice. Tone: Supportive but real/direct.',
+        fight: 'Situation: Heated argument. Tone: Aggressive, rude (if close), sarcastic, defensive. Use "Rapid Fire".',
+        debate: 'Situation: Discussing a hot trending topic. Tone: Opinionated, passionate, logical vs emotional.'
+    };
+
     let instruction = categoryInstructions[category] || categoryInstructions['auto'];
 
-    // Tie-In (New Mode)
+    // Tie-In Logic
     if (category === 'tie_in') {
-        const productInfo = customPrompt || 'สินค้าหรือบริการ (Product/Service)';
-        instruction = `CONTEXT: Two close friends are chatting. The conversation must be entertaining (funny or dramatic) on its own.
-
-THE PRODUCT: ${productInfo}
-
-RULE 1 (The Setup): Start with a relatable life situation or problem (e.g., waiting for someone, feeling tired, skin breakout, hungry). Do NOT mention the product immediately.
-RULE 2 (The Tie-in): Midway through, Character B casually mentions the product as a personal recommendation or a 'life hack' they just found.
-RULE 3 (The Flow): Character A should react naturally (e.g., 'Really? Is it good?' or 'Send me the link').
-RULE 4 (The Anti-Sales): Do NOT use phrases like 'Buy now', 'Special promotion', or 'I highly recommend'. Use phrases like 'I tried this, it's kinda cool', 'It saved my life yesterday'.
-
-GOAL: The viewer should feel like they are eavesdropping on a real conversation, not watching an ad.`;
+        const productInfo = customPrompt || 'สินค้า';
+        instruction = `CONTEXT: Casual chat turning into a product mention.
+PRODUCT: ${productInfo}
+RULES:
+1. Start with related problem (ง่วง/หิว/ผิวแห้ง)
+2. Casual mention: "เพิ่งลอง...", "อันนี้โอเคนะ"
+3. NO hard sell: ห้ามใช้ "โปรโมชั่น", "ซื้อเลย", "แนะนำ"
+4. Friend reacts naturally: "จริงป่ะ", "ส่งลิงค์มา"`;
     }
-    
-    // Build character map (default characters)
+
+    // Build character map
     const defaultCharacterMap = {
         'me': { name: 'ฉัน', avatar: 'assets/avatars/person1.png', side: 'right' },
         'boss': { name: 'เจ้านาย', avatar: 'assets/avatars/boss.png', side: 'left' }
     };
     
-    // Build character list for prompt (display names)
+    // Build character names for prompt
     const characterNames = characters.map(charId => {
-        // Check if custom character
         const customChar = characterData.find(c => c.id === charId && c.is_custom);
-        if (customChar) {
-            return customChar.display_name;
-        }
-        
-        // Default character
+        if (customChar) return customChar.display_name;
         return defaultCharacterMap[charId]?.name || charId;
     });
     
     const selectedCharsText = characterNames.join(', ');
     
-    // Determine who is on the Right (POV)
-    // If 'me' is present, 'me' is right. Otherwise, the distinct first character is right.
+    // Determine POV side
     const rightSideCharId = characters.includes('me') ? 'me' : characters[0];
 
-    // Build character JSON for output
+    // Build character JSON
     const characterJSON = {};
     characters.forEach(charId => {
-        // Check if custom character
         const customChar = characterData.find(c => c.id === charId && c.is_custom);
-        
-        // Determine side
         let side = 'left';
         if (charId === rightSideCharId) side = 'right';
         else if (defaultCharacterMap[charId]) side = defaultCharacterMap[charId].side;
@@ -117,7 +128,6 @@ GOAL: The viewer should feel like they are eavesdropping on a real conversation,
                 side: side
             };
         } else if (defaultCharacterMap[charId]) {
-            // Override side if it's the chosen POV
             characterJSON[charId] = {
                 ...defaultCharacterMap[charId],
                 side: side
@@ -125,39 +135,63 @@ GOAL: The viewer should feel like they are eavesdropping on a real conversation,
         }
     });
     
-    // ============================================
-    // ADVANCED ROLE-PLAY ENGINE SYSTEM PROMPT
-    // ============================================
-    
-    // Build System Instruction (Core AI Behavior)
-    const systemInstruction = `### SYSTEM INSTRUCTION ###
+    // ==========================================================================================
+    // MASTER SYSTEM PROMPT V2.0
+    // ==========================================================================================
+    const systemInstruction = `### SYSTEM INSTRUCTION: THAI CHAT SIMULATOR V2.0 ###
 
-You are an advanced role-play engine designed to generate realistic, human-like Thai chat conversations.
+You are an AI Screenwriter expert in "Thai Social Media Linguistics" (ภาษาแชทวัยรุ่น).
+Your goal is to generate a chat log that looks **100% Authentic**, not like a robot translation.
 
-**CORE OBJECTIVE:**
-Generate a conversation that flows naturally based *strictly* on the provided "Topic/Scenario" and the relationship between the "Characters". Do NOT force a specific tone (like funny or dramatic) unless the topic calls for it.
-
-**DYNAMIC TONE ANALYSIS (Internal Step):**
-Before generating, analyze the inputs:
-1. **Analyze Relationship:** Are they friends? (Use casual slang/rude words). Are they Boss/Subordinate? (Use polite/formal language).
-2. **Analyze Sentiment:** Look at the "Topic".
-   - If the topic is sad (e.g., "แมวตาย", "เลิกกับแฟน") -> Set Tone to: Sad, Empathetic.
-   - If the topic is exciting (e.g., "ถูกหวย", "ได้งานใหม่") -> Set Tone to: Excited, Hyper, use 55555.
-   - If the topic is work-related (e.g., "ประชุม", "งานด่วน") -> Set Tone to: Professional, maybe bored.
-   - If the topic is casual (e.g., "กินอะไรดี") -> Set Tone to: Chill, relaxed.
-
-**STYLE GUIDELINES (Based on Human-like Speech):**
-1. **Imperfections:** Real humans make typos, use filler words (e.g., อืมม, เอ้อ, อะ, แบบว่า), and don't always use perfect grammar. ADD THESE.
-2. **Length:** Keep messages SHORT and punchy, like a real chat app (LINE/Messenger). Avoid long paragraphs. 1-2 sentences per message MAX.
-3. **No Robot-Speak:** Never use phrases like "มีอะไรให้ช่วยไหม?" or formal customer service language. Act purely as the character.
-4. **Reaction:** If something surprising happens, react emotionally (e.g., "WTF?!", "อะไรวะ?!", "55555", "จริงป่ะ??").
-5. **Thai Chat Style:** Use Thai internet slang: 555, มึง/กู (between close friends), นะ, อ่ะ, ป่ะ, มั้ย, etc.
-
-**ABSOLUTELY NO EMOJI.** Real Thai people rarely use emoji in casual chat.`;
-
-    let promptText = `${systemInstruction}
+**RELATIONSHIP CONTEXT:** ${RELATIONSHIPS[relationship] || RELATIONSHIPS['friend']}
+*Adjust politeness level (Register) and pronouns (กู/มึง vs เรา/เธอ vs คุณ/ผม) based on this.*
 
 ---
+
+**LINGUISTIC RULES (STRICT - ต้องทำตาม):**
+
+1. **"Written Speech" (ภาษาพูดที่ใช้พิมพ์):**
+   - NEVER use textbook Thai grammar. Write EXACTLY how it sounds.
+   - ✅ YES: "ม่ายยย", "ช่ะ", "ป่าว", "อัลไล", "ก้อ", "เนี่ย", "ด้าย", "คร้าบบ", "ค่าา"
+   - ❌ NO: "ไม่", "ใช่ไหม", "หรือเปล่า", "อะไร", "ก็", "นี้", "ได้", "ครับ" (เว้นแต่ Formal context)
+
+2. **Emotional Spelling (ลากเสียง/กร่อนเสียง):**
+   - Use vowel elongation for emphasis: "หิววววว", "ง่วงงงง", "พีคคค", "ตายยยย"
+   - Tone mark manipulation: "งู้ยยย", "ย๊ากกก", "นอนนนน"
+
+3. **Typos & Imperfection (Humanizer):**
+   - Include intentional typos for speed: "พิมผิด", "โทดๆ", "แปป", "เดวๆ"
+   - Drop subjects/objects (Zero Anaphora): "กินยัง" (not "คุณกินข้าวหรือยัง")
+
+4. **Discourse Particles (คำลงท้าย - สำคัญมาก):**
+   - MUST end sentences with natural particles: อะ, วะ, เว้ย, นะ, นิ, หนิ, จ้า, ย่ะ, เบย, อ่ะ, ง่ะ
+   - Example: "งงอะดิ", "ได้ป่าววะ", "โอเคเลยจ้า", "ทำไมหนิ", "จะไปเหรอเนี่ย"
+
+5. **Code-Mixing (Thainglish) - For GenZ/Office:**
+   - Mix English words naturally when appropriate
+   - Example: "มันไม่ make sense อะ", "fail ว่ะ", "check แล้วนะ", "serious ป่ะเนี่ย"
+
+6. **Burstiness & Flow (ความเรียล):**
+   - Some messages should be very short (1-2 words only)
+   - Same sender can send 2-3 consecutive bubbles (Rapid Fire style)
+   - Don't take perfect turns - it's not a debate
+
+7. **NO GRAPHICAL EMOJI:**
+   - Use text expressions: "55555", "555+", "ถถถ", "?!?!", "...", "TT", "ㅠㅠ"
+   - NEVER use: 😂🤣😭💀 etc.
+
+---
+
+**TONE ADJUSTMENT by Register:**
+- **stranger/colleague:** Use ครับ/ค่ะ, คุณ/ผม, พี่/น้อง  
+- **friend:** Mix polite + casual, เรา/เธอ/นาย
+- **close_friend:** Rude words OK (กู, มึง, สัส, เหี้ย, แดก), slang (ตึงๆ, ฉ่ำ, บิด)
+- **couple:** Pet names (ตัวเอง, ที่รัก, บ๊ะ), flirty tone
+- **enemy:** Sarcastic, cold, passive-aggressive
+
+---`;
+
+    let promptText = `${systemInstruction}
 
 **SCENARIO:** ${instruction}
 
@@ -168,9 +202,8 @@ Before generating, analyze the inputs:
         const customChar = characterData.find(c => c.id === charId && c.is_custom);
         
         if (customChar && (customChar.gender || customChar.personality || customChar.speaking_style || customChar.age_group || customChar.occupation || customChar.catchphrase || customChar.dialect || customChar.typing_habit)) {
-            let desc = `- ${customChar.display_name}`;
+            let desc = `- **${customChar.display_name}**`;
             
-            // Age and Occupation in parentheses
             const identifiers = [];
             if (customChar.age_group) identifiers.push(customChar.age_group);
             if (customChar.occupation) identifiers.push(customChar.occupation);
@@ -179,34 +212,32 @@ Before generating, analyze the inputs:
             desc += ':';
             if (customChar.gender) desc += ` ${customChar.gender}.`;
             if (customChar.personality) desc += ` Personality: ${customChar.personality}.`;
-            if (customChar.speaking_style) desc += ` Speaking Style: ${customChar.speaking_style}.`;
+            if (customChar.speaking_style) desc += ` Style: ${customChar.speaking_style}.`;
             if (customChar.catchphrase) desc += ` Catchphrase: "${customChar.catchphrase}".`;
-            if (customChar.dialect) desc += ` Dialect: ${customChar.dialect} (MUST use regional vocabulary).`;
+            if (customChar.dialect) desc += ` Dialect: ${customChar.dialect} (ใช้คำภูมิภาค).`;
             if (customChar.typing_habit) {
                 if (customChar.typing_habit === 'rapid_fire') {
-                    desc += ` Typing: Rapid Fire (แตกเป็นหลายข้อความรัวๆ, 1-2 ประโยคต่อ bubble).`;
+                    desc += ` Typing: Rapid Fire (แตกข้อความรัวๆ 1-2 ประโยค/bubble).`;
                 } else if (customChar.typing_habit === 'long_paragraphs') {
-                    desc += ` Typing: Long (2-4 sentences per bubble).`;
+                    desc += ` Typing: Long (2-4 sentences/bubble).`;
                 }
             }
-            
             return desc;
         }
         return null;
     }).filter(d => d !== null);
     
-    // Add personality section if any custom characters have traits
     if (personalityDescriptions.length > 0) {
         promptText += `
 
-**CHARACTER PROFILES (Roleplay ตามนี้เป๊ะๆ):**
+**CHARACTER PROFILES (เล่นบทตามนี้เป๊ะๆ):**
 ${personalityDescriptions.join('\n')}
 
-**CHARACTER RULES:**
-1. ใช้ศัพท์ตามช่วงวัย: Gen Z = ฉ่ำ, ตึงๆ, นอยอ่า, ปัง | Boomer = จ๊ะ/จ้ะ, ทานข้าวรึยัง
-2. ใช้ศัพท์ตามอาชีพ: โปรแกรมเมอร์ = Debug, Error, Deploy | แม่ค้า = F มาจ้า, ตำเลย
-3. สอดแทรก Catchphrase อย่างเป็นธรรมชาติ (2-3 ครั้ง ไม่ใช่ทุกข้อความ)
-4. DIALECT (ถ้าระบุ): อีสาน = เฮ็ดอีหยัง, บ่, ตมจ | เหนือ = ยะหยัง, เจ้า, ก๊ะ | ใต้ = หนิ, ไอ้บ้า`;
+**CHARACTER LANGUAGE RULES:**
+1. ใช้ศัพท์ตามวัย: Gen Z = ฉ่ำ, ตึงๆ, นอยอ่า, ปัง, พัง | Boomer = จ๊ะ/จ้ะ, ทานข้าวรึยัง
+2. ใช้ศัพท์ตามอาชีพ: Programmer = Debug, Error, Deploy | แม่ค้า = F มาจ้า, ตำเลย
+3. Catchphrase สอดแทรก 2-3 ครั้ง (ไม่ใช่ทุกข้อความ)
+4. Dialect: อีสาน = เฮ็ดอีหยัง, บ่, ตมจ | เหนือ = ยะหยัง, เจ้า, ก๊ะ | ใต้ = หนิ, ไอ้บ้า`;
     }
 
     if (customPrompt && category !== 'tie_in') {
@@ -221,9 +252,10 @@ ${personalityDescriptions.join('\n')}
 
 **OUTPUT REQUIREMENTS:**
 - Generate 8-12 messages
-- Use natural Thai spoken language with typos and filler words
-- NO EMOJI at all
-- Keep each message SHORT (1-2 sentences max)
+- Use "Written Speech" Thai (NOT formal Thai)
+- NO EMOJI - Use 555, TT, ... instead
+- Keep messages SHORT (1-2 sentences max)
+- Same sender can appear consecutively (Burstiness)
 
 **JSON FORMAT:**
 {
@@ -239,8 +271,7 @@ ${personalityDescriptions.join('\n')}
   ]
 }
 
-typing_speed: slow (ช้า ดราม่า), normal (ปกติ), fast (เร็ว ตื่นเต้น)
-
+typing_speed: slow (ดราม่า หนักๆ), normal (ปกติ), fast (ตื่นเต้น รีบๆ)
 
 ตอบ JSON เท่านั้น ไม่ต้องอธิบายเพิ่ม`;
 
@@ -251,26 +282,24 @@ typing_speed: slow (ช้า ดราม่า), normal (ปกติ), fast (
 // Generate Story (with Auto-Retry and Fallback)
 // ============================================
 async function generateStory(options = {}) {
-    // Handle both old (string) and new (object) API
-    let category, characters, customPrompt, characterData;
+    let category, characters, customPrompt, characterData, relationship;
     
     if (typeof options === 'string') {
-        // Old API: generateStory('funny')
         category = options;
         characters = ['me', 'boss'];
         customPrompt = null;
         characterData = [];
+        relationship = 'friend';
     } else {
-        // New API: generateStory({ category, characters, customPrompt, characterData })
         category = options.category || 'funny';
         characters = options.characters || ['me', 'boss'];
         customPrompt = options.customPrompt || null;
         characterData = options.characterData || [];
+        relationship = options.relationship || 'friend';
     }
     
-    const prompt = buildPrompt(category, null, characters, customPrompt, characterData);
+    const prompt = buildPrompt(category, null, characters, customPrompt, characterData, relationship);
     
-    // Try multiple models in priority order
     for (let modelIndex = 0; modelIndex < MODEL_PRIORITY.length; modelIndex++) {
         const currentModel = MODEL_PRIORITY[modelIndex];
         
@@ -282,20 +311,15 @@ async function generateStory(options = {}) {
             const response = result.response;
             let text = response.text();
             
-            // Clean up response (remove markdown code blocks if any)
             text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            
-            // Parse JSON
             const story = JSON.parse(text);
             
-            // Validate structure
             if (!story.title || !story.characters || !story.dialogues) {
                 throw new Error('Invalid story structure');
             }
             
             console.log(`✅ Story generated successfully with ${currentModel}`);
             
-            // Update global model for future calls
             model = modelInstance;
             currentModelIndex = modelIndex;
             
@@ -342,57 +366,64 @@ async function generateMultipleStories(count = 5, category = 'funny') {
     return stories;
 }
 
-// Generate continuation of story
-async function continueStory(prompt, existingDialogues = [], availableCharacters = [], length = 'medium', mode = 'normal') {
-    // Format existing dialogues for context
+// ============================================
+// Continue Story (V2.0 Enhanced)
+// ============================================
+async function continueStory(prompt, existingDialogues = [], availableCharacters = [], length = 'medium', mode = 'normal', relationship = 'friend') {
     const history = existingDialogues.map(d => `${d.sender}: ${d.message}`).join('\n');
-    
-    // Explicit list of allowed characters
-    const characterList = availableCharacters.length > 0 ? availableCharacters.join(', ') : 'me, boss';
+    const characterList = availableCharacters.length > 0 ? availableCharacters.join(', ') : 'ฉัน, เจ้านาย';
 
     // Length Instruction
     let lengthInstruction = 'Generate 10-20 dialogues.';
     if (length === 'short') lengthInstruction = 'Generate 5-10 dialogues. Keep it brief.';
-    if (length === 'long') lengthInstruction = 'Generate at least 20 dialogues. detailed and deep conversation.';
+    if (length === 'long') lengthInstruction = 'Generate at least 20 dialogues. Detailed conversation.';
 
     // Mode Instruction
     let modeInstruction = 'Continue the flow naturally.';
-    if (mode === 'wrap_up') modeInstruction = 'IMPORTANT: The user wants to end this scene. Steer the conversation towards a conclusion, resolution, or a dramatic cliffhanger. Do NOT leave it open-ended.';
+    if (mode === 'wrap_up') modeInstruction = 'IMPORTANT: Wrap up this scene. Steer towards conclusion/cliffhanger. Do NOT leave open-ended.';
 
-    const systemPrompt = `You are a screenwriter for a Thai chat story.
-    You will be given a history of a conversation and a prompt for what happens next.
-    ${lengthInstruction}
-    ${modeInstruction}
-    Return ONLY a JSON array of objects with "sender" and "message".
-    
-    Example:
-    [
-        {"sender": "ฉัน", "message": "ทำไมทำแบบนั้นอ่ะ"},
-        {"sender": "เจ้านาย", "message": "ไม่มีทางเลือกอ่ะ"}
-    ]
-    
-    Rules:
-    - Keep messages short and natural (Thai chat style).
-    - Use Thai slang/style: 555, มึง/กู, นะ, อ่ะ, ป่ะ, มั้ย, etc.
-    - Senders must EXACTLY match the character names provided (in Thai).
-    - IMPORTANT: The characters currently in this scene are: [${characterList}]. Use ONLY these names as senders.
-    - CRITICAL: When mentioning someone's name in the message text, use THAI spelling only. Example: "เจ" not "Jay", "พีพี" not "PP".
-    - NO English names or words when referring to people. Thai nicknames only.
-    `;
+    const systemPrompt = `### THAI CHAT CONTINUATION ENGINE V2.0 ###
 
-    const userMessage = `
-    Context (History):
-    ${history}
-    
-    Instruction/Prompt:
-    ${prompt || 'Continue the conversation naturally.'}
-    
-    Generate JSON:
-    `;
+You are continuing a Thai chat conversation. ${lengthInstruction} ${modeInstruction}
+
+**RELATIONSHIP:** ${RELATIONSHIPS[relationship] || RELATIONSHIPS['friend']}
+
+**LINGUISTIC RULES (MUST FOLLOW):**
+
+1. **Written Speech:** Use phonetic Thai, NOT textbook Thai
+   - ✅ "ม่าย", "ช่ะ", "ป่าววะ", "อัลไล", "ก้อ", "โอเคเลยจ้า"
+   - ❌ "ไม่", "ใช่ไหม", "อะไร", "ก็", "โอเค"
+
+2. **Particles:** End with อะ, วะ, นะ, จ้า, เว้ย, หนิ, เบย, ง่ะ, อะดิ
+
+3. **Burstiness:** Same sender can send 2-3 consecutive short messages
+
+4. **NO EMOJI** - Use 555, TT, ... instead
+
+5. **Thai Names Only:** When mentioning names, use THAI spelling
+   - ✅ "เจ", "พีพี", "บิ๊กมิ้ง"  
+   - ❌ "Jay", "PP", "Bigming"
+
+**CHARACTERS IN SCENE:** [${characterList}]
+Use ONLY these names as senders. Match exactly.
+
+**OUTPUT:** JSON array ONLY
+[
+    {"sender": "ชื่อไทย", "message": "ข้อความ"},
+    {"sender": "ชื่อไทย", "message": "ข้อความ"}
+]
+`;
+
+    const userMessage = `Context (History):
+${history}
+
+Instruction:
+${prompt || 'Continue the conversation naturally.'}
+
+Generate JSON:`;
 
     let lastError = null;
 
-    // Use shared MODEL_PRIORITY for robust generation
     for (const modelName of MODEL_PRIORITY) {
         console.log(`🤖 Continue trying model: ${modelName}...`);
         
@@ -414,7 +445,6 @@ async function continueStory(prompt, existingDialogues = [], availableCharacters
         } catch (error) {
             console.warn(`⚠️ ${modelName} failed: ${error.message}`);
             lastError = error;
-            // Short delay before next model
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
     }
@@ -429,7 +459,8 @@ module.exports = {
     generateStory,
     generateMultipleStories,
     continueStory,
-    CATEGORIES
+    CATEGORIES,
+    RELATIONSHIPS
 };
 
 // ============================================

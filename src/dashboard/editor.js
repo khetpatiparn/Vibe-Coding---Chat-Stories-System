@@ -265,28 +265,29 @@ async function generateWithAI() {
     
     const customPrompt = document.getElementById('custom-prompt').value.trim();
     const category = document.getElementById('story-category').value;
+    const relationship = document.getElementById('story-relationship')?.value || 'friend';  // V2.0
     
     // Build character data with custom character info
     const characterData = selectedCharacters.map(charId => {
         if (charId.startsWith('custom_')) {
             const customId = parseInt(charId.replace('custom_', ''));
-            const custom = customCharacters.find(c => c.id === customId);
-            return custom ? {
-                id: charId,
-                name: custom.name,
-                display_name: custom.display_name,
-                avatar_path: custom.avatar_path,
-                is_custom: true,
-                // Personality fields for AI prompt
-                gender: custom.gender || null,
-                personality: custom.personality || null,
-                speaking_style: custom.speaking_style || null,
-                age_group: custom.age_group || null,
-                occupation: custom.occupation || null,
-                catchphrase: custom.catchphrase || null,
-                dialect: custom.dialect || null,
-                typing_habit: custom.typing_habit || null
-            } : null;
+            const customChar = customCharacters.find(c => c.id === customId);
+            if (customChar) {
+                return {
+                    id: charId,
+                    is_custom: true,
+                    display_name: customChar.display_name,
+                    avatar_path: customChar.avatar_path,
+                    gender: customChar.gender,
+                    personality: customChar.personality,
+                    speaking_style: customChar.speaking_style,
+                    age_group: customChar.age_group,
+                    occupation: customChar.occupation,
+                    catchphrase: customChar.catchphrase,
+                    dialect: customChar.dialect,
+                    typing_habit: customChar.typing_habit
+                };
+            }
         }
         return {
             id: charId,
@@ -308,7 +309,8 @@ async function generateWithAI() {
                 characters: selectedCharacters,
                 characterData: characterData, // NEW - Send full character data
                 customPrompt: customPrompt || null,
-                projectId: currentProject
+                projectId: currentProject,
+                relationship  // V2.0
             })
         });
         
@@ -1699,6 +1701,7 @@ async function generateContinuation() {
     const prompt = document.getElementById('continue-prompt').value.trim();
     const length = document.getElementById('continue-length').value;
     const mode = document.getElementById('continue-mode').value;
+    const relationship = document.getElementById('continue-relationship')?.value || 'friend';  // V2.0
 
     const btn = document.getElementById('btn-generate-continue');
     
@@ -1714,7 +1717,8 @@ async function generateContinuation() {
                 characters: selectedChars,
                 topic: prompt,
                 length: length,
-                mode: mode
+                mode: mode,
+                relationship  // V2.0
             })
         });
         

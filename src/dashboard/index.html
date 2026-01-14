@@ -266,20 +266,39 @@
                     style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px; font-family: inherit; resize: vertical;"></textarea>
             </div>
 
-            <div class="form-group">
-                <label>Mood & Tone</label>
-                <select id="story-category"
-                    style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
-                    <option value="auto">🌊 Natural / Auto (แนะนำ)</option>
-                    <option value="funny">😂 Funny (ตลก)</option>
-                    <option value="drama">😢 Drama (ดราม่า)</option>
-                    <option value="horror">👻 Horror (ผี)</option>
-                    <option value="office">💼 Office (ออฟฟิศ)</option>
-                    <option value="love">💕 Love (รัก)</option>
-                    <option value="tie_in">💰 Natural Tie-in (เนียนขายของ)</option>
-                </select>
-                <small style="color: var(--text-gray);">Auto = AI กำหนด Tone ตาม Topic และ Character อัตโนมัติ</small>
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <label>Mood & Tone</label>
+                    <select id="story-category"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                        <option value="auto">🌊 Natural / Auto (แนะนำ)</option>
+                        <option value="funny">😂 Funny (ตลก)</option>
+                        <option value="drama">😢 Drama (ดราม่า)</option>
+                        <option value="horror">👻 Horror (ผี)</option>
+                        <option value="office">💼 Office (ออฟฟิศ)</option>
+                        <option value="love">💕 Love (รัก)</option>
+                        <option value="gossip">🤫 Gossip (เม้าท์มอย)</option>
+                        <option value="consult">💭 Consult (ปรึกษา)</option>
+                        <option value="fight">😤 Fight (ทะเลาะ)</option>
+                        <option value="debate">🗣️ Debate (ถกประเด็น)</option>
+                        <option value="tie_in">💰 Natural Tie-in (เนียนขายของ)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Relationship</label>
+                    <select id="story-relationship"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                        <option value="friend">👥 Friend (เพื่อนทั่วไป)</option>
+                        <option value="close_friend">🤙 Close Friend (เพื่อนสนิท กู/มึง)</option>
+                        <option value="colleague">💼 Colleague (เพื่อนร่วมงาน)</option>
+                        <option value="couple">💕 Couple (แฟน)</option>
+                        <option value="stranger">🤝 Stranger (คนแปลกหน้า)</option>
+                        <option value="enemy">😠 Enemy (คู่กัด)</option>
+                    </select>
+                </div>
             </div>
+            <small style="color: var(--text-gray);">Relationship มีผลต่อภาษาที่ AI ใช้ (กู/มึง vs คุณ/ครับ)</small>
+
 
             <div class="modal-actions">
                 <button id="btn-cancel-settings" class="btn-secondary">Cancel</button>
@@ -314,8 +333,8 @@
                 </div>
             </div>
 
-            <!-- New Controls: Length & Mode -->
-            <div class="form-group" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+            <!-- New Controls: Length & Mode & Relationship -->
+            <div class="form-group" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px;">
                 <div>
                     <label>Length</label>
                     <select id="continue-length"
@@ -331,6 +350,16 @@
                         style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
                         <option value="normal" selected>Normal Flow</option>
                         <option value="wrap_up">Wrap Up / Conclusion</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Relationship</label>
+                    <select id="continue-relationship"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                        <option value="friend" selected>👥 Friend</option>
+                        <option value="close_friend">🤙 Close (กู/มึง)</option>
+                        <option value="colleague">💼 Colleague</option>
+                        <option value="couple">💕 Couple</option>
                     </select>
                 </div>
             </div>
