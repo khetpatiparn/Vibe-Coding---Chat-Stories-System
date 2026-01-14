@@ -414,13 +414,19 @@ app.post('/api/generate', async (req, res) => {
             });
         }
         
-        // Add dialogues
+        // Add dialogues with auto-calculated timing
         for (let i = 0; i < story.dialogues.length; i++) {
             const d = story.dialogues[i];
+            // Auto-calculate delay based on message length (Thai-friendly)
+            const baseDelay = 1.0;
+            const charCount = (d.message || '').length;
+            const calculatedDelay = parseFloat((baseDelay + (charCount * 0.05)).toFixed(2));
+            
             await Dialogue.add(targetProjectId, {
                 sender: d.sender,
                 message: d.message,
-                delay: d.delay || 1.0,
+                delay: calculatedDelay, // Always use calculated, ignore AI's default
+                reaction_delay: 1.5,
                 typing_speed: d.typing_speed || 'normal'
             }, i);
         }
@@ -566,11 +572,16 @@ app.post('/api/import', async (req, res) => {
         // Import dialogues
         let order = 0;
         for (const d of data.dialogues) {
+            // Auto-calculate delay if not provided
+            const baseDelay = 1.0;
+            const charCount = (d.message || '').length;
+            const calculatedDelay = parseFloat((baseDelay + (charCount * 0.05)).toFixed(2));
+            
             await Dialogue.add(projectId, {
                 sender: d.sender || 'me',
                 message: d.message || '',
-                delay: d.delay || 1.0,
-                reaction_delay: d.reaction_delay || 0.5,
+                delay: d.delay || calculatedDelay,
+                reaction_delay: d.reaction_delay || 1.5,
                 typing_speed: d.typing_speed || 'normal',
                 image_path: d.image_path || null
             }, d.seq_order !== undefined ? d.seq_order : order++);
@@ -633,11 +644,16 @@ app.post('/api/projects/:id/import', async (req, res) => {
         // Import dialogues
         let order = 0;
         for (const d of data.dialogues) {
+            // Auto-calculate delay if not provided
+            const baseDelay = 1.0;
+            const charCount = (d.message || '').length;
+            const calculatedDelay = parseFloat((baseDelay + (charCount * 0.05)).toFixed(2));
+            
             await Dialogue.add(projectId, {
                 sender: d.sender || 'me',
                 message: d.message || '',
-                delay: d.delay || 1.0,
-                reaction_delay: d.reaction_delay || 0.5,
+                delay: d.delay || calculatedDelay,
+                reaction_delay: d.reaction_delay || 1.5,
                 typing_speed: d.typing_speed || 'normal',
                 image_path: d.image_path || null
             }, d.seq_order !== undefined ? d.seq_order : order++);

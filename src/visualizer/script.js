@@ -96,7 +96,7 @@ class ChatStory {
     if (item.sender === 'time_divider') {
         if (!isInstant) {
             // Respect reaction delay (Reading time for previous message)
-            const delay = item.reaction_delay !== undefined ? parseFloat(item.reaction_delay) : 1.0;
+            const delay = item.reaction_delay !== undefined ? parseFloat(item.reaction_delay) : 1.5;
             await this.wait(delay * 1000);
 
             // Play Effect
@@ -112,7 +112,7 @@ class ChatStory {
     // Additive Logic: Reaction + Typing
     const reactionTime = (item.reaction_delay !== undefined && item.reaction_delay !== null) 
                          ? parseFloat(item.reaction_delay) 
-                         : 0.5;
+                         : 1.5;
     const typingTotal = (item.delay || defaultDelay);
     const totalDuration = reactionTime + typingTotal;
 

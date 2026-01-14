@@ -49,7 +49,7 @@ function initSchema() {
             sender TEXT,
             message TEXT,
             delay REAL,
-            reaction_delay REAL DEFAULT 0.5,
+            reaction_delay REAL DEFAULT 1.5,
             typing_speed TEXT,
             seq_order INTEGER,
             image_path TEXT,
@@ -71,7 +71,7 @@ function initSchema() {
                         const hasReaction = rows.some(r => r.name === 'reaction_delay');
                         if (!hasReaction) {
                             console.log('Migrating: Adding reaction_delay to dialogues table...');
-                            db.run("ALTER TABLE dialogues ADD COLUMN reaction_delay REAL DEFAULT 0.5", (err) => {
+                            db.run("ALTER TABLE dialogues ADD COLUMN reaction_delay REAL DEFAULT 1.5", (err) => {
                                 if (err) console.error("Migration failed (reaction_delay):", err);
                                 else console.log("Migration successful: reaction_delay added.");
                             });
@@ -278,10 +278,10 @@ const Character = {
 const Dialogue = {
     add: (projectId, data, order) => {
         return new Promise((resolve, reject) => {
-            const { sender, message, delay, typing_speed } = data;
-            db.run(`INSERT INTO dialogues (project_id, sender, message, delay, typing_speed, seq_order) 
-                VALUES (?, ?, ?, ?, ?, ?)`, 
-                [projectId, sender, message, delay, typing_speed, order], function(err) {
+            const { sender, message, delay, reaction_delay, typing_speed, image_path } = data;
+            db.run(`INSERT INTO dialogues (project_id, sender, message, delay, reaction_delay, typing_speed, seq_order, image_path) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
+                [projectId, sender, message, delay, reaction_delay || 1.5, typing_speed, order, image_path || null], function(err) {
                 if (err) reject(err);
                 else resolve(this.lastID);
             });

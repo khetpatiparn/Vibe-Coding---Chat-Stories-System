@@ -845,7 +845,7 @@ async function updateReaction(input, index, id) {
 async function resetToAutoDelay(index, id) {
     const message = currentDialogues[index].message;
     const autoDelay = calculateAutoDelay(message);
-    const defaultReaction = 0.5;
+    const defaultReaction = 0.8;
     
     // Update local
     currentDialogues[index].delay = autoDelay;
@@ -903,7 +903,7 @@ function renderDialogues(dialogues, characters) {
         
         // Calculate delay if not set
         const delayValue = d.delay || calculateAutoDelay(d.message);
-        const reactionValue = d.reaction_delay !== undefined ? d.reaction_delay : 0.5;
+        const reactionValue = d.reaction_delay !== undefined ? d.reaction_delay : 1.5;
         
         return `
         <div class="dialogue-item" data-id="${d.id}" draggable="true">
@@ -1795,16 +1795,23 @@ async function commitContinuation() {
             startOrder = Math.max(...currentDialogues.map(d => d.seq_order !== undefined ? d.seq_order : 0)) + 1;
         }
 
-        // 3. Sequentially add dialogues with explicit order
+        // 3. Sequentially add dialogues with explicit order and timing
         for (let i = 0; i < previewDialogues.length; i++) {
             const d = previewDialogues[i];
+            // Auto-calculate delay based on message length (Thai-friendly)
+            const baseDelay = 1.0;
+            const charCount = (d.message || '').length;
+            const calculatedDelay = parseFloat((baseDelay + (charCount * 0.05)).toFixed(2));
+            
             await fetch(`${API_BASE}/projects/${currentProject}/dialogues`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     sender: d.sender,
                     message: d.message,
-                    order: startOrder + i
+                    order: startOrder + i,
+                    delay: calculatedDelay,
+                    reaction_delay: 1.5
                 })
             });
         }

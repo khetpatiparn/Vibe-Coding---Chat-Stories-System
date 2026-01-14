@@ -45,7 +45,7 @@ function calculateTimeline(story) {
         // 1. Reaction Time
         const reaction = (dialogue.reaction_delay !== undefined && dialogue.reaction_delay !== null) 
                          ? parseFloat(dialogue.reaction_delay) 
-                         : 0.5;
+                         : 1.5;
         
         // 2. Typing Duration
         let typingTotal = dialogue.delay;
