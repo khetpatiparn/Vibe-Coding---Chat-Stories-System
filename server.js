@@ -429,50 +429,52 @@ app.post('/api/generate', async (req, res) => {
         }
         
         // Add dialogues with auto-calculated timing
-        for (let i = 0; i < story.dialogues.length; i++) {
-            const d = story.dialogues[i];
-            // Auto-calculate delay based on message length (Thai-friendly)
-            const baseDelay = 1.0;
-            const charCount = (d.message || '').length;
-            const calculatedDelay = parseFloat((baseDelay + (charCount * 0.05)).toFixed(2));
+        // Add dialogues with auto-calculated timing
+        let currentOrder = 0;
+        for (const d of story.dialogues) {
             
-            await Dialogue.add(targetProjectId, {
-                sender: d.sender,
-                message: d.message,
-                delay: calculatedDelay, // Always use calculated, ignore AI's default
-                reaction_delay: 0.8,
-                typing_speed: d.typing_speed || 'normal',
-                image_path: null // Will be updated below if sticker exists
-            }, i);
-
-            // If AI suggested a sticker, fetch it and update the dialogue
+            // 1. Handle Sticker (Insert as separate dialogue FIRST)
             if (d.sticker_keyword) {
                 try {
-                    // Fetch top 1 GIF from Giphy using ENV key
-                    const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC'; 
-                    // console.log(`🧸 Auto-fetching sticker for '${d.sticker_keyword}' with key length: ${apiKey.length}`);
-
+                    const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC';
                     const response = await axios.get(`https://api.giphy.com/v1/gifs/search`, {
                         params: { api_key: apiKey, q: d.sticker_keyword, limit: 1, rating: 'pg-13' }
                     });
                     
                     if (response.data.data.length > 0) {
                         const gifUrl = response.data.data[0].images.fixed_height.url;
-                        // Update the last inserted dialogue with image_path
-                        // We need the ID, but Dialogue.add doesn't return ID easily in current implementation wrapper
-                        // Optimization: Update immediately by updating the `add` method or separate query
-                            await new Promise((resolve, reject) => {
-                                 db.run(`UPDATE dialogues SET image_path = ? WHERE project_id = ? AND seq_order = ?`, 
-                                    [gifUrl, targetProjectId, d.seq_order || i], (err) => {
-                                    if(err) console.error("Failed to update sticker", err);
-                                    resolve();
-                                });
-                        });
-                        console.log(`🧸 Auto-added sticker for '${d.sticker_keyword}': ${gifUrl}`);
+                        
+                        await Dialogue.add(targetProjectId, {
+                            sender: d.sender,
+                            message: '', // Sticker-only bubble
+                            delay: 0.8,  // Quick delay for sticker
+                            reaction_delay: 0.5,
+                            typing_speed: 'fast',
+                            image_path: gifUrl
+                        }, currentOrder++);
+                        
+                        console.log(`🧸 Auto-added sticker dialogue for '${d.sticker_keyword}'`);
                     }
                 } catch (err) {
-                    console.error(`Failed to auto-fetch sticker for '${d.sticker_keyword}':`, err.message);
+                    console.error(`Failed to fetch sticker for '${d.sticker_keyword}':`, err.message);
                 }
+            }
+
+            // 2. Handle Text (Insert as separate dialogue SECOND)
+            if (d.message && d.message.trim().length > 0) {
+                // Auto-calculate delay based on message length (Thai-friendly)
+                const baseDelay = 1.0;
+                const charCount = d.message.length;
+                const calculatedDelay = parseFloat((baseDelay + (charCount * 0.05)).toFixed(2));
+                
+                await Dialogue.add(targetProjectId, {
+                    sender: d.sender,
+                    message: d.message,
+                    delay: calculatedDelay, 
+                    reaction_delay: 0.8,
+                    typing_speed: d.typing_speed || 'normal',
+                    image_path: null
+                }, currentOrder++);
             }
         }
         
