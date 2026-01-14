@@ -454,7 +454,32 @@ app.post('/api/generate/continue', async (req, res) => {
     try {
         const { projectId, characters, topic, length, mode } = req.body;
         
-        // 1. Fetch recent dialogues for context (last 10)
+        // 1. Fetch all custom characters to build name mapping
+        const customChars = await CustomCharacter.getAll();
+        
+        // Build ID -> DisplayName and DisplayName -> ID mappings
+        const idToName = {};
+        const nameToId = {};
+        
+        // Default characters
+        const defaultNames = {
+            'me': 'ฉัน', 'boss': 'เจ้านาย', 'employee': 'ลูกน้อง',
+            'friend': 'เพื่อน', 'girlfriend': 'แฟน', 'ghost': 'ผี'
+        };
+        
+        Object.entries(defaultNames).forEach(([id, name]) => {
+            idToName[id] = name;
+            nameToId[name] = id;
+        });
+        
+        // Custom characters  
+        customChars.forEach(c => {
+            const id = `custom_${c.id}`;
+            idToName[id] = c.display_name;
+            nameToId[c.display_name] = id;
+        });
+        
+        // 2. Fetch recent dialogues for context (last 10)
         const recentDialogues = await new Promise((resolve, reject) => {
              db.all('SELECT * FROM dialogues WHERE project_id = ? ORDER BY seq_order DESC LIMIT 10', [projectId], (err, rows) => {
                  if (err) reject(err);
@@ -462,15 +487,25 @@ app.post('/api/generate/continue', async (req, res) => {
              });
         });
         
-        if (recentDialogues.length === 0) {
-            // No context? Just treat as new story? Or fail?
-            // Let's allow it but warn.
-        }
-
-        // 2. Call AI
-        const newDialogues = await continueStory(topic, recentDialogues, characters, length, mode);
+        // Convert dialogues to use display names for AI context
+        const dialoguesWithNames = recentDialogues.map(d => ({
+            ...d,
+            sender: idToName[d.sender] || d.sender
+        }));
         
-        res.json({ success: true, dialogues: newDialogues });
+        // Convert selected character IDs to display names for AI
+        const characterNames = characters.map(id => idToName[id] || id);
+        
+        // 3. Call AI with display names
+        const newDialogues = await continueStory(topic, dialoguesWithNames, characterNames, length, mode);
+        
+        // 4. Convert AI response back to internal IDs
+        const dialoguesWithIds = newDialogues.map(d => ({
+            ...d,
+            sender: nameToId[d.sender] || d.sender
+        }));
+        
+        res.json({ success: true, dialogues: dialoguesWithIds, nameMapping: idToName });
         
     } catch (e) {
         console.error('Continue API Error:', e);

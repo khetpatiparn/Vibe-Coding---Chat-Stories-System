@@ -1586,6 +1586,7 @@ window.deleteProject = async function(event, id) {
 // ===================================
 
 let previewDialogues = [];
+let previewNameMapping = {}; // ID -> DisplayName mapping from API
 
 async function openContinueSettings() {
     if (!currentProject) {
@@ -1721,7 +1722,8 @@ async function generateContinuation() {
         
         if (data.success) {
             previewDialogues = data.dialogues;
-            renderPreviewList(previewDialogues);
+            previewNameMapping = data.nameMapping || {}; // Store name mapping
+            renderPreviewList(previewDialogues, previewNameMapping);
             
             // Switch Modals
             document.getElementById('modal-continue-settings').classList.add('hidden');
@@ -1737,7 +1739,7 @@ async function generateContinuation() {
     }
 }
 
-function renderPreviewList(dialogues) {
+function renderPreviewList(dialogues, nameMapping = {}) {
     const container = document.getElementById('ai-preview-list');
     
     if (!dialogues || dialogues.length === 0) {
@@ -1745,12 +1747,16 @@ function renderPreviewList(dialogues) {
         return;
     }
     
-    container.innerHTML = dialogues.map((d, index) => `
+    container.innerHTML = dialogues.map((d, index) => {
+        // Convert internal ID to display name
+        const displayName = nameMapping[d.sender] || d.sender;
+        return `
         <div class="preview-dialogue-item">
-            <div class="preview-sender" style="text-transform: capitalize;">${d.sender}</div>
+            <div class="preview-sender" style="text-transform: capitalize;">${displayName}</div>
             <div class="preview-message">${d.message}</div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 async function commitContinuation() {

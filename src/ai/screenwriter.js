@@ -78,11 +78,7 @@ GOAL: The viewer should feel like they are eavesdropping on a real conversation,
     // Build character map (default characters)
     const defaultCharacterMap = {
         'me': { name: 'ฉัน', avatar: 'assets/avatars/person1.png', side: 'right' },
-        'boss': { name: 'เจ้านาย', avatar: 'assets/avatars/boss.png', side: 'left' },
-        'employee': { name: 'ลูกน้อง', avatar: 'assets/avatars/employee.png', side: 'left' },
-        'friend': { name: 'เพื่อน', avatar: 'assets/avatars/friend.png', side: 'left' },
-        'girlfriend': { name: 'แฟน', avatar: 'assets/avatars/girlfriend.png', side: 'left' },
-        'ghost': { name: 'ผี', avatar: 'assets/avatars/ghost.png', side: 'left' }
+        'boss': { name: 'เจ้านาย', avatar: 'assets/avatars/boss.png', side: 'left' }
     };
     
     // Build character list for prompt (display names)
@@ -363,7 +359,7 @@ async function continueStory(prompt, existingDialogues = [], availableCharacters
     let modeInstruction = 'Continue the flow naturally.';
     if (mode === 'wrap_up') modeInstruction = 'IMPORTANT: The user wants to end this scene. Steer the conversation towards a conclusion, resolution, or a dramatic cliffhanger. Do NOT leave it open-ended.';
 
-    const systemPrompt = `You are a screenwriter for a chat story.
+    const systemPrompt = `You are a screenwriter for a Thai chat story.
     You will be given a history of a conversation and a prompt for what happens next.
     ${lengthInstruction}
     ${modeInstruction}
@@ -371,15 +367,17 @@ async function continueStory(prompt, existingDialogues = [], availableCharacters
     
     Example:
     [
-        {"sender": "me", "message": "Why did you do that?"},
-        {"sender": "boss", "message": "I had no choice."}
+        {"sender": "ฉัน", "message": "ทำไมทำแบบนั้นอ่ะ"},
+        {"sender": "เจ้านาย", "message": "ไม่มีทางเลือกอ่ะ"}
     ]
     
     Rules:
-    - Keep messages short and natural (chat style).
-    - Use Thai slang/style if the previous context is in Thai.
-    - Senders must match the existing characters provided in context or be generic "me", "boss".
-    - IMPORTANT: The characters currently in this scene are: [${characterList}]. You can and should use these characters, even if they do not appear in the previous history.
+    - Keep messages short and natural (Thai chat style).
+    - Use Thai slang/style: 555, มึง/กู, นะ, อ่ะ, ป่ะ, มั้ย, etc.
+    - Senders must EXACTLY match the character names provided (in Thai).
+    - IMPORTANT: The characters currently in this scene are: [${characterList}]. Use ONLY these names as senders.
+    - CRITICAL: When mentioning someone's name in the message text, use THAI spelling only. Example: "เจ" not "Jay", "พีพี" not "PP".
+    - NO English names or words when referring to people. Thai nicknames only.
     `;
 
     const userMessage = `
