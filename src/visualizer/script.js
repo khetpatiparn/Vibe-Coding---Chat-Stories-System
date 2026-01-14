@@ -46,6 +46,9 @@ class ChatStory {
     // Handle paths for both local file view and server view
     if (!path) return "";
     
+    // Support external URLs (GIPHY, etc.)
+    if (path.startsWith('http')) return path;
+    
     // If running on server (localhost:3000), assets are at /assets
     // If running file://, assets are relative
     if (window.location.protocol === 'http:') {

@@ -105,8 +105,12 @@
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 15px;">
                         <button id="btn-add-dialogue" class="btn-dashed" style="flex: 1;">+ Add Dialogue</button>
+                        <button id="btn-open-giphy" class="btn-dashed"
+                            style="flex: 1; border-color: #ec4899; color: #ec4899;">🧸 Add GIF</button>
+                    </div>
+                    <div style="margin-top: 10px;">
                         <button id="btn-continue-ai" class="btn-dashed"
-                            style="flex: 1; background: linear-gradient(135deg, #4f46e520, #9333ea20); border-color: #9333ea;">✨
+                            style="width: 100%; background: linear-gradient(135deg, #4f46e520, #9333ea20); border-color: #9333ea;">✨
                             Continue with AI</button>
                     </div>
                 </div>
@@ -181,9 +185,13 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- GIF / Sticker Button -->
+
                 </div>
             </div>
-        </main>
+    </div>
+    </main>
     </div>
 
     <!-- Modal for New Story -->
@@ -477,6 +485,31 @@
             <div class="modal-actions">
                 <button id="btn-cancel-import" class="btn-secondary">Cancel</button>
                 <button id="btn-confirm-import" class="btn-primary" disabled>Import 📥</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="modal-giphy-picker" class="modal hidden">
+        <div class="modal-content" style="max-width: 600px; height: 80vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">🧸 Add Sticker/GIF</h2>
+                <button id="btn-close-giphy"
+                    style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="giphy-search-input" placeholder="Search GIPHY (e.g. funny cat, shocked)..."
+                    style="flex: 1; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 8px;">
+                <button id="btn-search-giphy" class="btn-primary">🔍 Search</button>
+            </div>
+
+            <div id="giphy-results"
+                style="flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; padding-right: 5px;">
+                <!-- GIFs will render here -->
+                <div style="grid-column: 1/-1; text-align: center; color: var(--text-gray); margin-top: 50px;">
+                    Search to find GIFs...
+                </div>
             </div>
         </div>
     </div>

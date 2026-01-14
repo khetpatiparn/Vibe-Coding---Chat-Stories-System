@@ -167,8 +167,8 @@ app.put('/api/projects/:id', async (req, res) => {
 // 3. Update Dialogue
 app.put('/api/dialogues/:id', async (req, res) => {
     try {
-        const { message, sender } = req.body;
-        await Dialogue.updateAll(req.params.id, { message, sender });
+        const { message, sender, imagePath, delay, reaction_delay } = req.body;
+        await Dialogue.updateAll(req.params.id, { message, sender, image_path: imagePath, delay, reaction_delay });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -179,7 +179,7 @@ app.put('/api/dialogues/:id', async (req, res) => {
 app.post('/api/projects/:id/dialogues', async (req, res) => {
     try {
         const projectId = req.params.id;
-        const { sender, message, order, delay, reaction_delay } = req.body;
+        const { sender, message, order, delay, reaction_delay, imagePath } = req.body;
         
         // Auto-calculate delay if not provided
         const baseDelay = 1.0;
@@ -191,7 +191,8 @@ app.post('/api/projects/:id/dialogues', async (req, res) => {
             message: message || '...',
             delay: delay || calculatedDelay,
             reaction_delay: reaction_delay || TIMING.DEFAULT_REACTION_DELAY,
-            typing_speed: 'normal'
+            typing_speed: 'normal',
+            image_path: imagePath // Map camelCase to snake_case
         };
         
         const dialogueId = await Dialogue.add(projectId, newData, order || 999);
@@ -438,9 +439,40 @@ app.post('/api/generate', async (req, res) => {
                 sender: d.sender,
                 message: d.message,
                 delay: calculatedDelay, // Always use calculated, ignore AI's default
-                reaction_delay: TIMING.DEFAULT_REACTION_DELAY,
-                typing_speed: d.typing_speed || 'normal'
+                reaction_delay: 0.8,
+                typing_speed: d.typing_speed || 'normal',
+                image_path: null // Will be updated below if sticker exists
             }, i);
+
+            // If AI suggested a sticker, fetch it and update the dialogue
+            if (d.sticker_keyword) {
+                try {
+                    // Fetch top 1 GIF from Giphy using ENV key
+                    const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC'; 
+                    // console.log(`🧸 Auto-fetching sticker for '${d.sticker_keyword}' with key length: ${apiKey.length}`);
+
+                    const response = await axios.get(`https://api.giphy.com/v1/gifs/search`, {
+                        params: { api_key: apiKey, q: d.sticker_keyword, limit: 1, rating: 'pg-13' }
+                    });
+                    
+                    if (response.data.data.length > 0) {
+                        const gifUrl = response.data.data[0].images.fixed_height.url;
+                        // Update the last inserted dialogue with image_path
+                        // We need the ID, but Dialogue.add doesn't return ID easily in current implementation wrapper
+                        // Optimization: Update immediately by updating the `add` method or separate query
+                        await new Promise((resolve, reject) => {
+                             db.run(`UPDATE dialogues SET image_path = ? WHERE project_id = ? AND seq_order = ?`, 
+                                [gifUrl, targetProjectId, d.seq_order || (i+1)], (err) => {
+                                    if(err) console.error("Failed to update sticker", err);
+                                    resolve();
+                                });
+                        });
+                        console.log(`🧸 Auto-added sticker for '${d.sticker_keyword}': ${gifUrl}`);
+                    }
+                } catch (err) {
+                    console.error(`Failed to auto-fetch sticker for '${d.sticker_keyword}':`, err.message);
+                }
+            }
         }
         
         res.json({ success: true, projectId: targetProjectId, isMock: story.isMock || false, errorDetails: story.error || null });
@@ -591,6 +623,44 @@ app.post('/api/render/:id', async (req, res) => {
         console.error("Render failed:", err);
         await Project.updateStatus(req.params.id, 'FAILED');
         res.status(500).json({ error: err.message });
+    }
+});
+
+// 6. GIPHY Proxy
+const axios = require('axios');
+app.get('/api/giphy/search', async (req, res) => {
+    try {
+        const query = req.query.q;
+        const limit = req.query.limit || 20;
+        // Use ENV key if available, otherwise try public beta key
+        // 403 Forbidden usually means key is invalid or quota exceeded
+        const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC'; 
+        
+        console.log(`🔍 Searching GIPHY: ${query}`);
+        console.log(`🔑 Using Key length: ${apiKey ? apiKey.length : 0} | Key start: ${apiKey ? apiKey.substring(0, 4) : 'null'}`);
+        
+        const response = await axios.get(`https://api.giphy.com/v1/gifs/search`, {
+            params: {
+                api_key: apiKey,
+                q: query,
+                limit: limit,
+                rating: 'pg-13', // loosened rating
+                lang: 'en'
+            }
+        });
+        
+        const gifs = response.data.data.map(gif => ({
+            id: gif.id,
+            title: gif.title,
+            url: gif.images.fixed_height.url,        // Moving GIF
+            preview: gif.images.fixed_height_small.url // Faster load
+        }));
+        
+        res.json({ success: true, data: gifs });
+        
+    } catch (err) {
+        console.error("GIPHY Error:", err.response?.data || err.message);
+        res.status(500).json({ error: 'Failed to fetch GIFs' });
     }
 });
 

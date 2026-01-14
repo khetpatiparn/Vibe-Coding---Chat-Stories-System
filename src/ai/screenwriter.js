@@ -251,7 +251,7 @@ ${personalityDescriptions.join('\n')}
 ---
 
 **OUTPUT REQUIREMENTS:**
-- Generate 12-15 messages
+- Generate 18-20 messages
 - Use "Written Speech" Thai (NOT formal Thai)
 - NO EMOJI - Use 555, TT, ... instead
 - Keep messages SHORT (1-2 sentences max)
@@ -266,6 +266,7 @@ ${personalityDescriptions.join('\n')}
     {
       "sender": "${characters[0]}",
       "message": "ข้อความ",
+      "sticker_keyword": "shocked cat (Optional: USE OFTEN for funny/emotional moments! keywords: shocked, laughing, cry, angry, love)",
       "delay": 1.0,
       "typing_speed": "normal"
     }

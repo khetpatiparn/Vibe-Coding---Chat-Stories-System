@@ -1025,7 +1025,10 @@ function renderDialogues(dialogues, characters) {
                 
                 ${d.image_path ? `
                 <div class="dialogue-attachment" style="margin-bottom: 5px; position: relative; display: inline-block;">
-                    <img src="${d.image_path.startsWith('data:') ? d.image_path : '/' + d.image_path}" style="max-height: 100px; border-radius: 8px; border: 1px solid var(--border);">
+                    <!-- Debug: ${d.image_path} -->
+                    <img src="${(d.image_path.startsWith('http') || d.image_path.startsWith('data:')) ? d.image_path : '/' + d.image_path}" 
+                         style="max-height: 100px; border-radius: 8px; border: 1px solid var(--border);"
+                         onerror="console.error('Failed to load image:', '${d.image_path}'); this.src='https://placehold.co/100x100?text=Error';">
                     <button onclick="removeDialogueImage(${index}, ${d.id})" style="position: absolute; top: -5px; right: -5px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer;">x</button>
                 </div>
                 ` : ''}
@@ -1870,10 +1873,17 @@ function renderPreviewList(dialogues, nameMapping = {}) {
         // Convert internal ID to display name
         const displayName = nameMapping[d.sender] || d.sender;
         const isLong = (d.message?.length || 0) > 80;
+        
+        let stickerHtml = '';
+        if (d.sticker_keyword) {
+            stickerHtml = `<div class="preview-sticker-tag" style="font-size: 0.75rem; color: #ec4899; margin-top: 4px;">🧸 Sticker: ${d.sticker_keyword} (Auto-fetch on add)</div>`;
+        }
+        
         return `
         <div class="preview-dialogue-item" ${isLong ? 'style="border-left: 3px solid #f59e0b;"' : ''}>
             <div class="preview-sender" style="text-transform: capitalize;">${displayName}</div>
             <div class="preview-message">${d.message}${isLong ? ' <span style="color:#f59e0b;font-size:0.75rem;">(ยาว)</span>' : ''}</div>
+            ${stickerHtml}
         </div>
     `;
     }).join('');
@@ -1895,33 +1905,32 @@ async function commitContinuation() {
             
             // Check if it's a custom character (e.g., custom_10)
             if (sender.startsWith('custom_')) {
-                const customId = parseInt(sender.split('_')[1]);
-                const customChar = (window.customCharacters || []).find(c => c.id === customId);
-                
-                if (customChar) {
-                    // Add custom character to project
-                    await fetch(`${API_BASE}/projects/${currentProject}/characters`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            role: sender,
-                            name: customChar.display_name,
-                            avatar: customChar.avatar_path,
-                            side: 'left'
-                        })
-                    });
-                    console.log(`✅ Added guest character: ${customChar.display_name}`);
-                }
+                const customId = sender.replace('custom_', '');
+                await addCustomCharacterToProject(customId);
             }
         }
         
-        // 2. Calculate start order from current dialogues
+        // 2. Fetch Stickers for dialogues with keywords
+        for (let i = 0; i < previewDialogues.length; i++) {
+            const d = previewDialogues[i];
+            if (d.sticker_keyword) {
+                try {
+                    const stickerUrl = await fetchBestSticker(d.sticker_keyword);
+                    if (stickerUrl) {
+                        d.image_path = stickerUrl; // Assign sticker URL
+                    }
+                } catch (err) {
+                    console.warn(`Failed to fetch sticker for '${d.sticker_keyword}':`, err);
+                }
+            }
+        }
+
+        // 3. Sequentially add dialogues with explicit order and timing
         let startOrder = 0;
         if (currentDialogues && currentDialogues.length > 0) {
             startOrder = Math.max(...currentDialogues.map(d => d.seq_order !== undefined ? d.seq_order : 0)) + 1;
         }
 
-        // 3. Sequentially add dialogues with explicit order and timing
         for (let i = 0; i < previewDialogues.length; i++) {
             const d = previewDialogues[i];
             // Auto-calculate delay based on message length (Thai-friendly)
@@ -2300,3 +2309,94 @@ function getAudioSettings() {
 document.addEventListener('DOMContentLoaded', () => {
     loadAudioOptions();
 });
+
+// ===================================
+// GIPHY Picker Logic
+// ===================================
+const modalGiphy = document.getElementById('modal-giphy-picker');
+let giphyTargetDialogueIndex = -1; // -1 = add new, >=0 = replace exisiting
+
+function initGiphyListeners() {
+    const btnOpen = document.getElementById('btn-open-giphy');
+    if (btnOpen) {
+        console.log("✅ GIPHY Button found and listener attached");
+        btnOpen.addEventListener('click', () => {
+             console.log("🧸 Opening GIF Picker");
+            giphyTargetDialogueIndex = -1; 
+            modalGiphy.classList.remove('hidden');
+            document.getElementById('giphy-search-input').focus();
+        });
+    } else {
+        console.error("❌ GIPHY Button not found");
+    }
+
+    document.getElementById('btn-close-giphy')?.addEventListener('click', () => {
+        modalGiphy.classList.add('hidden');
+    });
+
+    document.getElementById('btn-search-giphy')?.addEventListener('click', searchGiphy);
+    document.getElementById('giphy-search-input')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') searchGiphy();
+    });
+}
+
+// Call init when DOM is ready or immediately if already ready
+if (document.readyState === 'loading') {    
+    document.addEventListener('DOMContentLoaded', initGiphyListeners);
+} else {
+    initGiphyListeners();
+}
+
+async function searchGiphy() {
+    const query = document.getElementById('giphy-search-input').value;
+    const container = document.getElementById('giphy-results');
+    
+    if (!query) return;
+    
+    container.innerHTML = '<p style="text-align:center; color:gray;">Searching... 🧸</p>';
+    
+    try {
+        const res = await fetch(`${API_BASE}/giphy/search?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        
+        if (data.success && data.data.length > 0) {
+            container.innerHTML = data.data.map(gif => `
+                <div class="giphy-item" onclick="selectGiphy('${gif.url}')" style="cursor: pointer; border-radius: 8px; overflow: hidden; transition: transform 0.2s;">
+                    <img src="${gif.preview}" alt="${gif.title}" style="width: 100%; height: 100px; object-fit: cover; display: block;">
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p style="text-align:center; color:white;">No results found.</p>';
+        }
+    } catch (err) {
+        container.innerHTML = '<p style="text-align:center; color:red;">Error fetching GIFs.</p>';
+    }
+}
+
+async function selectGiphy(url) {
+    modalGiphy.classList.add('hidden');
+    const sender = 'me'; // Default to me
+    
+    try {
+        // Use addDialogue API directly
+        await fetch(`${API_BASE}/projects/${currentProject}/dialogues`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sender: sender,
+                message: '',
+                imagePath: url, // Standardize to match DB column
+                delay: 1.0,
+                reaction_delay: 0.8,
+                order: currentDialogues.length + 1
+            })
+        });
+        
+        showToast('🧸 Added Sticker', 'success');
+        await selectProject(currentProject); // Refresh
+        
+    } catch (err) {
+        showToast('Failed to add sticker: ' + err.message, 'error');
+    }
+}
+window.selectGiphy = selectGiphy; // Expose to global scope for onclick handler
