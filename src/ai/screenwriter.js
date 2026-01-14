@@ -65,20 +65,20 @@ const RELATIONSHIPS = {
 // ============================================
 // Master Prompt Builder (V2.0)
 // ============================================
-function buildPrompt(category, characters = ['me', 'boss'], customPrompt = null, characterData = [], relationship = 'friend', length = 20) {
+function buildPrompt(category, characters = ['me', 'boss'], customPrompt = null, characterData = [], relationship = 'friend', length = 35) {
     
     // Category -> Detailed Direction
     const categoryInstructions = {
         auto: 'Focus on natural flow. Let the topic dictate the tone.',
-        funny: 'Situation: A chaotic misunderstanding, sending a message to the wrong person, or a embarrassing autocorrect fail. Tone: Panicked but hilarious.',
+        funny: 'Situation: A chaotic disaster or embarrassing moment that gets worse every second. Tone: High energy, panic, hilarious overreaction. "Boobah" style.',
         drama: 'Situation: A shocking revelation, a breakup, or a massive betrayal. Start with a "Hook" message that creates immediate curiosity. Tone: Intense, emotional, pauses "...", heart-broken.',
-        horror: 'Situation: Something strange is happening RIGHT NOW (e.g., hearing noises, someone standing outside). The characters are experiencing it in real-time. Tone: Tense, short messages, panic.',
+        horror: 'Situation: Character is experiencing something scary RIGHT NOW (hearing noises, someone following). Tone: Panicked, typing errors due to fear, heavy suspense.',
         office: 'Situation: Office life drama, deadlines, annoying colleagues. Tone: Mix of formal and frustration.',
-        love: 'Situation: Confessing a secret crush, checking status in a "situationship", or jealous probing. Tone: Shy, testing the waters, mixed signals.',
-        gossip: 'Situation: Secretly talking about someone else (Third party). Tone: Exciting, "Tea Spilling", whispered vibe.',
-        consult: 'Situation: Character A has a dilemma, Character B gives advice. Tone: Supportive but real/direct.',
-        fight: 'Situation: Heated argument. Tone: Aggressive, rude (if close), sarcastic, defensive. Use "Rapid Fire".',
-        debate: 'Situation: Discussing a hot trending topic. Tone: Opinionated, passionate, logical vs emotional.'
+        love: 'Situation: Confessing feelings, intense jealousy, or heavy flirting. Tone: Shy, sweet, or possessively cute.',
+        gossip: 'Situation: "Spilling Tea" about a major scandal everyone knows. Tone: Exciting, secretive, use words like "มึงรู้ยัง", "แก...", "พีคมาก".',
+        consult: 'Situation: Character A has a severe dilemma (Love/Money/Life). Character B gives brutally honest advice.',
+        fight: 'Situation: Boiling point argument. No holding back. Tone: Aggressive, sarcastic, using "!" and short angry bursts.',
+        debate: 'Situation: Two sides with opposite strong opinions on a viral topic. Tone: Passionate, logical vs emotional.'
     };
 
     let instruction = categoryInstructions[category] || categoryInstructions['auto'];
@@ -255,11 +255,15 @@ ${personalityDescriptions.join('\n')}
 - **DO NOT** use stickers for filler or normal conversation.
 - **DRAMA/HORROR MODE:** use fewer stickers (or none) to maintain tension.
 - **FUNNY/GOSSIP MODE:** can use more stickers (1-3 max).
+- **🛡️ SAFE MODE (COPYRIGHT):**
+  - **AVOID:** Celebrity names, specific movie scenes, or famous actors (Risk of Right of Publicity).
+  - **USE:** "cute cat", "anime reaction", "generic cartoon", "mood vibe", "drawing", "lo-fi animation".
+  - **REASON:** To ensure the generated keywords are safe for Affiliate/Commercial use. 
 - Add "sticker_keyword" in JSON (e.g., "sad violin meme", "shocked face", "k-drama crying").
 - If no sticker adds value, omit the field. It's better to have NO sticker than a forced one.
 
 **OUTPUT REQUIREMENTS:**
-- Generate ${length || 20} messages
+- Generate ${length || 35} messages
 - Use "Written Speech" Thai (NOT formal Thai)
 - NO EMOJI - Use 555, TT, ... instead
 - Keep messages SHORT (1-2 sentences max)
@@ -300,14 +304,14 @@ async function generateStory(options = {}) {
         customPrompt = null;
         characterData = [];
         relationship = 'friend';
-        length = 20;
+        length = 35;
     } else {
         category = options.category || 'funny';
         characters = options.characters || ['me', 'boss'];
         customPrompt = options.customPrompt || null;
         characterData = options.characterData || [];
         relationship = options.relationship || 'friend';
-        length = options.length || 20;
+        length = options.length || 35;
     }
 
     const prompt = buildPrompt(category, characters, customPrompt, characterData, relationship, length);

@@ -395,7 +395,7 @@ app.post('/api/generate', async (req, res) => {
             characterData: characterData || [],
             customPrompt: customPrompt || null,
             relationship: relationship || 'friend',  // V2.0: Pass relationship
-            length: length || 20 // Default to 20 if not provided
+            length: length || 35 // Default to 35 if not provided (was 20)
         });
         
         // Clear existing dialogues if generating for existing project
@@ -461,7 +461,11 @@ app.post('/api/generate', async (req, res) => {
             }
 
             // 2. Handle Text (Insert as separate dialogue SECOND)
-            if (d.message && d.message.trim().length > 0) {
+            // ONLY add text if it's NOT just "..." when a sticker is present
+            const isPlaceholder = d.message && /^[\s.]*$/.test(d.message);
+            const shouldAddText = d.sticker_keyword ? !isPlaceholder : (d.message && d.message.trim().length > 0);
+
+            if (shouldAddText) {
                 // Auto-calculate delay based on message length (Thai-friendly)
                 const baseDelay = 1.0;
                 const charCount = d.message.length;
@@ -570,7 +574,12 @@ app.post('/api/generate/continue', async (req, res) => {
             }
 
             // 2. Handle Text
-            if (d.message && d.message.trim().length > 0) {
+            // ONLY add text if it's NOT just "..." when a sticker is present
+            // If sticker exists, we suppress generic placeholders.
+            const isPlaceholder = d.message && /^[\s.]*$/.test(d.message); // Checks for only dots/spaces
+            const shouldAddText = d.sticker_keyword ? !isPlaceholder : (d.message && d.message.trim().length > 0);
+
+            if (shouldAddText) {
                 processedDialogues.push({
                     sender: internalSender,
                     message: d.message,
