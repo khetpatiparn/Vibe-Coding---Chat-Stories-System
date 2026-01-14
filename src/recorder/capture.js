@@ -8,6 +8,7 @@ const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 const fs = require('fs-extra');
 const path = require('path');
+const TIMING = require('../config/timing');
 
 // Set FFmpeg path
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -45,7 +46,7 @@ function calculateTimeline(story) {
         // 1. Reaction Time
         const reaction = (dialogue.reaction_delay !== undefined && dialogue.reaction_delay !== null) 
                          ? parseFloat(dialogue.reaction_delay) 
-                         : 1.5;
+                         : TIMING.DEFAULT_REACTION_DELAY;
         
         // 2. Typing Duration
         let typingTotal = dialogue.delay;

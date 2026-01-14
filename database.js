@@ -5,6 +5,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs-extra');
+const TIMING = require('./src/config/timing');
 
 const DB_PATH = './chat_story.db';
 
@@ -49,7 +50,7 @@ function initSchema() {
             sender TEXT,
             message TEXT,
             delay REAL,
-            reaction_delay REAL DEFAULT 1.5,
+            reaction_delay REAL DEFAULT 0.8,
             typing_speed TEXT,
             seq_order INTEGER,
             image_path TEXT,
@@ -71,7 +72,7 @@ function initSchema() {
                         const hasReaction = rows.some(r => r.name === 'reaction_delay');
                         if (!hasReaction) {
                             console.log('Migrating: Adding reaction_delay to dialogues table...');
-                            db.run("ALTER TABLE dialogues ADD COLUMN reaction_delay REAL DEFAULT 1.5", (err) => {
+                            db.run("ALTER TABLE dialogues ADD COLUMN reaction_delay REAL DEFAULT 0.8", (err) => {
                                 if (err) console.error("Migration failed (reaction_delay):", err);
                                 else console.log("Migration successful: reaction_delay added.");
                             });
@@ -281,7 +282,7 @@ const Dialogue = {
             const { sender, message, delay, reaction_delay, typing_speed, image_path } = data;
             db.run(`INSERT INTO dialogues (project_id, sender, message, delay, reaction_delay, typing_speed, seq_order, image_path) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
-                [projectId, sender, message, delay, reaction_delay || 1.5, typing_speed, order, image_path || null], function(err) {
+                [projectId, sender, message, delay, reaction_delay || TIMING.DEFAULT_REACTION_DELAY, typing_speed, order, image_path || null], function(err) {
                 if (err) reject(err);
                 else resolve(this.lastID);
             });

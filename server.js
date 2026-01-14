@@ -13,6 +13,7 @@ const fs = require('fs-extra');
 
 const { db, Project, Dialogue, Character, CustomCharacter, SoundCollection, Sound, importStoryJSON, exportStoryJSON } = require('./database');
 const { generateStory, continueStory } = require('./src/ai/screenwriter');
+const TIMING = require('./src/config/timing');
 const { recordStory } = require('./src/recorder/capture');
 
 const app = express();
@@ -112,6 +113,11 @@ app.post('/api/upload/image', uploadChat.single('image'), (req, res) => {
 // API Endpoints
 // ============================================
 
+// 0. Get Timing Config (Single Source of Truth for Frontend)
+app.get('/api/config/timing', (req, res) => {
+    res.json(TIMING);
+});
+
 // 1. Get All Projects
 app.get('/api/projects', async (req, res) => {
     try {
@@ -184,7 +190,7 @@ app.post('/api/projects/:id/dialogues', async (req, res) => {
             sender: sender || 'me',
             message: message || '...',
             delay: delay || calculatedDelay,
-            reaction_delay: reaction_delay || 0.8,
+            reaction_delay: reaction_delay || TIMING.DEFAULT_REACTION_DELAY,
             typing_speed: 'normal'
         };
         
@@ -431,7 +437,7 @@ app.post('/api/generate', async (req, res) => {
                 sender: d.sender,
                 message: d.message,
                 delay: calculatedDelay, // Always use calculated, ignore AI's default
-                reaction_delay: 1.5,
+                reaction_delay: TIMING.DEFAULT_REACTION_DELAY,
                 typing_speed: d.typing_speed || 'normal'
             }, i);
         }
@@ -586,7 +592,7 @@ app.post('/api/import', async (req, res) => {
                 sender: d.sender || 'me',
                 message: d.message || '',
                 delay: d.delay || calculatedDelay,
-                reaction_delay: d.reaction_delay || 1.5,
+                reaction_delay: d.reaction_delay || TIMING.DEFAULT_REACTION_DELAY,
                 typing_speed: d.typing_speed || 'normal',
                 image_path: d.image_path || null
             }, d.seq_order !== undefined ? d.seq_order : order++);
@@ -658,7 +664,7 @@ app.post('/api/projects/:id/import', async (req, res) => {
                 sender: d.sender || 'me',
                 message: d.message || '',
                 delay: d.delay || calculatedDelay,
-                reaction_delay: d.reaction_delay || 1.5,
+                reaction_delay: d.reaction_delay || TIMING.DEFAULT_REACTION_DELAY,
                 typing_speed: d.typing_speed || 'normal',
                 image_path: d.image_path || null
             }, d.seq_order !== undefined ? d.seq_order : order++);

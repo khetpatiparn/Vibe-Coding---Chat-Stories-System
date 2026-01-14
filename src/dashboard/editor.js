@@ -845,7 +845,7 @@ async function updateReaction(input, index, id) {
 async function resetToAutoDelay(index, id) {
     const message = currentDialogues[index].message;
     const autoDelay = calculateAutoDelay(message);
-    const defaultReaction = 0.8;
+    const defaultReaction = window.TIMING_CONFIG?.DEFAULT_REACTION_DELAY || 0.8;
     
     // Update local
     currentDialogues[index].delay = autoDelay;
@@ -903,7 +903,7 @@ function renderDialogues(dialogues, characters) {
         
         // Calculate delay if not set
         const delayValue = d.delay || calculateAutoDelay(d.message);
-        const reactionValue = d.reaction_delay !== undefined ? d.reaction_delay : 1.5;
+        const reactionValue = d.reaction_delay !== undefined ? d.reaction_delay : (window.TIMING_CONFIG?.DEFAULT_REACTION_DELAY || 0.8);
         
         return `
         <div class="dialogue-item" data-id="${d.id}" draggable="true">
@@ -1811,7 +1811,7 @@ async function commitContinuation() {
                     message: d.message,
                     order: startOrder + i,
                     delay: calculatedDelay,
-                    reaction_delay: 1.5
+                    reaction_delay: window.TIMING_CONFIG?.DEFAULT_REACTION_DELAY || 0.8
                 })
             });
         }
