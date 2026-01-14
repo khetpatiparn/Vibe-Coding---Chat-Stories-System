@@ -251,7 +251,7 @@ ${personalityDescriptions.join('\n')}
 ---
 
 **OUTPUT REQUIREMENTS:**
-- Generate 8-12 messages
+- Generate 12-15 messages
 - Use "Written Speech" Thai (NOT formal Thai)
 - NO EMOJI - Use 555, TT, ... instead
 - Keep messages SHORT (1-2 sentences max)
