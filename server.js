@@ -173,13 +173,18 @@ app.put('/api/dialogues/:id', async (req, res) => {
 app.post('/api/projects/:id/dialogues', async (req, res) => {
     try {
         const projectId = req.params.id;
-        const { sender, message, order } = req.body; // Basic fields
+        const { sender, message, order, delay, reaction_delay } = req.body;
         
-        // Defaults
+        // Auto-calculate delay if not provided
+        const baseDelay = 1.0;
+        const charCount = (message || '').length;
+        const calculatedDelay = parseFloat((baseDelay + (charCount * 0.05)).toFixed(2));
+        
         const newData = {
             sender: sender || 'me',
             message: message || '...',
-            delay: 1.0,
+            delay: delay || calculatedDelay,
+            reaction_delay: reaction_delay || 0.8,
             typing_speed: 'normal'
         };
         
