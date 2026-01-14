@@ -341,6 +341,11 @@ async function createCharacter(name, displayName, avatarFile) {
     formData.append('gender', charGenderInput.value || '');
     formData.append('personality', charPersonalityInput.value || '');
     formData.append('speaking_style', charSpeakingStyleInput.value || '');
+    formData.append('age_group', charAgeGroupInput.value || '');
+    formData.append('occupation', charOccupationInput.value || '');
+    formData.append('catchphrase', charCatchphraseInput.value || '');
+    formData.append('dialect', charDialectInput.value || '');
+    formData.append('typing_habit', charTypingHabitInput.value || '');
     
     const res = await fetch(`${API_BASE}/characters/custom`, {
         method: 'POST',
