@@ -382,18 +382,54 @@
     <div id="modal-ai-preview" class="modal hidden">
         <div class="modal-content" style="max-width: 500px;">
             <h2>AI Suggestion</h2>
+            <div id="ai-preview-stats" style="color: var(--text-gray); font-size: 0.85rem; margin-bottom: 10px;">
+                <!-- Stats will be injected here -->
+            </div>
             <div id="ai-preview-list" class="preview-list-scroll">
                 <!-- Generated dialogues appear here -->
             </div>
-            <div class="modal-actions">
+            <div class="modal-actions" style="flex-wrap: wrap; gap: 10px;">
                 <button id="btn-cancel-preview" class="btn-secondary">Discard</button>
                 <button id="btn-retry-preview" class="btn-secondary">🔄 Try Again</button>
+                <button id="btn-split-parts" class="btn-secondary" style="display: none;">✂️ Split into Parts</button>
                 <button id="btn-confirm-preview" class="btn-primary">✅ Add to Story</button>
             </div>
         </div>
     </div>
 
-    <!-- Import JSON Modal -->
+    <!-- Render Range Modal (Export Range for TikTok Parts) -->
+    <div id="modal-render-range" class="modal hidden">
+        <div class="modal-content" style="max-width: 450px;">
+            <h2>🎬 Render Video</h2>
+            <p class="modal-subtitle" id="render-range-info">เลือก Dialogue Range ที่ต้องการ Render</p>
+
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <label>Start Dialogue</label>
+                    <input type="number" id="render-start" min="1" value="1"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                </div>
+                <div>
+                    <label>End Dialogue</label>
+                    <input type="number" id="render-end" min="1" value="15"
+                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                </div>
+            </div>
+
+            <div id="render-range-parts"
+                style="background: var(--bg-dark); border-radius: 8px; padding: 12px; margin: 15px 0;">
+                <!-- Parts suggestion will be injected here -->
+            </div>
+
+            <div class="modal-actions">
+                <button id="btn-cancel-render-range" class="btn-secondary">Cancel</button>
+                <button id="btn-render-all" class="btn-secondary">🎬 Render All</button>
+                <button id="btn-render-range" class="btn-primary">🎬 Render Range</button>
+            </div>
+        </div>
+    </div>
+
+
     <div id="modal-import-json" class="modal hidden">
         <div class="modal-content" style="max-width: 600px;">
             <h2>📥 Import JSON (Restore)</h2>

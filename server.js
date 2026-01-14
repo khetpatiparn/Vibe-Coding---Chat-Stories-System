@@ -547,23 +547,36 @@ app.post('/api/projects/:id/reorder', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-
-// 5. Render Video
+// 5. Render Video (with optional dialogue range for multi-part export)
 app.post('/api/render/:id', async (req, res) => {
     try {
         const projectId = req.params.id;
-        const { bgMusicPath, sfxPath, bgmVolume, sfxVolume } = req.body;
+        const { bgMusicPath, sfxPath, bgmVolume, sfxVolume, dialogueRange } = req.body;
         
         console.log(`🎥 Rendering project ${projectId}...`);
+        if (dialogueRange) console.log(`📦 Range: #${dialogueRange.start} - #${dialogueRange.end}`);
         if (bgMusicPath) console.log(`🎵 With BGM: ${bgMusicPath} (vol: ${bgmVolume})`);
         if (sfxPath) console.log(`🔔 With SFX: ${sfxPath} (vol: ${sfxVolume})`);
         
         await Project.updateStatus(projectId, 'RENDERING');
         
-        const story = await exportStoryJSON(projectId);
+        // Get story data
+        let story = await exportStoryJSON(projectId);
+        
+        // Filter dialogues by range if specified
+        if (dialogueRange && dialogueRange.start && dialogueRange.end) {
+            const start = dialogueRange.start - 1; // Convert to 0-indexed
+            const end = dialogueRange.end;
+            story.dialogues = story.dialogues.slice(start, end);
+            console.log(`✂️ Filtered to ${story.dialogues.length} dialogues (Part: #${dialogueRange.start}-#${dialogueRange.end})`);
+        }
+        
+        // Generate unique filename with range info
+        const rangeStr = dialogueRange ? `_part${dialogueRange.start}-${dialogueRange.end}` : '';
+        const outputName = `project_${projectId}${rangeStr}_${Date.now()}`;
         
         const videoPath = await recordStory(story, {
-            outputName: `project_${projectId}_${Date.now()}`,
+            outputName: outputName,
             bgMusicPath: bgMusicPath || null,
             sfxPath: sfxPath || null,
             bgmVolume: bgmVolume || 0.3,

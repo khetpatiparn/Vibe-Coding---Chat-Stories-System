@@ -456,35 +456,130 @@ async function createStoryWithAI() {
 async function renderVideo() {
     if (!currentProject) return;
     
-    const btn = document.getElementById('btn-render');
-    const originalText = btn.textContent;
-    btn.textContent = 'Rendering... 🎬';
-    btn.disabled = true;
+    // Open Render Range Modal instead of rendering directly
+    openRenderModal();
+}
+
+function openRenderModal() {
+    const modal = document.getElementById('modal-render-range');
+    const totalDialogues = currentDialogues.length;
     
-    // Get audio settings (respects toggle state)
+    if (totalDialogues === 0) {
+        showToast('ไม่มี Dialogue ให้ Render', 'error');
+        return;
+    }
+    
+    // Set default values
+    document.getElementById('render-start').value = 1;
+    document.getElementById('render-start').max = totalDialogues;
+    document.getElementById('render-end').value = Math.min(15, totalDialogues);
+    document.getElementById('render-end').max = totalDialogues;
+    
+    // Update info
+    document.getElementById('render-range-info').textContent = 
+        `มี ${totalDialogues} Dialogues - เลือก Range ที่ต้องการ Render`;
+    
+    // Calculate parts suggestion
+    updateRenderPartsSuggestion(totalDialogues);
+    
+    // Show modal
+    modal.classList.remove('hidden');
+}
+
+function updateRenderPartsSuggestion(total) {
+    const partsDiv = document.getElementById('render-range-parts');
+    const dialoguesPerPart = 15;
+    const numParts = Math.ceil(total / dialoguesPerPart);
+    
+    if (numParts <= 1) {
+        partsDiv.innerHTML = '✅ สามารถ Render เป็นคลิปเดียวได้';
+        return;
+    }
+    
+    let html = `📦 แนะนำแบ่งเป็น <strong>${numParts} Parts</strong>:<br><br>`;
+    
+    for (let i = 0; i < numParts; i++) {
+        const start = (i * dialoguesPerPart) + 1;
+        const end = Math.min((i + 1) * dialoguesPerPart, total);
+        html += `<span style="color: ${i === 0 ? '#10b981' : 'var(--text-gray)'};">Part ${i + 1}: #${start} - #${end} (${end - start + 1} msgs)</span><br>`;
+    }
+    
+    partsDiv.innerHTML = html;
+}
+
+async function executeRender(startDialogue, endDialogue) {
+    const modal = document.getElementById('modal-render-range');
+    const btn = document.getElementById('btn-render-range');
+    const btnAll = document.getElementById('btn-render-all');
+    
+    btn.disabled = true;
+    btnAll.disabled = true;
+    btn.textContent = 'Rendering... 🎬';
+    
+    // Get audio settings
     const audioSettings = getAudioSettings();
     
     try {
         const res = await fetch(`${API_BASE}/render/${currentProject}`, { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(audioSettings)
+            body: JSON.stringify({
+                ...audioSettings,
+                dialogueRange: {
+                    start: startDialogue,
+                    end: endDialogue
+                }
+            })
         });
         const data = await res.json();
         
         if (data.success) {
-            showToast('🎬 Render สำเร็จ! ' + data.videoPath.split('/').pop(), 'success');
-            loadProjects(); // Update status
+            const filename = data.videoPath.split('/').pop().split('\\').pop();
+            showToast(`🎬 Render สำเร็จ! ${filename} (Part: #${startDialogue}-#${endDialogue})`, 'success');
+            loadProjects();
+            modal.classList.add('hidden');
         } else {
             showToast('❌ Render ล้มเหลว: ' + data.error, 'error');
         }
     } catch (err) {
         showToast('❌ Network Error', 'error');
     } finally {
-        btn.textContent = originalText;
         btn.disabled = false;
+        btnAll.disabled = false;
+        btn.textContent = '🎬 Render Range';
     }
 }
+
+// Event listeners for Render Range Modal
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'btn-cancel-render-range') {
+        document.getElementById('modal-render-range').classList.add('hidden');
+    }
+    
+    if (e.target.id === 'btn-render-all') {
+        executeRender(1, currentDialogues.length);
+    }
+    
+    if (e.target.id === 'btn-render-range') {
+        const start = parseInt(document.getElementById('render-start').value);
+        const end = parseInt(document.getElementById('render-end').value);
+        
+        if (start > end) {
+            showToast('Start ต้องน้อยกว่าหรือเท่ากับ End', 'error');
+            return;
+        }
+        
+        executeRender(start, end);
+    }
+});
+
+// Update parts suggestion when inputs change
+document.getElementById('render-start')?.addEventListener('change', () => {
+    updateRenderPartsSuggestion(currentDialogues.length);
+});
+document.getElementById('render-end')?.addEventListener('change', () => {
+    updateRenderPartsSuggestion(currentDialogues.length);
+});
 
 // ===================================
 // Export JSON (Data Backup)
@@ -1745,19 +1840,40 @@ async function generateContinuation() {
 
 function renderPreviewList(dialogues, nameMapping = {}) {
     const container = document.getElementById('ai-preview-list');
+    const statsContainer = document.getElementById('ai-preview-stats');
+    const splitBtn = document.getElementById('btn-split-parts');
     
     if (!dialogues || dialogues.length === 0) {
         container.innerHTML = '<p>No content generated.</p>';
+        if (statsContainer) statsContainer.innerHTML = '';
+        if (splitBtn) splitBtn.style.display = 'none';
         return;
+    }
+    
+    // Calculate stats
+    const totalMessages = dialogues.length;
+    const totalChars = dialogues.reduce((sum, d) => sum + (d.message?.length || 0), 0);
+    const avgCharsPerMsg = Math.round(totalChars / totalMessages);
+    const longMessages = dialogues.filter(d => (d.message?.length || 0) > 80).length;
+    
+    // Show stats
+    if (statsContainer) {
+        statsContainer.innerHTML = `📊 ${totalMessages} messages | Avg: ${avgCharsPerMsg} chars/msg${longMessages > 0 ? ` | ⚠️ ${longMessages} long bubbles` : ''}`;
+    }
+    
+    // Show split button if 20+ dialogues
+    if (splitBtn) {
+        splitBtn.style.display = totalMessages >= 20 ? 'inline-block' : 'none';
     }
     
     container.innerHTML = dialogues.map((d, index) => {
         // Convert internal ID to display name
         const displayName = nameMapping[d.sender] || d.sender;
+        const isLong = (d.message?.length || 0) > 80;
         return `
-        <div class="preview-dialogue-item">
+        <div class="preview-dialogue-item" ${isLong ? 'style="border-left: 3px solid #f59e0b;"' : ''}>
             <div class="preview-sender" style="text-transform: capitalize;">${displayName}</div>
-            <div class="preview-message">${d.message}</div>
+            <div class="preview-message">${d.message}${isLong ? ' <span style="color:#f59e0b;font-size:0.75rem;">(ยาว)</span>' : ''}</div>
         </div>
     `;
     }).join('');
@@ -1864,6 +1980,11 @@ document.addEventListener('click', (e) => {
     if (e.target && e.target.id === 'btn-confirm-preview') {
         commitContinuation();
     }
+    
+    // 4. Split into Parts
+    if (e.target && e.target.id === 'btn-split-parts') {
+        splitDialoguesIntoParts();
+    }
 
     // Modal Close handlers (delegated)
     if (e.target.id === 'btn-cancel-continue') {
@@ -1877,6 +1998,36 @@ document.addEventListener('click', (e) => {
         document.getElementById('modal-continue-settings').classList.remove('hidden');
     }
 });
+
+// Split dialogues into multiple parts for TikTok
+function splitDialoguesIntoParts() {
+    if (!previewDialogues || previewDialogues.length < 20) {
+        alert('ต้องมี 20+ dialogues ขึ้นไปถึงจะแบ่ง Part ได้');
+        return;
+    }
+    
+    const totalDialogues = previewDialogues.length;
+    const dialoguesPerPart = 15; // ~15 dialogues per TikTok video
+    const numParts = Math.ceil(totalDialogues / dialoguesPerPart);
+    
+    let message = `📦 สามารถแบ่งเป็น ${numParts} Parts:\n\n`;
+    
+    for (let i = 0; i < numParts; i++) {
+        const start = i * dialoguesPerPart;
+        const end = Math.min(start + dialoguesPerPart, totalDialogues);
+        message += `Part ${i + 1}: Dialogue #${start + 1} - #${end} (${end - start} messages)\n`;
+    }
+    
+    message += `\n🎬 แนะนำ: Add to Story ทีละ Part เพื่อ Export แยกคลิป\n\nต้องการแบ่งเป็น Part แรก (${dialoguesPerPart} dialogues) ไหม?`;
+    
+    if (confirm(message)) {
+        // Keep only first part
+        previewDialogues = previewDialogues.slice(0, dialoguesPerPart);
+        renderPreviewList(previewDialogues, previewNameMapping);
+        
+        alert(`✅ เหลือเฉพาะ Part 1 (${previewDialogues.length} messages)\n\nเมื่อ Add to Story แล้ว สามารถ "Continue with AI" เพื่อสร้าง Part 2 ได้ โดยเลือก "Wrap Up" ถ้าต้องการจบเรื่อง`);
+    }
+}
 
 // Expose globals
 window.selectProject = selectProject;

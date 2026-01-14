@@ -255,6 +255,7 @@ ${personalityDescriptions.join('\n')}
 - Use "Written Speech" Thai (NOT formal Thai)
 - NO EMOJI - Use 555, TT, ... instead
 - Keep messages SHORT (1-2 sentences max)
+- **MAX 80 characters per message** (2-3 lines on mobile) - If longer, split into 2 bubbles
 - Same sender can appear consecutively (Burstiness)
 
 **JSON FORMAT:**
