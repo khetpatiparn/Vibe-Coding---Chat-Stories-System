@@ -41,3 +41,7 @@
 
 - [✅] fix bug choose charactor
 - [✅] change UI AI Continue
+
+### version 2.0
+
+- [✅] Reaction Images/Memes จาก GIPHY
