@@ -1874,16 +1874,21 @@ function renderPreviewList(dialogues, nameMapping = {}) {
         const displayName = nameMapping[d.sender] || d.sender;
         const isLong = (d.message?.length || 0) > 80;
         
-        let stickerHtml = '';
-        if (d.sticker_keyword) {
-            stickerHtml = `<div class="preview-sticker-tag" style="font-size: 0.75rem; color: #ec4899; margin-top: 4px;">🧸 Sticker: ${d.sticker_keyword} (Auto-fetch on add)</div>`;
+        let contentHtml = `<div class="preview-message">${d.message || ''}${isLong ? ' <span style="color:#f59e0b;font-size:0.75rem;">(ยาว)</span>' : ''}</div>`;
+        
+        if (d.image_path) {
+            contentHtml = `
+            <div class="preview-sticker" style="margin-top:5px;">
+                <img src="${d.image_path}" style="max-height:100px; border-radius:8px; border:1px solid #333;">
+            </div>`;
+        } else if (d.sticker_keyword) {
+             contentHtml += `<div class="preview-sticker-tag" style="font-size: 0.75rem; color: #ec4899; margin-top: 4px;">🧸 Sticker: ${d.sticker_keyword}</div>`;
         }
         
         return `
         <div class="preview-dialogue-item" ${isLong ? 'style="border-left: 3px solid #f59e0b;"' : ''}>
             <div class="preview-sender" style="text-transform: capitalize;">${displayName}</div>
-            <div class="preview-message">${d.message}${isLong ? ' <span style="color:#f59e0b;font-size:0.75rem;">(ยาว)</span>' : ''}</div>
-            ${stickerHtml}
+            ${contentHtml}
         </div>
     `;
     }).join('');
@@ -1910,20 +1915,9 @@ async function commitContinuation() {
             }
         }
         
-        // 2. Fetch Stickers for dialogues with keywords
-        for (let i = 0; i < previewDialogues.length; i++) {
-            const d = previewDialogues[i];
-            if (d.sticker_keyword) {
-                try {
-                    const stickerUrl = await fetchBestSticker(d.sticker_keyword);
-                    if (stickerUrl) {
-                        d.image_path = stickerUrl; // Assign sticker URL
-                    }
-                } catch (err) {
-                    console.warn(`Failed to fetch sticker for '${d.sticker_keyword}':`, err);
-                }
-            }
-        }
+        // 2. Add dialogues
+        // Note: Sticker logic is now handled on server-side during generation (splitting bubbles).
+        // The previewDialogues already contain separate items for stickers (with image_path) and text.
 
         // 3. Sequentially add dialogues with explicit order and timing
         let startOrder = 0;
@@ -1946,7 +1940,8 @@ async function commitContinuation() {
                     message: d.message,
                     order: startOrder + i,
                     delay: calculatedDelay,
-                    reaction_delay: window.TIMING_CONFIG?.DEFAULT_REACTION_DELAY || 0.8
+                    reaction_delay: window.TIMING_CONFIG?.DEFAULT_REACTION_DELAY || 0.8,
+                    image_path: d.image_path // IMPORTANT: Pass the image path!
                 })
             });
         }

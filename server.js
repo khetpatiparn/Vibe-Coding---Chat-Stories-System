@@ -179,7 +179,7 @@ app.put('/api/dialogues/:id', async (req, res) => {
 app.post('/api/projects/:id/dialogues', async (req, res) => {
     try {
         const projectId = req.params.id;
-        const { sender, message, order, delay, reaction_delay, imagePath } = req.body;
+        const { sender, message, order, delay, reaction_delay, imagePath, image_path } = req.body;
         
         // Auto-calculate delay if not provided
         const baseDelay = 1.0;
@@ -192,7 +192,7 @@ app.post('/api/projects/:id/dialogues', async (req, res) => {
             delay: delay || calculatedDelay,
             reaction_delay: reaction_delay || TIMING.DEFAULT_REACTION_DELAY,
             typing_speed: 'normal',
-            image_path: imagePath // Map camelCase to snake_case
+            image_path: image_path || imagePath // Support both snake_case (frontend) and camelCase (legacy)
         };
         
         const dialogueId = await Dialogue.add(projectId, newData, order || 999);
@@ -535,13 +535,53 @@ app.post('/api/generate/continue', async (req, res) => {
         // 3. Call AI with display names and relationship (V2.0)
         const newDialogues = await continueStory(topic, dialoguesWithNames, characterNames, length, mode, relationship || 'friend');
         
-        // 4. Convert AI response back to internal IDs
-        const dialoguesWithIds = newDialogues.map(d => ({
-            ...d,
-            sender: nameToId[d.sender] || d.sender
-        }));
+        // 4. Convert AI response back to internal IDs and Process Stickers
+        const processedDialogues = [];
+        const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC';
+
+        for (const d of newDialogues) {
+            // Map Sender Name -> ID
+            const internalSender = nameToId[d.sender] || d.sender;
+
+            // 1. Handle Sticker
+            if (d.sticker_keyword) {
+                try {
+                    const response = await axios.get(`https://api.giphy.com/v1/gifs/search`, {
+                        params: { api_key: apiKey, q: d.sticker_keyword, limit: 1, rating: 'pg-13' }
+                    });
+                    
+                    if (response.data.data.length > 0) {
+                        const gifUrl = response.data.data[0].images.fixed_height.url;
+                        
+                        // Add Sticker Dialogue
+                        processedDialogues.push({
+                            sender: internalSender,
+                            message: '',
+                            sticker_keyword: d.sticker_keyword, 
+                            image_path: gifUrl,
+                            delay: 0.8,
+                            reaction_delay: 0.5,
+                            typing_speed: 'fast'
+                        });
+                    }
+                } catch (err) {
+                    console.error(`Failed to fetch sticker for '${d.sticker_keyword}':`, err.message);
+                }
+            }
+
+            // 2. Handle Text
+            if (d.message && d.message.trim().length > 0) {
+                processedDialogues.push({
+                    sender: internalSender,
+                    message: d.message,
+                    delay: 1.5, // Default estimation
+                    reaction_delay: 0.8,
+                    typing_speed: 'normal'
+                });
+            }
+        }
         
-        res.json({ success: true, dialogues: dialoguesWithIds, nameMapping: idToName });
+        res.json({ success: true, dialogues: processedDialogues, nameMapping: idToName });
         
     } catch (e) {
         console.error('Continue API Error:', e);

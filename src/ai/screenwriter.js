@@ -70,11 +70,11 @@ function buildPrompt(category, characters = ['me', 'boss'], customPrompt = null,
     // Category -> Detailed Direction
     const categoryInstructions = {
         auto: 'Focus on natural flow. Let the topic dictate the tone.',
-        funny: 'Situation: Hilarious misunderstanding or chaotic event. Tone: Playful, high energy, lots of "555".',
-        drama: 'Situation: Emotional conflict or sad news. Tone: Serious, heavy, shorter sentences, pauses "...".',
-        horror: 'Situation: Sharing a scary experience or sensing something paranormal. Tone: Suspenseful, hesitant, panicked.',
+        funny: 'Situation: A chaotic misunderstanding, sending a message to the wrong person, or a embarrassing autocorrect fail. Tone: Panicked but hilarious.',
+        drama: 'Situation: A shocking revelation, a breakup, or a massive betrayal. Start with a "Hook" message that creates immediate curiosity. Tone: Intense, emotional, pauses "...", heart-broken.',
+        horror: 'Situation: Something strange is happening RIGHT NOW (e.g., hearing noises, someone standing outside). The characters are experiencing it in real-time. Tone: Tense, short messages, panic.',
         office: 'Situation: Office life drama, deadlines, annoying colleagues. Tone: Mix of formal and frustration.',
-        love: 'Situation: Flirting or deep romantic talk. Tone: Sweet, shy, or bold depending on character.',
+        love: 'Situation: Confessing a secret crush, checking status in a "situationship", or jealous probing. Tone: Shy, testing the waters, mixed signals.',
         gossip: 'Situation: Secretly talking about someone else (Third party). Tone: Exciting, "Tea Spilling", whispered vibe.',
         consult: 'Situation: Character A has a dilemma, Character B gives advice. Tone: Supportive but real/direct.',
         fight: 'Situation: Heated argument. Tone: Aggressive, rude (if close), sarcastic, defensive. Use "Rapid Fire".',
@@ -250,11 +250,13 @@ ${personalityDescriptions.join('\n')}
     
 ---
 
-**sticker/GIF INSTRUCTIONS (IMPORTANT):**
-- **REQUIRED:** You MUST suggest a GIF sticker when characters express STRONG emotions (laughing, crying, shocked, angry, love).
-- Add "sticker_keyword" in JSON (e.g., "shocked cat", "laughing dog", "sad violin", "k-drama slap").
-- **FREQUENCY:** Suggest at least 2-3 stickers for this story.
-- If no sticker is appropriate for a line, omit the field.
+**sticker/GIF INSTRUCTIONS (USE SPARINGLY):**
+- **RULE:** Use stickers ONLY to emphasize "PEAK" emotions (e.g., extreme shock, uncontrollable laughter, devastating sadness).
+- **DO NOT** use stickers for filler or normal conversation.
+- **DRAMA/HORROR MODE:** use fewer stickers (or none) to maintain tension.
+- **FUNNY/GOSSIP MODE:** can use more stickers (1-3 max).
+- Add "sticker_keyword" in JSON (e.g., "sad violin meme", "shocked face", "k-drama crying").
+- If no sticker adds value, omit the field. It's better to have NO sticker than a forced one.
 
 **OUTPUT REQUIREMENTS:**
 - Generate ${length || 20} messages
@@ -414,13 +416,25 @@ You are continuing a Thai chat conversation. ${lengthInstruction} ${modeInstruct
    - ✅ "เจ", "พีพี", "บิ๊กมิ้ง"  
    - ❌ "Jay", "PP", "Bigming"
 
+**sticker/GIF INSTRUCTIONS (IMPORTANT):**
+- **REQUIRED:** You MUST suggest a GIF sticker when characters express STRONG emotions (laughing, crying, shocked, angry, love).
+- Add "sticker_keyword" in JSON (e.g., "shocked cat", "laughing dog", "sad violin", "k-drama slap").
+- If no sticker is appropriate for a line, omit the field.
+
 **CHARACTERS IN SCENE:** [${characterList}]
 Use ONLY these names as senders. Match exactly.
 
 **OUTPUT:** JSON array ONLY
 [
-    {"sender": "ชื่อไทย", "message": "ข้อความ"},
-    {"sender": "ชื่อไทย", "message": "ข้อความ"}
+    {
+      "sender": "ชื่อไทย", 
+      "message": "ข้อความ",
+      "sticker_keyword": "shocked cat"
+    },
+    {
+      "sender": "ชื่อไทย", 
+      "message": "ข้อความ"
+    }
 ]
 `;
 
@@ -445,17 +459,22 @@ Generate JSON:`;
             const response = await result.response;
             const text = response.text();
             
-            const jsonMatch = text.match(/\[.*\]/s);
-            if (jsonMatch) {
+            // Robust JSON extraction (finds the first '[' and the last ']')
+            const jsonStartIndex = text.indexOf('[');
+            const jsonEndIndex = text.lastIndexOf(']');
+            
+            if (jsonStartIndex !== -1 && jsonEndIndex !== -1 && jsonEndIndex > jsonStartIndex) {
+                const jsonString = text.substring(jsonStartIndex, jsonEndIndex + 1);
                 console.log(`✅ Continuation generated with ${modelName}`);
-                return JSON.parse(jsonMatch[0]);
+                return JSON.parse(jsonString);
             } else {
                 throw new Error('No JSON found in AI response');
             }
         } catch (error) {
             console.warn(`⚠️ ${modelName} failed: ${error.message}`);
             lastError = error;
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Linear backoff: 2 seconds
+            await new Promise(resolve => setTimeout(resolve, 2000));
         }
     }
     
