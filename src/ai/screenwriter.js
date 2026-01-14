@@ -65,7 +65,7 @@ const RELATIONSHIPS = {
 // ============================================
 // Master Prompt Builder (V2.0)
 // ============================================
-function buildPrompt(category, affiliateProduct = null, characters = ['me', 'boss'], customPrompt = null, characterData = [], relationship = 'friend') {
+function buildPrompt(category, characters = ['me', 'boss'], customPrompt = null, characterData = [], relationship = 'friend', length = 20) {
     
     // Category -> Detailed Direction
     const categoryInstructions = {
@@ -247,11 +247,17 @@ ${personalityDescriptions.join('\n')}
     }
     
     promptText += `
-
+    
 ---
 
+**sticker/GIF INSTRUCTIONS (IMPORTANT):**
+- **REQUIRED:** You MUST suggest a GIF sticker when characters express STRONG emotions (laughing, crying, shocked, angry, love).
+- Add "sticker_keyword" in JSON (e.g., "shocked cat", "laughing dog", "sad violin", "k-drama slap").
+- **FREQUENCY:** Suggest at least 2-3 stickers for this story.
+- If no sticker is appropriate for a line, omit the field.
+
 **OUTPUT REQUIREMENTS:**
-- Generate 18-20 messages
+- Generate ${length || 20} messages
 - Use "Written Speech" Thai (NOT formal Thai)
 - NO EMOJI - Use 555, TT, ... instead
 - Keep messages SHORT (1-2 sentences max)
@@ -266,7 +272,7 @@ ${personalityDescriptions.join('\n')}
     {
       "sender": "${characters[0]}",
       "message": "ข้อความ",
-      "sticker_keyword": "shocked cat (Optional: USE OFTEN for funny/emotional moments! keywords: shocked, laughing, cry, angry, love)",
+      "sticker_keyword": "shocked cat",
       "delay": 1.0,
       "typing_speed": "normal"
     }
@@ -284,7 +290,7 @@ typing_speed: slow (ดราม่า หนักๆ), normal (ปกติ), 
 // Generate Story (with Auto-Retry and Fallback)
 // ============================================
 async function generateStory(options = {}) {
-    let category, characters, customPrompt, characterData, relationship;
+    let category, characters, customPrompt, characterData, relationship, length;
     
     if (typeof options === 'string') {
         category = options;
@@ -292,15 +298,17 @@ async function generateStory(options = {}) {
         customPrompt = null;
         characterData = [];
         relationship = 'friend';
+        length = 20;
     } else {
         category = options.category || 'funny';
         characters = options.characters || ['me', 'boss'];
         customPrompt = options.customPrompt || null;
         characterData = options.characterData || [];
         relationship = options.relationship || 'friend';
+        length = options.length || 20;
     }
-    
-    const prompt = buildPrompt(category, null, characters, customPrompt, characterData, relationship);
+
+    const prompt = buildPrompt(category, characters, customPrompt, characterData, relationship, length);
     
     for (let modelIndex = 0; modelIndex < MODEL_PRIORITY.length; modelIndex++) {
         const currentModel = MODEL_PRIORITY[modelIndex];

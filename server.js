@@ -376,9 +376,9 @@ app.post('/api/projects/:id/set_main_character', async (req, res) => {
 // 4. Generate New Story (AI)
 app.post('/api/generate', async (req, res) => {
     try {
-        const { category, characters, characterData, customPrompt, projectId, relationship } = req.body;
+        const { category, characters, characterData, customPrompt, projectId, relationship, length } = req.body;
         
-        console.log('Generating story with settings:', { category, characters, customPrompt, projectId, relationship });
+        console.log('Generating story with settings:', { category, characters, customPrompt, projectId, relationship, length });
         console.log('Character data:', characterData);
         
         let targetProjectId = projectId;
@@ -394,7 +394,8 @@ app.post('/api/generate', async (req, res) => {
             characters: characters || ['me', 'boss'],
             characterData: characterData || [],
             customPrompt: customPrompt || null,
-            relationship: relationship || 'friend'  // V2.0: Pass relationship
+            relationship: relationship || 'friend',  // V2.0: Pass relationship
+            length: length || 20 // Default to 20 if not provided
         });
         
         // Clear existing dialogues if generating for existing project
@@ -460,9 +461,9 @@ app.post('/api/generate', async (req, res) => {
                         // Update the last inserted dialogue with image_path
                         // We need the ID, but Dialogue.add doesn't return ID easily in current implementation wrapper
                         // Optimization: Update immediately by updating the `add` method or separate query
-                        await new Promise((resolve, reject) => {
-                             db.run(`UPDATE dialogues SET image_path = ? WHERE project_id = ? AND seq_order = ?`, 
-                                [gifUrl, targetProjectId, d.seq_order || (i+1)], (err) => {
+                            await new Promise((resolve, reject) => {
+                                 db.run(`UPDATE dialogues SET image_path = ? WHERE project_id = ? AND seq_order = ?`, 
+                                    [gifUrl, targetProjectId, d.seq_order || i], (err) => {
                                     if(err) console.error("Failed to update sticker", err);
                                     resolve();
                                 });
