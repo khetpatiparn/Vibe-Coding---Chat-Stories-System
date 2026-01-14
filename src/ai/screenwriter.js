@@ -260,7 +260,41 @@ ${personalityDescriptions.join('\n')}
   - **USE:** "cute cat", "anime reaction", "generic cartoon", "mood vibe", "drawing", "lo-fi animation".
   - **REASON:** To ensure the generated keywords are safe for Affiliate/Commercial use. 
 - Add "sticker_keyword" in JSON (e.g., "sad violin meme", "shocked face", "k-drama crying").
-- If no sticker adds value, omit the field. It's better to have NO sticker than a forced one.
+- If no sticker adds value, omit the field. It's better to have NO sticker than a forced one.`;
+
+    const targetLength = length || 35;
+    let pacingInstruction = '';
+
+    // สร้าง Logic การเดินเรื่องตาม Category (Adaptive Narrative Arc)
+    if (['drama', 'fight', 'gossip', 'tie_in'].includes(category)) {
+        // สูตร 1: "Fast Paced" (เปิดมาใส่ยับ) - เหมาะกับ TikTok ที่สุด
+        // ตัด Intro ทิ้ง เริ่ม Conflict ทันที
+        pacingInstruction = `
+**STORY ARC (FAST PACED - IN MEDIA RES):**
+1. **Messages 1-2 (HOOK):** SKIP greeting. Start immediately with the problem/shocking statement. (e.g., "มึง... กูเห็นแฟนแกเดินกับคนอื่น", "ทำไมทำแบบนี้วะ")
+2. **Messages 3-${Math.floor(targetLength * 0.7)} (CONFLICT/ACTION):** High tension, arguing, providing evidence (pic/text), emotions exploding.
+3. **Messages ${Math.floor(targetLength * 0.7) + 1}-${targetLength} (CLIMAX & TWIST):** The final reveal or ending punchline.`;
+    } 
+    else if (category === 'horror') {
+        // สูตร 2: "Suspense Builder" (ค่อยๆ หลอน)
+        pacingInstruction = `
+**STORY ARC (SUSPENSE):**
+1. **Messages 1-5 (ATMOSPHERE):** Something feels off. Character hears/sees something strange.
+2. **Messages 6-${Math.floor(targetLength * 0.8)} (RISING TERROR):** The threat gets closer. Panic increases. Denial -> Realization.
+3. **Messages ${Math.floor(targetLength * 0.8) + 1}-${targetLength} (JUMPSCARE/CLIFFHANGER):** The ghost appears or communication cuts off abruptly.`;
+    } 
+    else if (['auto', 'funny', 'office', 'consult', 'love', 'debate'].includes(category)) {
+        // สูตร 3: "Standard Flow" (สูตรเดิมของคุณ แต่ลด Intro ลง)
+        pacingInstruction = `
+**STORY ARC (BALANCED):**
+1. **Messages 1-3 (SETUP):** Quick context. What are we talking about?
+2. **Messages 4-${Math.floor(targetLength * 0.7)} (ENGAGEMENT):** Discussing the topic with emotions/jokes.
+3. **Messages ${Math.floor(targetLength * 0.7) + 1}-${targetLength} (CONCLUSION):** Reach an agreement, a joke landing, or a sweet goodbye.`;
+    }
+
+    promptText += `
+
+${pacingInstruction}
 
 **OUTPUT REQUIREMENTS:**
 - Generate ${length || 35} messages

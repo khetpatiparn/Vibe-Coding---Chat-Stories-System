@@ -45,3 +45,4 @@
 ### version 2.0
 
 - [✅] Reaction Images/Memes จาก GIPHY
+- [✅] Adaptive Narrative Arc (TikTok Retention)
