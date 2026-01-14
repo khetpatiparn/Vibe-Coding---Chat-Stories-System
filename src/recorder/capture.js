@@ -201,6 +201,23 @@ async function captureFrames(story, outputName = 'story') {
                         story.scrollToBottom();
                     }
                     
+                    // ✅ SYNC 3: Sync Video Elements (MP4 Giphys)
+                    const videos = document.querySelectorAll('video.giphy-video');
+                    videos.forEach(v => {
+                        const appearTime = parseFloat(v.closest('.message').dataset.appearTime || 0);
+                        const relativeTime = currentTime - appearTime;
+                        
+                        if (relativeTime >= 0) {
+                            // Ensure video loops correctly based on its duration
+                            // Note: duration might be NaN if not loaded, handle gracefully
+                            if (v.duration && v.duration > 0) {
+                                v.currentTime = relativeTime % v.duration;
+                            } else {
+                                v.currentTime = 0;
+                            }
+                        }
+                    });
+
                     // Check Typing
                     if (currentTime >= item.typingStart && currentTime < item.typingEnd) {
                         const dialogue = storyData.dialogues[item.index];
