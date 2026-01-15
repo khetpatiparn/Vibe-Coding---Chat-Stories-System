@@ -46,3 +46,9 @@
 
 - [✅] Reaction Images/Memes จาก GIPHY
 - [✅] Adaptive Narrative Arc (TikTok Retention)
+
+### version 2.1
+
+- [ ] ชื่อห้องแชท
+- [ ] ค้างหน้าแชทสุดท้าย 2-3 วิสำหรับการปิดจบคลิป
+- [ ] ธีมตามหมวดหมู่
