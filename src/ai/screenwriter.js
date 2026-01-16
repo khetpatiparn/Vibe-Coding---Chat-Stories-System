@@ -250,17 +250,22 @@ ${personalityDescriptions.join('\n')}
     
 ---
 
-**sticker/GIF INSTRUCTIONS (USE SPARINGLY):**
-- **RULE:** Use stickers ONLY to emphasize "PEAK" emotions (e.g., extreme shock, uncontrollable laughter, devastating sadness).
-- **DO NOT** use stickers for filler or normal conversation.
-- **DRAMA/HORROR MODE:** use fewer stickers (or none) to maintain tension.
-- **FUNNY/GOSSIP MODE:** can use more stickers (1-3 max).
-- **🛡️ SAFE MODE (COPYRIGHT):**
-  - **AVOID:** Celebrity names, specific movie scenes, or famous actors (Risk of Right of Publicity).
-  - **USE:** "cute cat", "anime reaction", "generic cartoon", "mood vibe", "drawing", "lo-fi animation".
-  - **REASON:** To ensure the generated keywords are safe for Affiliate/Commercial use. 
-- Add "sticker_keyword" in JSON (e.g., "sad violin meme", "shocked face", "k-drama crying").
-- If no sticker adds value, omit the field. It's better to have NO sticker than a forced one.`;
+**sticker/GIF INSTRUCTIONS (STRICT MOOD MATCHING):**
+- **RULE 1: MATCH THE TONE (CRITICAL)**
+  - 👻 **HORROR / DRAMA / THRILLER:** - ❌ **ABSOLUTELY NO:** Funny memes, cute animals, cartoons, "Monkey Puppet", "Side Eye", "Doge". (This ruins the scary atmosphere).
+    - ✅ **USE ONLY:** "dark silhouette", "blurred motion", "scary eyes", "glitch effect", "trembling hand", "zoom in horror".
+    - **Quantity:** 0 or 1 (Save for the absolute climax).
+  
+  - 😂 **FUNNY / GOSSIP / FRIEND:** - ✅ **USE:** "reaction memes", "shocked cat", "k-drama face", "judging look", "anime sweat drop".
+    - **Quantity:** 1-3 allowed to enhance comedy.
+
+- **RULE 2: 🛡️ SAFE MODE (COPYRIGHT)**
+  - **AVOID:** Specific Hollywood celebrities, Disney/Marvel characters.
+  - **USE:** "generic stock photo style", "lo-fi illustration", "drawing", "mood vibe".
+
+- **JSON OUTPUT:**
+  - Add "sticker_keyword" field ONLY if necessary.
+  - If the scene is tense/serious and no scary sticker fits, **OMIT THE FIELD**.`;
 
     const targetLength = length || 35;
     let pacingInstruction = '';
@@ -304,9 +309,28 @@ ${pacingInstruction}
 - **MAX 80 characters per message** (2-3 lines on mobile) - If longer, split into 2 bubbles
 - Same sender can appear consecutively (Burstiness)
 
+**TITLE GENERATION RULES (Strictly Short & Viral):**
+Create a short, punchy title based on Curiosity Gap Theory.
+1. **STYLE:** **News Headline / Tabloid Style.** (Noun + Adjective/Action).
+2. **RESTRICTION:** Cut ALL filler words: "ที่", "ซึ่ง", "อัน", "ความ", "การ", "ของ". 
+3. **LENGTH:** **MAX 15-18 Characters Only.** (Critical)
+
+**EXAMPLES (Must follow this length):**
+- Horror: ❌ "สิ่งที่กล้องวงจรปิดจับภาพได้" -> ✅ "เงาปริศนาในกล้อง" (Mystery Shadow)
+- Gossip: ❌ "ใครเป็นคนปล่อยข่าว" -> ✅ "มือมืดปล่อยข่าว" (Leaker Revealed)
+- Office: ❌ "เงินเดือนที่หายไป" -> ✅ "เงินเดือนปริศนา" (Mystery Salary)
+- Drama: ❌ "แชทสุดท้ายก่อนหายตัวไป" -> ✅ "แชทสุดท้าย" (The Last Chat)
+- Love: ❌ "คำสารภาพของคนแอบชอบ" -> ✅ "คำสารภาพ" (The Confession)
+- Funny: ❌ "ทริปนี้ต้องมีคนรอด" -> ✅ "ทริปสู้ชีวิต" (Survival Trip)
+
+**FORMATTING:**
+- **Language:** Thai (Impactful, Concise)
+- **Style:** No Emoji. No Brackets. No Full Sentences.
+
+
 **JSON FORMAT:**
 {
-  "title": "ชื่อเรื่องที่ดึงดูดใจ",
+  "title": "ชื่อเรื่องแบบ Curiosity Gap (ห้ามใช้ชื่อคนเปล่าๆ)",
   "characters": ${JSON.stringify(characterJSON, null, 2)},
   "dialogues": [
     {

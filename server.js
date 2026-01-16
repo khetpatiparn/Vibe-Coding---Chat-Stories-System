@@ -428,6 +428,12 @@ app.post('/api/generate', async (req, res) => {
             });
         }
         
+        // NEW: Update room_name with AI-generated title (Curiosity Gap)
+        if (story.title) {
+            await Project.updateRoomName(targetProjectId, story.title);
+            console.log(`📝 Updated room_name to: "${story.title}"`);
+        }
+        
         // Add dialogues with auto-calculated timing
         // Add dialogues with auto-calculated timing
         let currentOrder = 0;
