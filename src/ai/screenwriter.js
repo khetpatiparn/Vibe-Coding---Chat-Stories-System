@@ -257,9 +257,19 @@ ${personalityDescriptions.join('\n')}
     - ✅ **ACTION:** Leave "sticker_keyword" BLANK or NULL.
     - **ALTERNATIVE:** Use text actions like "[ส่งรูปถ่าย]", "[ส่งคลิปเสียง]", "[มือสั่นพิมพ์ผิดๆถูกๆ]".
 
-- **RULE 2: CASUAL MODES (GIFS OK)**
-  - 😂 **FUNNY / GOSSIP / FRIEND / LOVE / OFFICE:** - ✅ **USE:** "reaction memes", "shocked cat", "k-drama face", "judging look".
-    - **Quantity:** 1-3 stickers per conversation to enhance the vibe.
+- **RULE 2: CASUAL MODES (GIFS OK) - BE CREATIVE WITH KEYWORDS!**
+  - 😂 **FUNNY / GOSSIP / FRIEND / LOVE / OFFICE:**
+  - **KEYWORD VARIETY BY EMOTION (CHOOSE WISELY):**
+    - 😱 **Shock/Surprise:** "shocked pikachu", "jaw drop", "fainting", "eyes wide", "spit take", "double take"
+    - 🤣 **Laughter:** "dying of laughter", "rolling on floor", "wheezing", "can't breathe laughing", "ugly crying laugh"
+    - 💅 **Sassy/Attitude:** "hair flip", "eye roll", "side eye", "smug face", "sipping tea", "unbothered"
+    - 😍 **Love/Cute:** "heart eyes", "blushing anime", "squealing", "uwu", "crush mode", "lovesick"
+    - 😬 **Cringe/Facepalm:** "cringe face", "facepalm", "yikes", "nervous sweat", "awkward smile"
+    - 🤔 **Disbelief:** "sus face", "really meme", "confused math", "wait what", "excuse me"
+  - **QUANTITY RULE (CRITICAL):**
+    - **Range:** 0-3 stickers max per story.
+    - **0 is OK:** If the text humor is strong/dry/sarcastic, DO NOT force a sticker.
+    - **Timing:** Use stickers ONLY for a "Punchline" or a "Big Reaction". Do not use them as filler.
 
 - **JSON OUTPUT:**
   - Add "sticker_keyword" field ONLY for FUNNY/GOSSIP/LOVE modes.
