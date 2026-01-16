@@ -521,3 +521,12 @@ body.theme-horror .time-divider {
   font-family: 'Courier New', monospace;
   letter-spacing: 2px;
 }
+
+body.theme-horror .typing-bubble {
+  background: var(--bubble-left);
+  border: 1px solid rgba(255, 255, 255, 0.05); /* Match bubble border */
+}
+
+body.theme-horror .typing-bubble .dot {
+  background: #6b7280; /* Match text-light */
+}
