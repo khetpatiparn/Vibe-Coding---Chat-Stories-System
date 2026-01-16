@@ -395,7 +395,7 @@ app.post('/api/generate', async (req, res) => {
             characterData: characterData || [],
             customPrompt: customPrompt || null,
             relationship: relationship || 'friend',  // V2.0: Pass relationship
-            length: length || 35 // Default to 35 if not provided (was 20)
+            length: length // Let screenwriter.js handle randomization if undefined
         });
         
         // Clear existing dialogues if generating for existing project

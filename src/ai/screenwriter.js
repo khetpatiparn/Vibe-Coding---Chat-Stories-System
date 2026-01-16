@@ -423,7 +423,17 @@ async function generateStory(options = {}) {
         customPrompt = options.customPrompt || null;
         characterData = options.characterData || [];
         relationship = options.relationship || 'friend';
-        length = options.length || 35;
+        relationship = options.relationship || 'friend';
+        
+        // Randomize length between 30-42 if not specified (V2.1 - Natural Variation)
+        if (options.length) {
+            length = options.length;
+        } else {
+            const minLen = 30;
+            const maxLen = 42;
+            length = Math.floor(Math.random() * (maxLen - minLen + 1)) + minLen;
+            console.log(`🎲 Randomized Story Length: ${length} messages`);
+        }
     }
 
     const prompt = buildPrompt(category, characters, customPrompt, characterData, relationship, length);
