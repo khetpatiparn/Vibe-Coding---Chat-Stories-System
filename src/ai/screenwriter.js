@@ -250,22 +250,20 @@ ${personalityDescriptions.join('\n')}
     
 ---
 
-**sticker/GIF INSTRUCTIONS (STRICT MOOD MATCHING):**
-- **RULE 1: MATCH THE TONE (CRITICAL)**
-  - 👻 **HORROR / DRAMA / THRILLER:** - ❌ **ABSOLUTELY NO:** Funny memes, cute animals, cartoons, "Monkey Puppet", "Side Eye", "Doge". (This ruins the scary atmosphere).
-    - ✅ **USE ONLY:** "dark silhouette", "blurred motion", "scary eyes", "glitch effect", "trembling hand", "zoom in horror".
-    - **Quantity:** 0 or 1 (Save for the absolute climax).
-  
-  - 😂 **FUNNY / GOSSIP / FRIEND:** - ✅ **USE:** "reaction memes", "shocked cat", "k-drama face", "judging look", "anime sweat drop".
-    - **Quantity:** 1-3 allowed to enhance comedy.
+**sticker/GIF INSTRUCTIONS (REALISM MODE):**
+- **RULE 1: SERIOUS MODES (NO GIFS)**
+  - 👻 **HORROR / THRILLER / DRAMA / FIGHT:** - ❌ **STRICT RULE:** **NO STICKERS / NO GIFS ALLOWED.**
+    - **REASON:** In high-stress situations (fear/anger/crying), people do NOT browse for stickers. They type text or send photos (which AI cannot generate).
+    - ✅ **ACTION:** Leave "sticker_keyword" BLANK or NULL.
+    - **ALTERNATIVE:** Use text actions like "[ส่งรูปถ่าย]", "[ส่งคลิปเสียง]", "[มือสั่นพิมพ์ผิดๆถูกๆ]".
 
-- **RULE 2: 🛡️ SAFE MODE (COPYRIGHT)**
-  - **AVOID:** Specific Hollywood celebrities, Disney/Marvel characters.
-  - **USE:** "generic stock photo style", "lo-fi illustration", "drawing", "mood vibe".
+- **RULE 2: CASUAL MODES (GIFS OK)**
+  - 😂 **FUNNY / GOSSIP / FRIEND / LOVE / OFFICE:** - ✅ **USE:** "reaction memes", "shocked cat", "k-drama face", "judging look".
+    - **Quantity:** 1-3 stickers per conversation to enhance the vibe.
 
 - **JSON OUTPUT:**
-  - Add "sticker_keyword" field ONLY if necessary.
-  - If the scene is tense/serious and no scary sticker fits, **OMIT THE FIELD**.`;
+  - Add "sticker_keyword" field ONLY for FUNNY/GOSSIP/LOVE modes.
+  - **ALWAYS OMIT** "sticker_keyword" field for HORROR/DRAMA/FIGHT.`;
 
     const targetLength = length || 35;
     let pacingInstruction = '';
@@ -309,23 +307,53 @@ ${pacingInstruction}
 - **MAX 80 characters per message** (2-3 lines on mobile) - If longer, split into 2 bubbles
 - Same sender can appear consecutively (Burstiness)
 
-**TITLE GENERATION RULES (Strictly Short & Viral):**
-Create a short, punchy title based on Curiosity Gap Theory.
-1. **STYLE:** **News Headline / Tabloid Style.** (Noun + Adjective/Action).
-2. **RESTRICTION:** Cut ALL filler words: "ที่", "ซึ่ง", "อัน", "ความ", "การ", "ของ". 
-3. **LENGTH:** **MAX 15-18 Characters Only.** (Critical)
+**TITLE GENERATION RULES (The "Viral Tabloid" Formula):**
+To get a 10/10 Viral Score, do NOT describe the "Topic". Describe the "CONFLICT" or "EVIDENCE".
+**CORE RULE:** Use **Specific Nouns** (Object/Place/Person).
 
-**EXAMPLES (Must follow this length):**
-- Horror: ❌ "สิ่งที่กล้องวงจรปิดจับภาพได้" -> ✅ "เงาปริศนาในกล้อง" (Mystery Shadow)
-- Gossip: ❌ "ใครเป็นคนปล่อยข่าว" -> ✅ "มือมืดปล่อยข่าว" (Leaker Revealed)
-- Office: ❌ "เงินเดือนที่หายไป" -> ✅ "เงินเดือนปริศนา" (Mystery Salary)
-- Drama: ❌ "แชทสุดท้ายก่อนหายตัวไป" -> ✅ "แชทสุดท้าย" (The Last Chat)
-- Love: ❌ "คำสารภาพของคนแอบชอบ" -> ✅ "คำสารภาพ" (The Confession)
-- Funny: ❌ "ทริปนี้ต้องมีคนรอด" -> ✅ "ทริปสู้ชีวิต" (Survival Trip)
+**STRICT FORMATTING RULES (CRITICAL):**
+1. **NO FILLER WORDS:** Remove ALL connecting words: "ที่", "ซึ่ง", "อัน", "ความ", "การ", "ของ", "จาก", "โดย", "ใน" (unless necessary for meaning).
+   - ❌ "น้ำแดงจากห้องข้างบน" -> ✅ "น้ำแดงห้องบน" (Red Water Upstairs)
+   - ❌ "เสียงที่มาจากระเบียง" -> ✅ "เสียงปริศนาระเบียง" (Balcony Mystery Sound)
+2. **LENGTH:** MAX 15 Characters. (Make it look like a breaking news headline).
+
+**CATEGORY STRATEGIES (MUST FOLLOW):**
+
+👻 **1. HORROR (The "Unseen Presence" Rule)**
+- ❌ Boring: "เรื่องหลอนในห้อง", "เสียงปริศนา", "ผีบังตา" (Too vague)
+- ✅ Viral: "เงาในกระจก", "ใครอยู่ใต้เตียง", "รูมเมทที่ไม่มีจริง", "ศพในตู้"
+- **Focus:** Specific Location (Bed, Mirror, Closet) or Specific Action (Knocking, Breathing).
+
+💔 **2. DRAMA / LOVE (The "Smoking Gun" Rule)**
+- ❌ Boring: "ความลับในสตอรี่", "แฟนนอกใจ", "จับกิ๊กได้" (Generic)
+- ✅ Viral: "สตอรี่ที่ลืมซ่อน", "ใบเสร็จโรงแรม", "เสื้อตัวที่ไม่คุ้น", "แชทที่ลืมลบ"
+- **Focus:** The **EVIDENCE** that exposed the lie (Receipt, Chat, Photo, Shirt).
+
+🤬 **3. FIGHT / GOSSIP (The "Expose" Rule)**
+- ❌ Boring: "นินทาเพื่อน", "คนขี้โกง", "เรื่องที่ทำงาน"
+- ✅ Viral: "สลิปปลอม", "คลิปเสียงหลุด", "แฉวีรกรรม", "เงินกู้ที่หายไป"
+- **Focus:** The object causing the fight.
+
+🏢 **4. OFFICE (The "Disaster" Rule)**
+- ❌ Boring: "โดนเจ้านายด่า", "งานเข้า", "ปัญหางาน"
+- ✅ Viral: "ไมค์ลืมปิด", "ไฟล์ลับหลุด", "อีเมลผิดชีวิตเปลี่ยน"
+- **Focus:** The specific mistake (Error).
+
+😂 **5. FUNNY (The "Chaos" Rule)**
+- ❌ Boring: "เรื่องตลก", "ขำไม่ไหว", "เพื่อนตัวดี"
+- ✅ Viral: "สภาพตอนจบ", "ตำนานบทใหม่", "ทริปสู้ชีวิต"
+- **Focus:** The result of the chaos.
 
 **FORMATTING:**
-- **Language:** Thai (Impactful, Concise)
-- **Style:** No Emoji. No Brackets. No Full Sentences.
+- **Language:** Thai (Punchy, Tabloid Style)
+- **Length:** MAX 12-15 Characters (EXTREMELY SHORT)
+- **NO:** Filler words (ที่, ซึ่ง, อัน, ความ, การ). Use Compound Nouns.
+
+**CRITICAL INSTRUCTION FOR SPECIFIC NOUNS:**
+1. **PRIORITY 1:** IF the user provides a specific item in the context (e.g., "Gold", "Howl", "Test Kit"), **YOU MUST USE THAT EXACT ITEM** in the title.
+   - ❌ Input: "Gold Necklace" -> Title: "Mystery Slip" (Acceptable inference)
+   - ❌ Input: "Howling Sound" -> Title: "Red Water" (WRONG! Hallucination. Stick to "Sound/Voice/Shadow")
+2. **DO NOT INVENT:** Do not create random horror objects (Blood/Doll/Water) if they are not in the prompt.
 
 
 **JSON FORMAT:**
@@ -478,10 +506,12 @@ You are continuing a Thai chat conversation. ${lengthInstruction} ${modeInstruct
    - ✅ "เจ", "พีพี", "บิ๊กมิ้ง"  
    - ❌ "Jay", "PP", "Bigming"
 
-**sticker/GIF INSTRUCTIONS (IMPORTANT):**
-- **REQUIRED:** You MUST suggest a GIF sticker when characters express STRONG emotions (laughing, crying, shocked, angry, love).
-- Add "sticker_keyword" in JSON (e.g., "shocked cat", "laughing dog", "sad violin", "k-drama slap").
-- If no sticker is appropriate for a line, omit the field.
+**sticker/GIF INSTRUCTIONS (REALISM UPDATE):**
+- **STRICT MOOD CHECK:**
+  - IF mood is **SCARY / SAD / ANGRY** -> **DO NOT GENERATE STICKERS.** (Output text only).
+  - IF mood is **FUNNY / HAPPY / GOSSIP** -> Stickers are allowed (reaction memes).
+- **BANNED ALWAYS:** "wolf", "howling", "monkey puppet", "generic cartoon".
+- **OUTPUT:** Add "sticker_keyword" only if permitted. Otherwise, leave it out.
 
 **CHARACTERS IN SCENE:** [${characterList}]
 Use ONLY these names as senders. Match exactly.
