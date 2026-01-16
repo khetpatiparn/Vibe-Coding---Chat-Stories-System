@@ -297,12 +297,17 @@ ${personalityDescriptions.join('\n')}
 3. **Messages ${Math.floor(targetLength * 0.8) + 1}-${targetLength} (JUMPSCARE/CLIFFHANGER):** The ghost appears or communication cuts off abruptly.`;
     } 
     else if (['auto', 'funny', 'office', 'consult', 'love', 'debate'].includes(category)) {
-        // สูตร 3: "Standard Flow" (สูตรเดิมของคุณ แต่ลด Intro ลง)
         pacingInstruction = `
-**STORY ARC (BALANCED):**
+**STORY ARC (BALANCED & CINEMATIC ENDING):**
 1. **Messages 1-3 (SETUP):** Quick context. What are we talking about?
 2. **Messages 4-${Math.floor(targetLength * 0.7)} (ENGAGEMENT):** Discussing the topic with emotions/jokes.
-3. **Messages ${Math.floor(targetLength * 0.7) + 1}-${targetLength} (CONCLUSION):** Reach an agreement, a joke landing, or a sweet goodbye.`;
+3. **Messages ${Math.floor(targetLength * 0.7) + 1}-${targetLength} (CONCLUSION):**
+   - **RULE:** Do NOT end with a boring "Bye/Ok/See ya".
+   - **OPTION A (Funny/End of Scene):** End with a descriptive ACTION or SOUND in brackets [ ].
+     - Example: "[ถอนหายใจเฮือกใหญ่]", "[เสียงลากของหนักๆ]", "[มองบน]", "[ยืนนิ่งไป 3 วิ]"
+   - **OPTION B (Cliffhanger/Part 2):** End with a sudden suspense event.
+     - Example: "[เสียงเคาะประตู]", "เฮ้ย... มึงเห็นข้างหลังป่ะ", "[สายตัดไปทันที]"
+   - **GOAL:** Make the reader want to comment or watch the next part.`;
     }
 
     promptText += `
@@ -350,9 +355,10 @@ To get a 10/10 Viral Score, do NOT describe the "Topic". Describe the "CONFLICT"
 - **Focus:** The specific mistake (Error).
 
 😂 **5. FUNNY (The "Chaos" Rule)**
-- ❌ Boring: "เรื่องตลก", "ขำไม่ไหว", "เพื่อนตัวดี"
-- ✅ Viral: "สภาพตอนจบ", "ตำนานบทใหม่", "ทริปสู้ชีวิต"
-- **Focus:** The result of the chaos.
+- ❌ Boring: "เรื่องตลก", "ขำไม่ไหว"
+- ❌ Spoiler: "โอ่งมังกร", "ตุ๊กตายาง" (Do NOT name the specific object if it is the surprise punchline!)
+- ✅ Viral: "ของที่มาส่ง", "นิติโทรมาด่า", "สภาพหน้าลิฟต์", "พัสดุปริศนา"
+- **Focus:** The **CONSEQUENCE** (ผลกระทบ) or **MYSTERY** (ความสงสัย), NOT the object itself.
 
 **FORMATTING:**
 - **Language:** Thai (Punchy, Tabloid Style)
@@ -360,10 +366,20 @@ To get a 10/10 Viral Score, do NOT describe the "Topic". Describe the "CONFLICT"
 - **NO:** Filler words (ที่, ซึ่ง, อัน, ความ, การ). Use Compound Nouns.
 
 **CRITICAL INSTRUCTION FOR SPECIFIC NOUNS:**
-1. **PRIORITY 1:** IF the user provides a specific item in the context (e.g., "Gold", "Howl", "Test Kit"), **YOU MUST USE THAT EXACT ITEM** in the title.
-   - ❌ Input: "Gold Necklace" -> Title: "Mystery Slip" (Acceptable inference)
-   - ❌ Input: "Howling Sound" -> Title: "Red Water" (WRONG! Hallucination. Stick to "Sound/Voice/Shadow")
-2. **DO NOT INVENT:** Do not create random horror objects (Blood/Doll/Water) if they are not in the prompt.
+
+// กฎที่ 1: กฎเหล็กสำหรับทุกหมวด (ยกเว้น Funny) -> ต้องใช้วัตถุเป๊ะๆ
+1. **GENERAL RULE (Horror/Drama/Gossip/Love):** - IF the user provides a specific item/evidence (e.g., "Gold", "Blood", "Receipt"), **YOU MUST USE THAT EXACT SPECIFIC NOUN** in the title.
+   - **DO NOT** use vague words like "Mystery", "Secret", "Something".
+   - ❌ Input: "Red Ball" -> Title: "Mystery Object" (WRONG!)
+   - ✅ Input: "Red Ball" -> Title: "ลูกบอลสีแดง" (CORRECT)
+
+// กฎที่ 2: ข้อยกเว้นสำหรับหมวด Funny เท่านั้น -> ให้ซ่อนเพื่อไม่สปอยล์
+2. **EXCEPTION FOR 'FUNNY' MODE ONLY:** - IF the specific item is the **PUNCHLINE** of the joke (e.g., Giant Jar, Ugly Doll), **DO NOT** put it in the title. **HIDE IT** to create curiosity.
+   - ❌ Input: "Giant Dragon Jar" -> Title: "โอ่งมังกร" (WRONG! Spoils the joke)
+   - ✅ Input: "Giant Dragon Jar" -> Title: "ของที่มาส่ง" or "นิติโทรตาม" (CORRECT! Keeps the surprise)
+
+// กฎที่ 3: ห้ามมโน (สำหรับทุกหมวด)
+3. **NO HALLUCINATION:** Do not invent objects that are not in the prompt.
 
 
 **JSON FORMAT:**
