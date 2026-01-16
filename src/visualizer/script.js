@@ -255,31 +255,9 @@ class ChatStory {
         const isGiphy = item.image_path.includes('giphy.com') || item.image_path.includes('.gif');
         
         if (isGiphy) {
-            // Try to extract ID and convert to MP4
-            // Pattern: /media/{ID}/...
-            const match = item.image_path.match(/\/media\/([a-zA-Z0-9]+)\//);
-            if (match && match[1]) {
-                const gifId = match[1];
-                const mp4Url = `https://media3.giphy.com/media/${gifId}/giphy.mp4`;
-                
-                // Autoplay only in Dashboard, Manual Control in Recorder
-                const autoPlayAttr = window.__INJECTED_MODE__ ? '' : 'autoplay';
-
-                imageHtml = `
-                    <video 
-                        src="${mp4Url}" 
-                        class="chat-image giphy-video" 
-                        loop 
-                        muted 
-                        playsinline 
-                        ${autoPlayAttr}
-                        preload="auto"
-                        style="max-width: 100%; border-radius: 8px; display: block;"
-                    ></video>`;
-            } else {
-                // Fallback for non-standard GIPHY or other GIFs
-                imageHtml = `<img src="${item.image_path}" class="chat-image">`;
-            }
+            // FORCE GIF for Stickers to preserve transparency
+            // We disabled MP4 conversion because MP4s don't support alpha channel easily on web
+            imageHtml = `<img src="${item.image_path}" class="chat-image">`;
         } else {
             // Standard Image
             imageHtml = `<img src="${item.image_path.startsWith('data:') ? item.image_path : this.resolvePath(item.image_path)}" class="chat-image">`;

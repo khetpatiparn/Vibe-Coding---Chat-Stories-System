@@ -452,7 +452,7 @@ app.post('/api/generate', async (req, res) => {
             if (d.sticker_keyword) {
                 try {
                     const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC';
-                    const response = await axios.get(`https://api.giphy.com/v1/gifs/search`, {
+                    const response = await axios.get(`https://api.giphy.com/v1/stickers/search`, {
                         params: { api_key: apiKey, q: d.sticker_keyword, limit: 10, rating: 'pg-13' }
                     });
                     
@@ -598,7 +598,7 @@ app.post('/api/generate/continue', async (req, res) => {
             // 1. Handle Sticker
             if (d.sticker_keyword) {
                 try {
-                    const response = await axios.get(`https://api.giphy.com/v1/gifs/search`, {
+                    const response = await axios.get(`https://api.giphy.com/v1/stickers/search`, {
                         params: { api_key: apiKey, q: d.sticker_keyword, limit: 10, rating: 'pg-13' }
                     });
                     
@@ -768,7 +768,7 @@ app.get('/api/giphy/search', async (req, res) => {
         console.log(`🔍 Searching GIPHY: ${query}`);
         console.log(`🔑 Using Key length: ${apiKey ? apiKey.length : 0} | Key start: ${apiKey ? apiKey.substring(0, 4) : 'null'}`);
         
-        const response = await axios.get(`https://api.giphy.com/v1/gifs/search`, {
+        const response = await axios.get(`https://api.giphy.com/v1/stickers/search`, {
             params: {
                 api_key: apiKey,
                 q: query,
