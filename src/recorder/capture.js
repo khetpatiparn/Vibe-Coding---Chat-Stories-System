@@ -356,28 +356,28 @@ async function captureFrames(story, outputName = 'story') {
 // ============================================
 async function assembleVideo(framesDir, outputName = 'story', audioOptions = {}) {
     const outputPath = path.join(CONFIG.outputDir, `${outputName}.mp4`);
-    // const framePattern = path.join(framesDir, 'frame_%06d.png');
-    const framePattern = path.join(framesDir, 'frame_%06d.jpg'); // แก้ .png เป็น .jpg
+    const framePattern = path.join(framesDir, 'frame_%06d.jpg');
 
     await fs.ensureDir(CONFIG.outputDir);
     
-    const { bgMusicPath, sfxPath, timeline, bgmVolume = 0.3, sfxVolume = 0.5 } = audioOptions;
+    const { bgMusicPath, sfxPath, timeline, bgmVolume = 0.3, sfxVolume = 0.5, totalDuration } = audioOptions;
     
     return new Promise((resolve, reject) => {
-        console.log('Assembling video...');
+        console.log(`Assembling video... (duration: ${totalDuration?.toFixed(1) || '?'}s)`);
         
         let command = ffmpeg()
             .input(framePattern)
             .inputFPS(CONFIG.fps);
         
         if (bgMusicPath && fs.existsSync(bgMusicPath) && sfxPath && fs.existsSync(sfxPath) && timeline && timeline.length > 0) {
-            command.input(bgMusicPath);
-            command.input(sfxPath); // Load SFX once
+            // ✅ Loop BGM to cover entire video
+            command.input(bgMusicPath)
+                .inputOptions(['-stream_loop', '-1']);
+            command.input(sfxPath);
             
             let filterComplex = `[1:a]volume=${bgmVolume}[bgm];`;
             let mixInputs = '[bgm]';
             
-            // Limit SFX overlays to avoid memory issues (max 30 clips)
             const sfxCount = Math.min(timeline.length, 30);
             for (let i = 0; i < sfxCount; i++) {
                 const delayMs = Math.round(timeline[i].appearTime * 1000);
@@ -385,26 +385,39 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
                 mixInputs += `[sfx${i}]`;
             }
             
+            // ✅ FIX: Use duration=first to match video length (video is input 0)
             filterComplex += `${mixInputs}amix=inputs=${sfxCount + 1}:duration=first:dropout_transition=0:normalize=0[aout]`;
             
             command
                 .complexFilter(filterComplex)
                 .outputOptions(['-map', '0:v', '-map', '[aout]']);
         } else if (bgMusicPath && fs.existsSync(bgMusicPath)) {
+            // BGM only - loop and use -shortest to cut at video end
             command.input(bgMusicPath)
+                .inputOptions(['-stream_loop', '-1'])
                 .outputOptions(['-filter:a', `volume=${bgmVolume}`]);
         }
         
+        // ✅ FIX: Use -t to set exact video duration (prevents infinite loop)
+        const outputOpts = [
+            '-c:v', 'libx264',
+            '-pix_fmt', 'yuv420p',
+            '-preset', 'ultrafast',
+            '-crf', '23',
+            '-c:a', 'aac',
+            '-b:a', '128k'
+        ];
+        
+        // Add duration limit if we know the total duration
+        if (totalDuration) {
+            outputOpts.push('-t', totalDuration.toFixed(2));
+        }
+        
+        // Use -shortest as fallback safety
+        outputOpts.push('-shortest');
+        
         command
-            .outputOptions([
-                '-c:v', 'libx264',
-                '-pix_fmt', 'yuv420p',
-                '-preset', 'ultrafast',
-                '-crf', '23',
-                '-c:a', 'aac',
-                '-b:a', '128k',
-                '-shortest'
-            ])
+            .outputOptions(outputOpts)
             .output(outputPath)
             .on('end', () => resolve(outputPath))
             .on('error', (err) => reject(err))
@@ -419,14 +432,15 @@ async function recordStory(story, options = {}) {
     const outputName = options.outputName || 'story';
     try {
         const { framesDir } = await captureFrames(story, outputName);
-        const { timeline } = calculateTimeline(story);
+        const { timeline, totalDuration } = calculateTimeline(story);
         
         const audioOptions = {
             bgMusicPath: options.bgMusicPath,
             sfxPath: options.sfxPath,
             bgmVolume: options.bgmVolume,
             sfxVolume: options.sfxVolume,
-            timeline: timeline
+            timeline: timeline,
+            totalDuration: totalDuration  // ✅ NEW: Pass total duration to assembleVideo
         };
         
         const videoPath = await assembleVideo(framesDir, outputName, audioOptions);
