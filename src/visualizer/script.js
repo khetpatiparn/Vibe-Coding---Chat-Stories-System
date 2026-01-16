@@ -39,7 +39,12 @@ class ChatStory {
   }
 
   applyTheme() {
-    // Future: Apply background theme
+    // Apply theme class to body
+    if (this.data.theme === 'horror') {
+        document.body.classList.add('theme-horror');
+    } else {
+        document.body.classList.remove('theme-horror');
+    }
   }
 
   resolvePath(path) {

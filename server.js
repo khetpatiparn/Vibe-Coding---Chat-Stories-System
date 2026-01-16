@@ -427,6 +427,14 @@ app.post('/api/generate', async (req, res) => {
                 side: char.side || 'left' // Default to left if missing
             });
         }
+
+        // NEW: Auto-apply Theme based on Category
+        const { THEMES, CATEGORY_THEME_MAP } = require('./src/config/themes');
+        const theme = CATEGORY_THEME_MAP[category] || THEMES.DEFAULT;
+        if (theme !== THEMES.DEFAULT) {
+            await Project.updateTheme(targetProjectId, theme);
+            console.log(`👻 Auto-applied theme: ${theme}`);
+        }
         
         // NEW: Update room_name with AI-generated title (Curiosity Gap)
         if (story.title) {

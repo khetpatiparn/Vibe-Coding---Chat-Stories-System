@@ -487,3 +487,37 @@ body.rendering .message.right {
     position: relative;
     z-index: 1;
 }
+
+/* ============================================
+   Themes
+   ============================================ */
+
+/* Horror Theme (Dark Blue-Gray) */
+body.theme-horror {
+  --phone-bg: #050505;  /* Almost Black */
+  --bubble-left: #151922; /* Deep Blue-Gray (Visitor) */
+  --bubble-right: #2c3440; /* Mid Blue-Gray (Me) */
+  --text-dark: #d1d5db; /* Cool White */
+  --text-light: #6b7280;
+  --shadow-soft: rgba(0, 0, 0, 0.5);
+}
+
+body.theme-horror #chat-header {
+  background: #0f1115;
+  color: #d1d5db;
+  border-bottom: 1px solid #1f2937;
+}
+
+body.theme-horror .message-bubble {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body.theme-horror .message.right .message-bubble {
+  color: #d1d5db;
+}
+
+body.theme-horror .time-divider {
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
+}

@@ -101,6 +101,18 @@ function initSchema() {
                      }
                 }
             }
+
+        });
+
+        // Migration for projects table (theme)
+        db.all("PRAGMA table_info(projects)", (err, rows) => {
+            if (!err) {
+                const hasTheme = rows.some(r => r.name === 'theme');
+                if (!hasTheme) {
+                    console.log('Migrating: Adding theme to projects table...');
+                    db.run("ALTER TABLE projects ADD COLUMN theme TEXT DEFAULT 'default'");
+                }
+            }
         });
 
         // 4. Custom Characters Table
@@ -251,6 +263,16 @@ const Project = {
                  else resolve();
              });
          });
+
+    },
+
+    updateTheme: (id, theme) => {
+        return new Promise((resolve, reject) => {
+            db.run(`UPDATE projects SET theme = ? WHERE id = ?`, [theme, id], function(err) {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
     }
 };
 
@@ -356,6 +378,9 @@ const Dialogue = {
 // Full Import from JSON
 async function importStoryJSON(story) {
     const projectId = await Project.create(story.title || 'Untitled Story');
+    if (story.theme) {
+        await Project.updateTheme(projectId, story.theme);
+    }
     
     // Import Characters
     for (const [role, char] of Object.entries(story.characters)) {
@@ -436,6 +461,7 @@ async function exportStoryJSON(projectId) {
         room_name: project.room_name, // Room name for header
         show_partner_name: project.show_partner_name, // [NEW] Checkbox
         show_my_name: project.show_my_name, // [NEW] Checkbox
+        theme: project.theme || 'default', // [NEW] Theme
         status: project.status,
         characters,
         dialogues
