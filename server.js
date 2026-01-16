@@ -434,9 +434,10 @@ app.post('/api/generate', async (req, res) => {
             console.log(`📝 Updated room_name to: "${story.title}"`);
         }
         
-        // Add dialogues with auto-calculated timing
-        // Add dialogues with auto-calculated timing
+        // Add dialogues with SMART TIMING LOGIC (Burst Mode + Speed Multiplier)
         let currentOrder = 0;
+        let previousSender = null; // ตัวแปรจำคนส่งคนล่าสุด
+
         for (const d of story.dialogues) {
             
             // 1. Handle Sticker (Insert as separate dialogue FIRST)
@@ -448,20 +449,25 @@ app.post('/api/generate', async (req, res) => {
                     });
                     
                     if (response.data.data.length > 0) {
-                        // Randomly select from results for variety
                         const randomIndex = Math.floor(Math.random() * response.data.data.length);
                         const gifUrl = response.data.data[randomIndex].images.fixed_height.url;
                         
+                        // Smart Reaction: ถ้าคนเดิมพิมพ์ต่อกัน ลด reaction
+                        const stickerReaction = (d.sender === previousSender) 
+                            ? TIMING.BURST_REACTION_DELAY 
+                            : TIMING.DEFAULT_REACTION_DELAY;
+                        
                         await Dialogue.add(targetProjectId, {
                             sender: d.sender,
-                            message: '', // Sticker-only bubble
-                            delay: 0.8,  // Quick delay for sticker
-                            reaction_delay: 0.5,
+                            message: '',
+                            delay: 0.8,
+                            reaction_delay: stickerReaction,
                             typing_speed: 'fast',
                             image_path: gifUrl
                         }, currentOrder++);
                         
-                        console.log(`🧸 Auto-added sticker dialogue for '${d.sticker_keyword}'`);
+                        previousSender = d.sender;
+                        console.log(`🧸 Auto-added sticker for '${d.sticker_keyword}' (reaction: ${stickerReaction}s)`);
                     }
                 } catch (err) {
                     console.error(`Failed to fetch sticker for '${d.sticker_keyword}':`, err.message);
@@ -469,24 +475,49 @@ app.post('/api/generate', async (req, res) => {
             }
 
             // 2. Handle Text (Insert as separate dialogue SECOND)
-            // ONLY add text if it's NOT just "..." when a sticker is present
             const isPlaceholder = d.message && /^[\s.]*$/.test(d.message);
             const shouldAddText = d.sticker_keyword ? !isPlaceholder : (d.message && d.message.trim().length > 0);
 
             if (shouldAddText) {
-                // Auto-calculate delay based on message length (Thai-friendly)
-                const baseDelay = 1.0;
-                const charCount = d.message.length;
-                const calculatedDelay = parseFloat((baseDelay + (charCount * 0.05)).toFixed(2));
+                // --- SMART TIMING CALCULATION V3 (Long Message Fix) ---
                 
+                // 1. Burst Check: ถ้าคนเดิมพิมพ์ต่อกัน ให้ Reaction ไว
+                let reactionTime = TIMING.DEFAULT_REACTION_DELAY; // 0.6
+                if (d.sender === previousSender) {
+                    reactionTime = TIMING.BURST_REACTION_DELAY; // 0.4 (Burst Mode!)
+                }
+
+                // 2. Typing Speed Adjustment: ปรับตามอารมณ์ที่ AI ส่งมา
+                let speedMultiplier = TIMING.SPEED_MULTIPLIER[d.typing_speed] || 1.0;
+
+                // 3. Base Calculation
+                const charCount = d.message.length;
+                
+                // *** 4. Long Message Logic (NEW) ***
+                // ถ้าข้อความยาว (>50 ตัวอักษร) ให้คูณเวลาเพิ่มอีก 1.2 เท่า
+                // เพราะการขึ้นบรรทัดใหม่ใช้เวลาสายตามากกว่าปกติ
+                if (charCount > TIMING.LONG_MESSAGE_THRESHOLD) {
+                    speedMultiplier *= TIMING.LONG_MESSAGE_BONUS; // 1.2x
+                }
+
+                // สูตรคำนวณ
+                let finalDelay = (TIMING.BASE_DELAY + (charCount * TIMING.DELAY_PER_CHAR)) * speedMultiplier;
+                
+                // Clamp: Min 1.2s (กันสั้นหาย), Max 7.0s (ให้ยาวโชว์ครบ)
+                finalDelay = Math.max(TIMING.MIN_DELAY, Math.min(finalDelay, TIMING.MAX_DELAY));
+                
+                // --- CALCULATION END ---
+
                 await Dialogue.add(targetProjectId, {
                     sender: d.sender,
                     message: d.message,
-                    delay: calculatedDelay, 
-                    reaction_delay: 0.8,
+                    delay: parseFloat(finalDelay.toFixed(2)), 
+                    reaction_delay: parseFloat(reactionTime.toFixed(2)),
                     typing_speed: d.typing_speed || 'normal',
                     image_path: null
                 }, currentOrder++);
+
+                previousSender = d.sender;
             }
         }
         
@@ -547,9 +578,10 @@ app.post('/api/generate/continue', async (req, res) => {
         // 3. Call AI with display names and relationship (V2.0)
         const newDialogues = await continueStory(topic, dialoguesWithNames, characterNames, length, mode, relationship || 'friend');
         
-        // 4. Convert AI response back to internal IDs and Process Stickers
+        // 4. Convert AI response back to internal IDs and Process Stickers with SMART TIMING
         const processedDialogues = [];
         const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC';
+        let previousSender = null; // Track previous sender for Burst Mode
 
         for (const d of newDialogues) {
             // Map Sender Name -> ID
@@ -563,40 +595,67 @@ app.post('/api/generate/continue', async (req, res) => {
                     });
                     
                     if (response.data.data.length > 0) {
-                        // Randomly select from results for variety
                         const randomIndex = Math.floor(Math.random() * response.data.data.length);
                         const gifUrl = response.data.data[randomIndex].images.fixed_height.url;
                         
-                        // Add Sticker Dialogue
+                        // Smart Reaction: Burst Mode
+                        const stickerReaction = (internalSender === previousSender) 
+                            ? TIMING.BURST_REACTION_DELAY 
+                            : TIMING.DEFAULT_REACTION_DELAY;
+                        
                         processedDialogues.push({
                             sender: internalSender,
                             message: '',
                             sticker_keyword: d.sticker_keyword, 
                             image_path: gifUrl,
                             delay: 0.8,
-                            reaction_delay: 0.5,
+                            reaction_delay: stickerReaction,
                             typing_speed: 'fast'
                         });
+                        
+                        previousSender = internalSender;
                     }
                 } catch (err) {
                     console.error(`Failed to fetch sticker for '${d.sticker_keyword}':`, err.message);
                 }
             }
 
-            // 2. Handle Text
-            // ONLY add text if it's NOT just "..." when a sticker is present
-            // If sticker exists, we suppress generic placeholders.
-            const isPlaceholder = d.message && /^[\s.]*$/.test(d.message); // Checks for only dots/spaces
+            // 2. Handle Text with SMART TIMING
+            const isPlaceholder = d.message && /^[\s.]*$/.test(d.message);
             const shouldAddText = d.sticker_keyword ? !isPlaceholder : (d.message && d.message.trim().length > 0);
 
             if (shouldAddText) {
+                // --- SMART TIMING V3 (Long Message Fix) ---
+                
+                // Burst Check
+                let reactionTime = TIMING.DEFAULT_REACTION_DELAY;
+                if (internalSender === previousSender) {
+                    reactionTime = TIMING.BURST_REACTION_DELAY;
+                }
+
+                // Speed Multiplier
+                let speedMultiplier = TIMING.SPEED_MULTIPLIER[d.typing_speed] || 1.0;
+
+                // Calculate Delay
+                const charCount = d.message.length;
+                
+                // Long Message Bonus
+                if (charCount > TIMING.LONG_MESSAGE_THRESHOLD) {
+                    speedMultiplier *= TIMING.LONG_MESSAGE_BONUS; // 1.2x
+                }
+                
+                let finalDelay = (TIMING.BASE_DELAY + (charCount * TIMING.DELAY_PER_CHAR)) * speedMultiplier;
+                finalDelay = Math.max(TIMING.MIN_DELAY, Math.min(finalDelay, TIMING.MAX_DELAY));
+
                 processedDialogues.push({
                     sender: internalSender,
                     message: d.message,
-                    delay: 1.5, // Default estimation
-                    reaction_delay: 0.8,
-                    typing_speed: 'normal'
+                    delay: parseFloat(finalDelay.toFixed(2)),
+                    reaction_delay: parseFloat(reactionTime.toFixed(2)),
+                    typing_speed: d.typing_speed || 'normal'
                 });
+                
+                previousSender = internalSender;
             }
         }
         

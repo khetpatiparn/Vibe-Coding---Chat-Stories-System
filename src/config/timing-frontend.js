@@ -18,14 +18,20 @@
         }
     } catch (error) {
         console.warn('⚠️ Using fallback timing config:', error.message);
-        // Fallback defaults if API fails
+        // Fallback defaults - MUST MATCH timing.js V3 (Long Message Fix)
         window.TIMING_CONFIG = {
-            BASE_DELAY: 1.0,
+            BASE_DELAY: 0.8,
             DELAY_PER_CHAR: 0.05,
-            DEFAULT_REACTION_DELAY: 0.8,
+            DEFAULT_REACTION_DELAY: 0.6,
+            BURST_REACTION_DELAY: 0.4,
             TYPING_RATIO: 0.8,
             FPS: 30,
-            ENDING_BUFFER: 2
+            ENDING_BUFFER: 2,
+            SPEED_MULTIPLIER: { fast: 0.7, normal: 1.0, slow: 1.4 },
+            LONG_MESSAGE_THRESHOLD: 50,
+            LONG_MESSAGE_BONUS: 1.2,
+            MIN_DELAY: 1.2,
+            MAX_DELAY: 7.0
         };
     }
 })();

@@ -260,12 +260,12 @@ ${personalityDescriptions.join('\n')}
 - **RULE 2: CASUAL MODES (GIFS OK) - BE CREATIVE WITH KEYWORDS!**
   - 😂 **FUNNY / GOSSIP / FRIEND / LOVE / OFFICE:**
   - **KEYWORD VARIETY BY EMOTION (CHOOSE WISELY):**
-    - 😱 **Shock/Surprise:** "shocked pikachu", "jaw drop", "fainting", "eyes wide", "spit take", "double take"
+    - 😱 **Shock/Surprise:** "funny cat shock", "jaw drop", "fainting", "eyes wide", "spit take", "double take"
     - 🤣 **Laughter:** "dying of laughter", "rolling on floor", "wheezing", "can't breathe laughing", "ugly crying laugh"
-    - 💅 **Sassy/Attitude:** "hair flip", "eye roll", "side eye", "smug face", "sipping tea", "unbothered"
+    - 💅 **Sassy/Attitude:** "hair flip", "eye roll", "side eye", "smug face", "drinking tea meme", "unbothered"
     - 😍 **Love/Cute:** "heart eyes", "blushing anime", "squealing", "uwu", "crush mode", "lovesick"
     - 😬 **Cringe/Facepalm:** "cringe face", "facepalm", "yikes", "nervous sweat", "awkward smile"
-    - 🤔 **Disbelief:** "sus face", "really meme", "confused math", "wait what", "excuse me"
+    - 🤔 **Disbelief:** "sus face", "really meme", "confused thinking", "wait what", "excuse me", "processing meme"
   - **QUANTITY RULE (CRITICAL):**
     - **Range:** 0-3 stickers max per story.
     - **0 is OK:** If the text humor is strong/dry/sarcastic, DO NOT force a sticker.
