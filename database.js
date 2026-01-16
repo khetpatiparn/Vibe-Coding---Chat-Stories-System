@@ -21,14 +21,13 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 
 function initSchema() {
     db.serialize(() => {
-        // 1. Projects Table
-        db.run(`CREATE TABLE IF NOT EXISTS projects (
+            db.run(`CREATE TABLE IF NOT EXISTS projects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
             status TEXT DEFAULT 'DRAFT',
             room_name TEXT,
             show_partner_name INTEGER DEFAULT 1,
-            show_my_name INTEGER DEFAULT 0,
+            show_my_name INTEGER DEFAULT 1,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
 
@@ -202,7 +201,7 @@ function initSchema() {
 const Project = {
     create: (title) => {
         return new Promise((resolve, reject) => {
-            db.run(`INSERT INTO projects (title, status) VALUES (?, ?)`, [title, 'DRAFT'], function(err) {
+            db.run(`INSERT INTO projects (title, status, show_partner_name, show_my_name) VALUES (?, ?, 1, 1)`, [title, 'DRAFT'], function(err) {
                 if (err) reject(err);
                 else resolve(this.lastID);
             });
