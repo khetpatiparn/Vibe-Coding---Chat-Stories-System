@@ -75,7 +75,12 @@ function calculateTimeline(story) {
         currentTime += (reaction + typingTotal);
     }
     
-    const totalDuration = currentTime + CONFIG.endingBuffer;
+    // Determine ending buffer based on theme
+    const endingBuffer = (story.theme === 'horror' || story.theme === 'drama') 
+        ? TIMING.HORROR_ENDING_BUFFER 
+        : TIMING.ENDING_BUFFER;
+
+    const totalDuration = currentTime + endingBuffer;
     return { timeline, totalDuration };
 }
 

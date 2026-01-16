@@ -5,7 +5,8 @@
 
 const THEMES = {
     DEFAULT: 'default',
-    HORROR: 'horror'
+    HORROR: 'horror',
+    DRAMA: 'drama'
 };
 
 // Map categories to themes
@@ -15,6 +16,7 @@ const CATEGORY_THEME_MAP = {
     'scary': THEMES.HORROR,
     'thriller': THEMES.HORROR,
     'creepy': THEMES.HORROR,
+    'drama': THEMES.DRAMA,
     // All others default to THEMES.DEFAULT
 };
 

@@ -20,6 +20,7 @@ module.exports = {
     // Video Recording
     FPS: 30,
     ENDING_BUFFER: 2,
+    HORROR_ENDING_BUFFER: 3,
     
     // Speed Multipliers
     SPEED_MULTIPLIER: {
