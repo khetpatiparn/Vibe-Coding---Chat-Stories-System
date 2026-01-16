@@ -444,11 +444,13 @@ app.post('/api/generate', async (req, res) => {
                 try {
                     const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC';
                     const response = await axios.get(`https://api.giphy.com/v1/gifs/search`, {
-                        params: { api_key: apiKey, q: d.sticker_keyword, limit: 1, rating: 'pg-13' }
+                        params: { api_key: apiKey, q: d.sticker_keyword, limit: 10, rating: 'pg-13' }
                     });
                     
                     if (response.data.data.length > 0) {
-                        const gifUrl = response.data.data[0].images.fixed_height.url;
+                        // Randomly select from results for variety
+                        const randomIndex = Math.floor(Math.random() * response.data.data.length);
+                        const gifUrl = response.data.data[randomIndex].images.fixed_height.url;
                         
                         await Dialogue.add(targetProjectId, {
                             sender: d.sender,
@@ -557,11 +559,13 @@ app.post('/api/generate/continue', async (req, res) => {
             if (d.sticker_keyword) {
                 try {
                     const response = await axios.get(`https://api.giphy.com/v1/gifs/search`, {
-                        params: { api_key: apiKey, q: d.sticker_keyword, limit: 1, rating: 'pg-13' }
+                        params: { api_key: apiKey, q: d.sticker_keyword, limit: 10, rating: 'pg-13' }
                     });
                     
                     if (response.data.data.length > 0) {
-                        const gifUrl = response.data.data[0].images.fixed_height.url;
+                        // Randomly select from results for variety
+                        const randomIndex = Math.floor(Math.random() * response.data.data.length);
+                        const gifUrl = response.data.data[randomIndex].images.fixed_height.url;
                         
                         // Add Sticker Dialogue
                         processedDialogues.push({
