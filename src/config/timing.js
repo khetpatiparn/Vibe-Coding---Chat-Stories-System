@@ -19,8 +19,8 @@ module.exports = {
     
     // Video Recording
     FPS: 30,
-    ENDING_BUFFER: 2,
-    HORROR_ENDING_BUFFER: 3,
+    ENDING_BUFFER: 3,         // Standard ending delay (Requested: 3s)
+    HORROR_ENDING_BUFFER: 4,  // Horror usually needs more lingering dread, let's give it 4s (or 3s provided logic checks max)
     
     // Speed Multipliers
     SPEED_MULTIPLIER: {
