@@ -580,13 +580,16 @@ async function continueStory(prompt, existingDialogues = [], availableCharacters
     
     let profileSection = '';
     if (personalityDescriptions.length > 0) {
-        profileSection = `
-**CHARACTER PROFILES (STRICTLY FOLLOW THIS):**
+        promptText += `
+
+**CHARACTER PROFILES (เล่นบทตามนี้เป๊ะๆ):**
 ${personalityDescriptions.join('\n')}
 
-**LANGUAGE RULES:**
-1. Dialect (ภาษาถิ่น) MUST be used if specified in profile.
-2. Character Style (e.g. Rude, Formal) MUST be maintained.`;
+**CHARACTER LANGUAGE RULES:**
+1. ใช้ศัพท์ตามวัย: Gen Z = ฉ่ำ, ตึงๆ, นอยอ่า, ปัง, พัง | Boomer = จ๊ะ/จ้ะ, ทานข้าวรึยัง
+2. ใช้ศัพท์ตามอาชีพ: Programmer = Debug, Error, Deploy | แม่ค้า = F มาจ้า, ตำเลย
+3. Catchphrase: ใช้คำติดปาก หรือ "คำที่มีความหมายใกล้เคียง" ให้เป็นธรรมชาติ (Natural Variations) ไม่ต้องใช้คำเดิมซ้ำๆ
+4. Dialect: อีสาน = เฮ็ดอีหยัง, บ่, ตมจ | เหนือ = ยะหยัง, เจ้า, ก๊ะ | ใต้ = หนิ, ไอ้บ้า`;
     }
 
     const systemPrompt = `### THAI CHAT CONTINUATION ENGINE V2.2 (Profile Aware) ###
