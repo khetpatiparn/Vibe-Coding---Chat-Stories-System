@@ -158,13 +158,22 @@ async function captureFrames(story, outputName = 'story') {
                 box-shadow: none !important;
             }
             .message-bubble { font-size: 0.95rem !important; }
-            #chat-container { padding-bottom: 150px !important; padding-right: 15px !important; }
+            #chat-container { padding-bottom: 200px !important; padding-right: 15px !important; }
             #chat-header { padding-top: 60px !important; padding-bottom: 15px !important; height: auto !important; }
             .chat-image { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 0 auto; }
 
             /* 🛑 FREEZE ANIMATIONS FOR SYNC */
             .typing-bubble .dot { animation-play-state: paused !important; }
             .message { animation-play-state: paused !important; }
+            
+            /* Ensure Typing Indicator is Correctly Positioned in Render */
+            #typing-indicator {
+                position: absolute !important;
+                bottom: 20px !important; /* Fixed bottom */
+                left: 20px !important; 
+                z-index: 100 !important;
+                margin: 0 !important;
+            }
             
             /* Time Divider Overlay - No Transition in Render */
             .time-divider-overlay { transition: none !important; }

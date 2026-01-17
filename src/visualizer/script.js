@@ -163,14 +163,11 @@ class ChatStory {
 
   showTyping(char) {
     this.typingIndicator.classList.remove("hidden");
+    
     // Update typing avatar
     if (char && char.avatar && this.typingAvatar) {
         const resolvedPath = this.resolvePath(char.avatar);
         this.typingAvatar.src = resolvedPath;
-        // console.log('Typing Avatar Updated:', char.name, resolvedPath);
-    } else {
-        // Fallback or Debug
-        // console.warn('Typing Avatar Missing Char or Avatar:', char);
     }
   }
 

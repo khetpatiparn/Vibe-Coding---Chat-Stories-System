@@ -304,12 +304,13 @@ body.rendering .message.right {
 /* Typing Indicator */
 #typing-indicator {
   position: absolute;
-  bottom: 10px;
-  left: 15px;
+  bottom: 15px; /* Moved up slightly */
+  left: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
   transition: opacity 0.3s;
+  z-index: 20; /* Ensure on top */
 }
 
 #typing-indicator.hidden {
