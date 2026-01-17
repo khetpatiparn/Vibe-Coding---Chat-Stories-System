@@ -80,7 +80,15 @@ function generateCharacterProfiles(characters, characterData) {
         const customChar = characterData.find(c => c.id === charId && c.is_custom);
         
         if (customChar && (customChar.gender || customChar.personality || customChar.speaking_style || customChar.age_group || customChar.occupation || customChar.catchphrase || customChar.dialect || customChar.typing_habit)) {
-            let desc = `- **${customChar.display_name}**`;
+            // Use Short Name (name) as Nickname if it's different/shorter than Display Name
+            // This allows users to have long Display Names "Nong JJ..." but refer to them as "JJ"
+            let namePart = `**${customChar.display_name}**`;
+            if (customChar.name && customChar.name !== customChar.display_name) {
+                // Ensure name is readable (e.g. not just random numbers)
+                namePart += ` (ชื่อเล่น/ชื่อเรียกสั้นๆ: "${customChar.name}")`;
+            }
+
+            let desc = `- ${namePart}`;
             
             const identifiers = [];
             if (customChar.age_group) identifiers.push(customChar.age_group);
@@ -589,7 +597,15 @@ ${personalityDescriptions.join('\n')}
 1. ใช้ศัพท์ตามวัย: Gen Z = ฉ่ำ, ตึงๆ, นอยอ่า, ปัง, พัง | Boomer = จ๊ะ/จ้ะ, ทานข้าวรึยัง
 2. ใช้ศัพท์ตามอาชีพ: Programmer = Debug, Error, Deploy | แม่ค้า = F มาจ้า, ตำเลย
 3. Catchphrase: ใช้คำติดปาก หรือ "คำที่มีความหมายใกล้เคียง" ให้เป็นธรรมชาติ (Natural Variations) ไม่ต้องใช้คำเดิมซ้ำๆ
-4. Dialect: อีสาน = เฮ็ดอีหยัง, บ่, ตมจ | เหนือ = ยะหยัง, เจ้า, ก๊ะ | ใต้ = หนิ, ไอ้บ้า`;
+4. Dialect: อีสาน = เฮ็ดอีหยัง, บ่, ตมจ | เหนือ = ยะหยัง, เจ้า, ก๊ะ | ใต้ = หนิ, ไอ้บ้า
+
+**NAME CALLING RULES (Natural Thai):**
+1. **Transliteration:** ถ้าชื่อเล่น (Internal Name) เป็นภาษาอังกฤษ (เช่น "jay") ให้เรียกเป็น *ภาษาไทย* ตามบริบท (เช่น "เจ", "ไอ้เจ", "คุณเจ") ห้ามเรียก "jay" โดดๆ
+2. **Relationship & Context:**
+   - **คนไม่สนิท/ทำงาน:** ใช้ "คุณ" + ชื่อ (e.g. "คุณเจ")
+   - **สนิทกัน:** ใช้ชื่อเล่นห้วนๆ, กู/มึง, หรือฉายาจาก Display Name (เช่น "เจจี้")
+   - **อาวุโส:** ใช้ "พี่" / "น้อง" นำหน้าเสมอ
+3. **Flexible Name:** Display Name "น้องเจจี้ขี้ไม่สุด" -> เพื่อนอาจเรียก "เจจี้", "เจ", "อีเจ" ได้หมดตามความสนิท`;
     }
 
     const systemPrompt = `### THAI CHAT CONTINUATION ENGINE V2.2 (Profile Aware) ###

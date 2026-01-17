@@ -44,12 +44,15 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    // Some systems send 'image/x-png', so we relax the check or explicitly add it.
+    // Actually, let's just trust the extension if it matches, and simple 'image/' mime type start.
+    const isImage = file.mimetype.startsWith('image/');
     
-    if (mimetype && extname) {
+    if (extname && isImage) {
         return cb(null, true);
     } else {
-        cb(new Error('Only image files are allowed!'));
+        console.error('File rejected:', file.originalname, file.mimetype);
+        cb(new Error('Only image files are allowed! (jpeg, jpg, png, gif, webp)'));
     }
 };
 
@@ -591,6 +594,7 @@ app.post('/api/generate/continue', async (req, res) => {
                          id: charId,
                          is_custom: true,
                          display_name: c.display_name,
+                         name: c.name, // Added for Nickname support
                          gender: c.gender,
                          personality: c.personality,
                          speaking_style: c.speaking_style,
