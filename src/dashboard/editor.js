@@ -229,19 +229,13 @@ function renderCharacterSelector() {
     
     // Default characters
     // Default characters
-    const defaultChars = [
-        { value: 'me', label: '👤 Me (ฉัน)', checked: true },
-        { value: 'boss', label: '👔 Boss (เจ้านาย)', checked: true }
-    ];
-    
-    // Custom characters with avatars
-    const customChars = customCharacters.map(c => ({
+    // Custom Characters only
+    // User requested removal of defaults (Me/Boss)
+    const allCharacters = customCharacters.map(c => ({
         value: `custom_${c.id}`,
         label: `<img src="/${c.avatar_path}" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:4px;object-fit:cover;"> ${c.display_name}`,
         checked: false
     }));
-    
-    const allCharacters = [...defaultChars, ...customChars];
     
     container.innerHTML = allCharacters.map(char => `
         <label class="character-option">
@@ -1719,16 +1713,8 @@ async function openContinueSettings() {
     });
 
     // 3. Default Characters
-    const DEFAULT_ROLES = [
-        { role: 'me', name: 'ฉัน', avatar: 'assets/avatars/person1.png' },
-        { role: 'boss', name: 'เจ้านาย', avatar: 'assets/avatars/boss.png' },
-        { role: 'employee', name: 'ลูกน้อง', avatar: 'assets/avatars/employee.png' },
-        { role: 'friend', name: 'เพื่อน', avatar: 'assets/avatars/friend.png' },
-        { role: 'girlfriend', name: 'แฟน', avatar: 'assets/avatars/girlfriend.png' },
-        { role: 'ghost', name: 'ผี', avatar: 'assets/avatars/ghost.png' }
-    ];
-    // Filter out those already in project
-    const availableDefaults = DEFAULT_ROLES.filter(def => !projectCharsObj[def.role]);
+    // 3. Default Characters REMOVED by user request
+    const availableDefaults = [];
 
     // Build HTML
     let html = '';

@@ -544,19 +544,17 @@ app.post('/api/generate/continue', async (req, res) => {
         // 1. Fetch all custom characters to build name mapping
         const customChars = await CustomCharacter.getAll();
         
-        // Build ID -> DisplayName and DisplayName -> ID mappings
+        // Default characters - REMOVED User Request
         const idToName = {};
         const nameToId = {};
+        // const defaultNames = { ... }; 
+        // Logic removed to prevent defaults from appearing
         
-        // Default characters
-        const defaultNames = {
-            'me': 'ฉัน', 'boss': 'เจ้านาย', 'employee': 'ลูกน้อง',
-            'friend': 'เพื่อน', 'girlfriend': 'แฟน', 'ghost': 'ผี'
-        };
-        
-        Object.entries(defaultNames).forEach(([id, name]) => {
-            idToName[id] = name;
-            nameToId[name] = id;
+        // Custom characters  
+        customChars.forEach(c => {
+            const id = `custom_${c.id}`;
+            idToName[id] = c.display_name;
+            nameToId[c.display_name] = id;
         });
         
         // Custom characters  
@@ -580,11 +578,36 @@ app.post('/api/generate/continue', async (req, res) => {
             sender: idToName[d.sender] || d.sender
         }));
         
-        // Convert selected character IDs to display names for AI
-        const characterNames = characters.map(id => idToName[id] || id);
+        // Convert selected character IDs to display names for AI (Context only)
+        // const characterNames = characters.map(id => idToName[id] || id); // Legacy, now passing IDs
         
-        // 3. Call AI with display names and relationship (V2.0)
-        const newDialogues = await continueStory(topic, dialoguesWithNames, characterNames, length, mode, relationship || 'friend');
+        // 2.5 Build Detailed Character Data (NEW)
+        const detailedCharacterData = characters.map(charId => {
+             if (charId.startsWith('custom_')) {
+                 const dbId = parseInt(charId.replace('custom_', ''));
+                 const c = customChars.find(x => x.id === dbId);
+                 if (c) {
+                     return {
+                         id: charId,
+                         is_custom: true,
+                         display_name: c.display_name,
+                         gender: c.gender,
+                         personality: c.personality,
+                         speaking_style: c.speaking_style,
+                         age_group: c.age_group,
+                         occupation: c.occupation,
+                         catchphrase: c.catchphrase,
+                         dialect: c.dialect,
+                         typing_habit: c.typing_habit,
+                         avatar_path: c.avatar_path
+                     };
+                 }
+             }
+             return { id: charId, is_custom: false };
+        });
+
+        // 3. Call AI with IDs and Profile Data (V2.1)
+        const newDialogues = await continueStory(topic, dialoguesWithNames, characters, length, mode, relationship || 'friend', detailedCharacterData);
         
         // 4. Convert AI response back to internal IDs and Process Stickers with SMART TIMING
         const processedDialogues = [];

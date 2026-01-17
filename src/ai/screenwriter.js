@@ -63,6 +63,88 @@ const RELATIONSHIPS = {
 };
 
 // ============================================
+// Default Characters (Shared)
+// ============================================
+// REMOVED by User Request
+const defaultCharacterMap = {}; 
+// Kept empty object to prevent crashes if code references it blindly
+
+
+// ============================================
+// Helper: Character Profiles (V2.1)
+// ============================================
+function generateCharacterProfiles(characters, characterData) {
+    if (!characterData || characterData.length === 0) return [];
+    
+    return characters.map(charId => {
+        const customChar = characterData.find(c => c.id === charId && c.is_custom);
+        
+        if (customChar && (customChar.gender || customChar.personality || customChar.speaking_style || customChar.age_group || customChar.occupation || customChar.catchphrase || customChar.dialect || customChar.typing_habit)) {
+            let desc = `- **${customChar.display_name}**`;
+            
+            const identifiers = [];
+            if (customChar.age_group) identifiers.push(customChar.age_group);
+            if (customChar.occupation) identifiers.push(customChar.occupation);
+            if (identifiers.length > 0) desc += ` (${identifiers.join(', ')})`;
+            
+            desc += ':';
+            if (customChar.gender) desc += ` ${customChar.gender}.`;
+            if (customChar.personality) desc += ` Personality: ${customChar.personality}.`;
+            if (customChar.speaking_style) desc += ` Style: ${customChar.speaking_style}.`;
+            if (customChar.catchphrase) desc += ` Catchphrase: "${customChar.catchphrase}".`;
+            if (customChar.dialect) desc += ` Dialect: ${customChar.dialect} (ใช้คำภูมิภาค).`;
+            if (customChar.typing_habit) {
+                if (customChar.typing_habit === 'rapid_fire') {
+                    desc += ` Typing: Rapid Fire (แตกข้อความรัวๆ 1-2 ประโยค/bubble).`;
+                } else if (customChar.typing_habit === 'long_paragraphs') {
+                    desc += ` Typing: Long (2-4 sentences/bubble).`;
+                }
+            }
+            return desc;
+        }
+        return null;
+    }).filter(d => d !== null);
+}
+
+// ============================================
+// Helper: Character Profiles (V2.1)
+// ============================================
+function generateCharacterProfiles(characters, characterData) {
+    if (!characterData || characterData.length === 0) return [];
+    
+    return characters.map(charId => {
+        // Handle both ID match and Name match (for continueStory which might pass names or IDs depending on impl)
+        // Adjust finding logic: we expect charId to be the ID here.
+        const customChar = characterData.find(c => c.id === charId && c.is_custom);
+        
+        if (customChar && (customChar.gender || customChar.personality || customChar.speaking_style || customChar.age_group || customChar.occupation || customChar.catchphrase || customChar.dialect || customChar.typing_habit)) {
+            let desc = `- **${customChar.display_name}**`;
+            
+            const identifiers = [];
+            if (customChar.age_group) identifiers.push(customChar.age_group);
+            if (customChar.occupation) identifiers.push(customChar.occupation);
+            if (identifiers.length > 0) desc += ` (${identifiers.join(', ')})`;
+            
+            desc += ':';
+            if (customChar.gender) desc += ` ${customChar.gender}.`;
+            if (customChar.personality) desc += ` Personality: ${customChar.personality}.`;
+            if (customChar.speaking_style) desc += ` Style: ${customChar.speaking_style}.`;
+            if (customChar.catchphrase) desc += ` Catchphrase: "${customChar.catchphrase}".`;
+            if (customChar.dialect) desc += ` Dialect: ${customChar.dialect} (ใช้คำภูมิภาค).`;
+            if (customChar.typing_habit) {
+                if (customChar.typing_habit === 'rapid_fire') {
+                    desc += ` Typing: Rapid Fire (แตกข้อความรัวๆ 1-2 ประโยค/bubble).`;
+                } else if (customChar.typing_habit === 'long_paragraphs') {
+                    desc += ` Typing: Long (2-4 sentences/bubble).`;
+                }
+            }
+            return desc;
+        }
+        return null;
+    }).filter(d => d !== null);
+}
+
+// ============================================
 // Master Prompt Builder (V2.0)
 // ============================================
 function buildPrompt(category, characters = ['me', 'boss'], customPrompt = null, characterData = [], relationship = 'friend', length = 35) {
@@ -95,11 +177,9 @@ RULES:
 4. Friend reacts naturally: "จริงป่ะ", "ส่งลิงค์มา"`;
     }
 
-    // Build character map
-    const defaultCharacterMap = {
-        'me': { name: 'ฉัน', avatar: 'assets/avatars/person1.png', side: 'right' },
-        'boss': { name: 'เจ้านาย', avatar: 'assets/avatars/boss.png', side: 'left' }
-    };
+    // Build character map (Using global defaultCharacterMap)
+    // Legacy support check logic removed as we use global map
+
     
     // Build character names for prompt
     const characterNames = characters.map(charId => {
@@ -198,34 +278,7 @@ Your goal is to generate a chat log that looks **100% Authentic**, not like a ro
 **CHARACTERS:** ${selectedCharsText}`;
 
     // Build Character Personality Descriptions
-    const personalityDescriptions = characters.map(charId => {
-        const customChar = characterData.find(c => c.id === charId && c.is_custom);
-        
-        if (customChar && (customChar.gender || customChar.personality || customChar.speaking_style || customChar.age_group || customChar.occupation || customChar.catchphrase || customChar.dialect || customChar.typing_habit)) {
-            let desc = `- **${customChar.display_name}**`;
-            
-            const identifiers = [];
-            if (customChar.age_group) identifiers.push(customChar.age_group);
-            if (customChar.occupation) identifiers.push(customChar.occupation);
-            if (identifiers.length > 0) desc += ` (${identifiers.join(', ')})`;
-            
-            desc += ':';
-            if (customChar.gender) desc += ` ${customChar.gender}.`;
-            if (customChar.personality) desc += ` Personality: ${customChar.personality}.`;
-            if (customChar.speaking_style) desc += ` Style: ${customChar.speaking_style}.`;
-            if (customChar.catchphrase) desc += ` Catchphrase: "${customChar.catchphrase}".`;
-            if (customChar.dialect) desc += ` Dialect: ${customChar.dialect} (ใช้คำภูมิภาค).`;
-            if (customChar.typing_habit) {
-                if (customChar.typing_habit === 'rapid_fire') {
-                    desc += ` Typing: Rapid Fire (แตกข้อความรัวๆ 1-2 ประโยค/bubble).`;
-                } else if (customChar.typing_habit === 'long_paragraphs') {
-                    desc += ` Typing: Long (2-4 sentences/bubble).`;
-                }
-            }
-            return desc;
-        }
-        return null;
-    }).filter(d => d !== null);
+    const personalityDescriptions = generateCharacterProfiles(characters, characterData);
     
     if (personalityDescriptions.length > 0) {
         promptText += `
@@ -507,7 +560,7 @@ async function generateMultipleStories(count = 5, category = 'funny') {
 // ============================================
 // Continue Story (V2.0 Enhanced)
 // ============================================
-async function continueStory(prompt, existingDialogues = [], availableCharacters = [], length = 'medium', mode = 'normal', relationship = 'friend') {
+async function continueStory(prompt, existingDialogues = [], availableCharacters = [], length = 'medium', mode = 'normal', relationship = 'friend', characterData = []) {
     const history = existingDialogues.map(d => `${d.sender}: ${d.message}`).join('\n');
     const characterList = availableCharacters.length > 0 ? availableCharacters.join(', ') : 'ฉัน, เจ้านาย';
 
@@ -519,8 +572,24 @@ async function continueStory(prompt, existingDialogues = [], availableCharacters
     // Mode Instruction
     let modeInstruction = 'Continue the flow naturally.';
     if (mode === 'wrap_up') modeInstruction = 'IMPORTANT: Wrap up this scene. Steer towards conclusion/cliffhanger. Do NOT leave open-ended.';
+    if (mode === 'relation') modeInstruction = 'IMPORTANT: Focus on character relationship development. Deep talk, conflict resolution, or bonding moment.';
 
-    const systemPrompt = `### THAI CHAT CONTINUATION ENGINE V2.0 ###
+    // Generate Character Profiles (Context Aware)
+    // Pass IDs to helper
+    const personalityDescriptions = generateCharacterProfiles(availableCharacters, characterData); 
+    
+    let profileSection = '';
+    if (personalityDescriptions.length > 0) {
+        profileSection = `
+**CHARACTER PROFILES (STRICTLY FOLLOW THIS):**
+${personalityDescriptions.join('\n')}
+
+**LANGUAGE RULES:**
+1. Dialect (ภาษาถิ่น) MUST be used if specified in profile.
+2. Character Style (e.g. Rude, Formal) MUST be maintained.`;
+    }
+
+    const systemPrompt = `### THAI CHAT CONTINUATION ENGINE V2.2 (Profile Aware) ###
 
 You are continuing a Thai chat conversation. ${lengthInstruction} ${modeInstruction}
 
