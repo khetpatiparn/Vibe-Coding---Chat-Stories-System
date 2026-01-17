@@ -259,6 +259,12 @@ body.rendering .message.right {
     transform: scale(1.02);
 }
 
+/* Remove shadow for Stickers (Transparent GIFs) */
+.chat-image.sticker {
+    box-shadow: none;
+    background: transparent;
+}
+
 /* Sender Name */
 .message-content-wrapper {
   display: flex;

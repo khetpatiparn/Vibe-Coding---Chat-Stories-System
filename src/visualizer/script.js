@@ -257,7 +257,7 @@ class ChatStory {
         if (isGiphy) {
             // FORCE GIF for Stickers to preserve transparency
             // We disabled MP4 conversion because MP4s don't support alpha channel easily on web
-            imageHtml = `<img src="${item.image_path}" class="chat-image">`;
+            imageHtml = `<img src="${item.image_path}" class="chat-image sticker">`;
         } else {
             // Standard Image
             imageHtml = `<img src="${item.image_path.startsWith('data:') ? item.image_path : this.resolvePath(item.image_path)}" class="chat-image">`;
