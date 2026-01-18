@@ -111,6 +111,13 @@ function initSchema() {
                     console.log('Migrating: Adding theme to projects table...');
                     db.run("ALTER TABLE projects ADD COLUMN theme TEXT DEFAULT 'default'");
                 }
+                
+                // Migration for intro_path column
+                const hasIntroPath = rows.some(r => r.name === 'intro_path');
+                if (!hasIntroPath) {
+                    console.log('Migrating: Adding intro_path to projects table...');
+                    db.run("ALTER TABLE projects ADD COLUMN intro_path TEXT");
+                }
             }
         });
 
@@ -268,6 +275,15 @@ const Project = {
     updateTheme: (id, theme) => {
         return new Promise((resolve, reject) => {
             db.run(`UPDATE projects SET theme = ? WHERE id = ?`, [theme, id], function(err) {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    },
+
+    updateIntroPath: (id, introPath) => {
+        return new Promise((resolve, reject) => {
+            db.run(`UPDATE projects SET intro_path = ? WHERE id = ?`, [introPath, id], function(err) {
                 if (err) reject(err);
                 else resolve();
             });
@@ -458,6 +474,7 @@ async function exportStoryJSON(projectId) {
         id: project.id,
         title: project.title,
         room_name: project.room_name, // Room name for header
+        intro_path: project.intro_path, // [NEW] Intro TTS audio path
         show_partner_name: project.show_partner_name, // [NEW] Checkbox
         show_my_name: project.show_my_name, // [NEW] Checkbox
         theme: project.theme || 'default', // [NEW] Theme

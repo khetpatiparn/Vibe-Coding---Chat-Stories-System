@@ -167,8 +167,8 @@
                         <!-- SFX Row -->
                         <div class="audio-control-row">
                             <div class="audio-control-left">
-                                <span class="audio-icon">🔔</span>
-                                <span class="audio-label">SFX</span>
+                                <span class="audio-icon">🗯️</span>
+                                <span class="audio-label">Pop</span>
                             </div>
                             <div class="audio-control-right">
                                 <select id="select-sfx" onchange="onSfxChange()">
@@ -182,6 +182,23 @@
                                     <span class="toggle-on">🔊</span>
                                     <span class="toggle-off">🔇</span>
                                 </button>
+                            </div>
+                        </div>
+
+                        <!-- Swoosh Row (Intro Transition) -->
+                        <div class="audio-control-row">
+                            <div class="audio-control-left">
+                                <span class="audio-icon">💨</span>
+                                <span class="audio-label">Swoosh</span>
+                            </div>
+                            <div class="audio-control-right">
+                                <select id="select-swoosh" onchange="onSwooshChange()">
+                                    <option value="">ปิด</option>
+                                </select>
+                                <input type="range" class="volume-slider" id="volume-swoosh" min="0" max="100"
+                                    value="70"
+                                    oninput="onSwooshVolumeChange(this.value); document.getElementById('vol-swoosh-label').textContent = this.value + '%'">
+                                <span id="vol-swoosh-label" class="volume-label">70%</span>
                             </div>
                         </div>
                     </div>

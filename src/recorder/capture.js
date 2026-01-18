@@ -13,6 +13,20 @@ const TIMING = require('../config/timing');
 // Set FFmpeg path
 ffmpeg.setFfmpegPath(ffmpegPath);
 
+// Helper to get audio duration safely
+function getAudioDuration(filePath) {
+    return new Promise((resolve) => {
+        if (!filePath || !fs.existsSync(filePath)) return resolve(0);
+        ffmpeg.ffprobe(filePath, (err, metadata) => {
+            if (err) {
+                console.warn(`ffprobe failed for ${filePath}, using default duration.`);
+                return resolve(0);
+            }
+            resolve(metadata.format.duration || 0);
+        });
+    });
+}
+
 // ============================================
 // Configuration
 // ============================================
@@ -32,12 +46,29 @@ const CONFIG = {
 // ============================================
 // Calculate Timeline from Story
 // ============================================
-function calculateTimeline(story) {
+async function calculateTimeline(story) {
     const timeline = [];
-    let currentTime = 1.0;
+    
+    // Calculate Intro Duration
+    let introDuration = 0;
+    const isHorror = story.theme === 'horror' || (story.category && story.category.toLowerCase() === 'drama');
+    
+    if (isHorror) {
+        introDuration = 2.5; // 2s + 0.5s suspense
+    } else if (story.intro_path) {
+        // Measure audio file
+        const duration = await getAudioDuration(story.intro_path);
+        introDuration = duration > 0 ? duration : 2.0; // Fallback 2s
+    } else {
+        introDuration = 2.0; // Default text-only intro
+    }
+    
+    console.log(`⏱️ Intro Duration: ${introDuration.toFixed(2)}s`);
+
+    let currentTime = introDuration + 1.0; // Start chat 1s after intro
     
     if (!story.dialogues || story.dialogues.length === 0) {
-        return { timeline: [], totalDuration: 5 };
+        return { timeline: [], totalDuration: introDuration + 2 };
     }
     
     for (let i = 0; i < story.dialogues.length; i++) {
@@ -81,18 +112,19 @@ function calculateTimeline(story) {
         : TIMING.ENDING_BUFFER;
 
     const totalDuration = currentTime + endingBuffer;
-    return { timeline, totalDuration };
+    return { timeline, totalDuration, introDuration };
 }
 
 // ============================================
 // Frame Capture
 // ============================================
-async function captureFrames(story, outputName = 'story') {
+// 90: Frame Capture
+async function captureFrames(story, outputName = 'story', timelineData) {
     const framesDir = path.join(CONFIG.framesDir, outputName);
     await fs.ensureDir(framesDir);
     await fs.emptyDir(framesDir);
     
-    const { timeline, totalDuration } = calculateTimeline(story);
+    const { timeline, totalDuration } = timelineData;
     const totalFrames = Math.ceil(totalDuration * CONFIG.fps);
     
     console.log(`\nCapturing ${totalFrames} frames (${totalDuration.toFixed(1)}s)...`);
@@ -113,12 +145,16 @@ async function captureFrames(story, outputName = 'story') {
         hasTouch: true
     });
     
+    // Debug: Pipe browser logs to node console
+    page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+    
     // Inject Data
-    await page.evaluateOnNewDocument((storyData, timelineData) => {
+    await page.evaluateOnNewDocument((storyData, timelineData, introDuration) => {
         window.__INJECTED_STORY__ = storyData;
         window.__INJECTED_TIMELINE__ = timelineData;
+        window.__INJECTED_INTRO_DURATION__ = introDuration;
         window.__INJECTED_MODE__ = true;
-    }, story, timeline);
+    }, story, timeline, timelineData.introDuration);
     
     // Load Visualizer
     const cacheBuster = Date.now();
@@ -201,10 +237,84 @@ async function captureFrames(story, outputName = 'story') {
             };
 
             window.setCurrentTime = function(currentTime) {
+                try {
                 window.currentFrameTime = currentTime;
+                
+                // Check injection
+                if (typeof window.__INJECTED_STORY__ === 'undefined') {
+                    if (Math.floor(currentTime) % 1 === 0) console.log('[R] FATAL: window.__INJECTED_STORY__ is undefined!');
+                    return;
+                }
+                const storyData = window.__INJECTED_STORY__;
+                
+                // --- INTRO HANDLING (Render Mode) ---
+                const introDuration = window.__INJECTED_INTRO_DURATION__ || 0;
+                const introOverlay = document.getElementById('intro-overlay');
+                const introTitle = document.getElementById('intro-title');
+                
+                // Debug Log (only once per second)
+                if (Math.floor(currentTime * 10) % 10 === 0) {
+                    console.log(`[R] Time: ${currentTime.toFixed(2)}s | Intro: ${introDuration}s | Overlay: ${introOverlay ? 'found' : 'null'} | Title: ${introTitle ? introTitle.textContent : 'null'}`);
+                }
+                
+                if (currentTime < introDuration) {
+                    // Create or get dynamic intro overlay for render mode
+                    let renderIntro = document.getElementById('render-intro-overlay');
+                    let contentWrap;
+                    
+                    if (!renderIntro) {
+                        renderIntro = document.createElement('div');
+                        renderIntro.id = 'render-intro-overlay';
+                        renderIntro.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999999; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #075e54, #128c7e);';
+                        
+                        // Content wrapper for animation (like .intro-content)
+                        contentWrap = document.createElement('div');
+                        contentWrap.id = 'render-intro-content';
+                        contentWrap.style.cssText = 'text-align: center; padding: 20px; opacity: 0; transform: scale(0.9);';
+                        
+                        const titleEl = document.createElement('h1');
+                        titleEl.id = 'render-intro-title';
+                        titleEl.style.cssText = 'font-size: 1.5rem; font-weight: 700; color: #ffffff; text-shadow: 2px 2px 10px rgba(0,0,0,0.4); white-space: nowrap; text-align: center; margin: 0;';
+                        titleEl.textContent = storyData.room_name || '';
+                        
+                        contentWrap.appendChild(titleEl);
+                        renderIntro.appendChild(contentWrap);
+                        document.body.appendChild(renderIntro);
+                        console.log('[R] Created dynamic intro overlay with title:', storyData.room_name);
+                    } else {
+                        contentWrap = document.getElementById('render-intro-content');
+                    }
+                    
+                    // Match introFadeIn keyframe: scale 0.9→1, opacity 0→1 over 0.5s
+                    const fadeInDuration = 0.5; // seconds
+                    let progress = Math.min(1, currentTime / fadeInDuration);
+                    // Ease-out effect
+                    progress = 1 - Math.pow(1 - progress, 3);
+                    
+                    let opacity = progress;
+                    let scale = 0.9 + (0.1 * progress); // 0.9 → 1.0
+                    
+                    if (contentWrap) {
+                        contentWrap.style.opacity = opacity.toFixed(3);
+                        contentWrap.style.transform = `scale(${scale.toFixed(3)})`;
+                    }
+                    
+                    return; // SKIP chat rendering during intro
+                } else {
+                    // Hide/remove dynamic intro after intro duration
+                    const renderIntro = document.getElementById('render-intro-overlay');
+                    if (renderIntro) {
+                        renderIntro.style.display = 'none';
+                    }
+                }
+                } catch (e) {
+                    console.log('[R] Exception in setCurrentTime:', e.toString());
+                }
+                
                 let isAnyTyping = false;
                 let typingChar = null;
 
+                try {
                 for (const item of timeline) {
                     // Show Messages
                     if (currentTime >= item.appearTime && !shownMessages.has(item.index)) {
@@ -242,8 +352,10 @@ async function captureFrames(story, outputName = 'story') {
                         }
                     }
                 }
+                } catch(e) { console.log('[R] Loop Error:', e.toString()); }
                 
                 // Update Typing UI
+                try {
                 const typingIndicator = document.getElementById('typing-indicator');
                 if (isAnyTyping) {
                     typingIndicator.classList.remove('hidden');
@@ -267,6 +379,7 @@ async function captureFrames(story, outputName = 'story') {
                 } else {
                     typingIndicator.classList.add('hidden');
                 }
+                } catch(e) { console.log('[R] Typing UI Error:', e.toString()); }
 
                 // ✅ FIX 4: Manually Advance Message Pop-in & Cinematic Focus
                 let isCinematic = false;
@@ -374,42 +487,89 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
 
     await fs.ensureDir(CONFIG.outputDir);
     
-    const { bgMusicPath, sfxPath, timeline, bgmVolume = 0.3, sfxVolume = 0.5, totalDuration } = audioOptions;
+    const { bgMusicPath, sfxPath, timeline, bgmVolume = 0.3, sfxVolume = 0.5, totalDuration, swooshPath, swooshVolume = 0.7, introPath, introDuration = 0 } = audioOptions;
     
     return new Promise((resolve, reject) => {
         console.log(`Assembling video... (duration: ${totalDuration?.toFixed(1) || '?'}s)`);
         
+        // Log all audio paths for debugging
+        console.log(`🔊 Audio Debug:`);
+        console.log(`  - introPath: ${introPath || 'null'} | exists: ${introPath ? fs.existsSync(introPath) : 'N/A'}`);
+        console.log(`  - swooshPath: ${swooshPath || 'null'} | exists: ${swooshPath ? fs.existsSync(swooshPath) : 'N/A'}`);
+        console.log(`  - bgMusicPath: ${bgMusicPath || 'null'} | exists: ${bgMusicPath ? fs.existsSync(bgMusicPath) : 'N/A'}`);
+        console.log(`  - sfxPath: ${sfxPath || 'null'} | exists: ${sfxPath ? fs.existsSync(sfxPath) : 'N/A'}`);
+        
+        // 0: Video
         let command = ffmpeg()
             .input(framePattern)
             .inputFPS(CONFIG.fps);
         
-        if (bgMusicPath && fs.existsSync(bgMusicPath) && sfxPath && fs.existsSync(sfxPath) && timeline && timeline.length > 0) {
-            // ✅ Loop BGM to cover entire video
-            command.input(bgMusicPath)
-                .inputOptions(['-stream_loop', '-1']);
+        let audioInputIndex = 1;
+        let filterComplex = '';
+        let mixInputs = '';
+        let hasAudio = false;
+
+        // 1. Intro Audio (if exists)
+        if (introPath && fs.existsSync(introPath)) {
+            command.input(introPath);
+            filterComplex += `[${audioInputIndex}:a]volume=1.0[intro];`;
+            mixInputs += `[intro]`;
+            audioInputIndex++;
+            hasAudio = true;
+            console.log(`  ✅ Added intro audio`);
+        }
+
+        // 2. Swoosh Audio (if exists)
+        if (swooshPath && fs.existsSync(swooshPath)) {
+            command.input(swooshPath);
+            const swooshDelay = Math.round(introDuration * 1000);
+            filterComplex += `[${audioInputIndex}:a]adelay=${swooshDelay}|${swooshDelay},volume=${swooshVolume}[swoosh];`;
+            mixInputs += `[swoosh]`;
+            audioInputIndex++;
+            hasAudio = true;
+            console.log(`  ✅ Added swoosh audio (delay: ${swooshDelay}ms)`);
+        }
+
+        // 3. BGM (if exists)
+        if (bgMusicPath && fs.existsSync(bgMusicPath)) {
+            command.input(bgMusicPath).inputOptions(['-stream_loop', '-1']);
+            const bgmDelay = Math.round(introDuration * 1000);
+            filterComplex += `[${audioInputIndex}:a]adelay=${bgmDelay}|${bgmDelay},volume=${bgmVolume}[bgm];`;
+            mixInputs += `[bgm]`;
+            audioInputIndex++;
+            hasAudio = true;
+            console.log(`  ✅ Added BGM (delay: ${bgmDelay}ms, vol: ${bgmVolume})`);
+        }
+
+        // 4. SFX (Messages)
+        if (sfxPath && fs.existsSync(sfxPath) && timeline && timeline.length > 0) {
             command.input(sfxPath);
+            const sfxInputIdx = audioInputIndex;
+            audioInputIndex++;
             
-            let filterComplex = `[1:a]volume=${bgmVolume}[bgm];`;
-            let mixInputs = '[bgm]';
-            
-            const sfxCount = Math.min(timeline.length, 30);
+            const sfxCount = Math.min(timeline.length, 50);
             for (let i = 0; i < sfxCount; i++) {
                 const delayMs = Math.round(timeline[i].appearTime * 1000);
-                filterComplex += `[2:a]adelay=${delayMs}|${delayMs},volume=${sfxVolume}[sfx${i}];`;
+                filterComplex += `[${sfxInputIdx}:a]adelay=${delayMs}|${delayMs},volume=${sfxVolume}[sfx${i}];`;
                 mixInputs += `[sfx${i}]`;
+                hasAudio = true;
             }
+            console.log(`  ✅ Added ${sfxCount} SFX instances (vol: ${sfxVolume})`);
+        }
+        
+        console.log(`  Total audio inputs: ${audioInputIndex - 1} | hasAudio: ${hasAudio}`);
+        
+        if (hasAudio) {
+            // Count number of inputs in mixInputs e.g. [intro][swoosh][bgm][sfx0]...
+            const count = (mixInputs.match(/\[/g) || []).length;
+            // Use duration=longest so BGM (looped) defines length, then -t cuts to video duration
+            filterComplex += `${mixInputs}amix=inputs=${count}:duration=longest:dropout_transition=0:normalize=0[aout]`;
             
-            // ✅ FIX: Use duration=first to match video length (video is input 0)
-            filterComplex += `${mixInputs}amix=inputs=${sfxCount + 1}:duration=first:dropout_transition=0:normalize=0[aout]`;
+            console.log(`  Filter: ${filterComplex.substring(0, 100)}...`);
             
             command
                 .complexFilter(filterComplex)
                 .outputOptions(['-map', '0:v', '-map', '[aout]']);
-        } else if (bgMusicPath && fs.existsSync(bgMusicPath)) {
-            // BGM only - loop and use -shortest to cut at video end
-            command.input(bgMusicPath)
-                .inputOptions(['-stream_loop', '-1'])
-                .outputOptions(['-filter:a', `volume=${bgmVolume}`]);
         }
         
         // ✅ FIX: Use -t to set exact video duration (prevents infinite loop)
@@ -427,8 +587,7 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
             outputOpts.push('-t', totalDuration.toFixed(2));
         }
         
-        // Use -shortest as fallback safety
-        outputOpts.push('-shortest');
+        // NOTE: Do NOT use -shortest here, as it would cut video at shortest audio (intro ~1s)
         
         command
             .outputOptions(outputOpts)
@@ -445,14 +604,24 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
 async function recordStory(story, options = {}) {
     const outputName = options.outputName || 'story';
     try {
-        const { framesDir } = await captureFrames(story, outputName);
-        const { timeline, totalDuration } = calculateTimeline(story);
+        const timelineData = await calculateTimeline(story);
+        
+        // Pass pre-calculated timeline to captureFrames
+        const { framesDir } = await captureFrames(story, outputName, timelineData);
+        
+        const { timeline, totalDuration, introDuration } = timelineData;
         
         const audioOptions = {
             bgMusicPath: options.bgMusicPath,
             sfxPath: options.sfxPath,
             bgmVolume: options.bgmVolume,
             sfxVolume: options.sfxVolume,
+            // New options
+            swooshPath: options.swooshPath,
+            swooshVolume: options.swooshVolume,
+            introPath: story.intro_path,
+            introDuration: introDuration,
+            
             timeline: timeline,
             totalDuration: totalDuration  // ✅ NEW: Pass total duration to assembleVideo
         };

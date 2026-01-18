@@ -15,6 +15,7 @@ const { db, Project, Dialogue, Character, CustomCharacter, SoundCollection, Soun
 const { generateStory, continueStory } = require('./src/ai/screenwriter');
 const TIMING = require('./src/config/timing');
 const { recordStory } = require('./src/recorder/capture');
+const { generateIntroTTS } = require('./src/ai/intro-tts');
 
 const app = express();
 const PORT = 3000;
@@ -442,8 +443,15 @@ app.post('/api/generate', async (req, res) => {
         // NEW: Update room_name with AI-generated title (Curiosity Gap)
         if (story.title) {
             await Project.updateRoomName(targetProjectId, story.title);
-            console.log(`📝 Updated room_name to: "${story.title}"`);
+            
+            // Generate Intro TTS
+            const introResult = await generateIntroTTS(story.title, targetProjectId, category);
+            if (introResult) {
+                await Project.updateIntroPath(targetProjectId, introResult.audioPath);
+                console.log(`🎙️ Auto-generated intro: ${introResult.audioPath}`);
+            }
         }
+
         
         // Add dialogues with SMART TIMING LOGIC (Burst Mode + Speed Multiplier)
         let currentOrder = 0;
@@ -745,6 +753,7 @@ app.post('/api/render/:id', async (req, res) => {
         if (dialogueRange) console.log(`📦 Range: #${dialogueRange.start} - #${dialogueRange.end}`);
         if (bgMusicPath) console.log(`🎵 With BGM: ${bgMusicPath} (vol: ${bgmVolume})`);
         if (sfxPath) console.log(`🔔 With SFX: ${sfxPath} (vol: ${sfxVolume})`);
+        if (req.body.swooshPath) console.log(`🌊 With Swoosh: ${req.body.swooshPath} (vol: ${req.body.swooshVolume || 0.7})`);
         
         await Project.updateStatus(projectId, 'RENDERING');
         
@@ -767,8 +776,10 @@ app.post('/api/render/:id', async (req, res) => {
             outputName: outputName,
             bgMusicPath: bgMusicPath || null,
             sfxPath: sfxPath || null,
+            swooshPath: req.body.swooshPath || null, // Pass swoosh path
             bgmVolume: bgmVolume || 0.3,
-            sfxVolume: sfxVolume || 0.5
+            sfxVolume: sfxVolume || 0.5,
+            swooshVolume: req.body.swooshVolume || 0.7 // Pass swoosh volume
         });
 
         await Project.updateStatus(projectId, 'COMPLETED');
@@ -1242,6 +1253,25 @@ app.get('/api/sounds/type/:type', async (req, res) => {
 app.get('/api/sounds/collection/:collectionId', async (req, res) => {
     try {
         const sounds = await Sound.getByCollection(req.params.collectionId);
+        res.json(sounds);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get sounds by collection name (for swoosh dropdown)
+app.get('/api/sounds/collection-name/:name', async (req, res) => {
+    try {
+        const collectionName = req.params.name;
+        // First find the collection by name
+        const collections = await SoundCollection.getAll();
+        const collection = collections.find(c => c.name.toLowerCase() === collectionName.toLowerCase());
+        
+        if (!collection) {
+            return res.json([]); // Return empty if collection not found
+        }
+        
+        const sounds = await Sound.getByCollection(collection.id);
         res.json(sounds);
     } catch (err) {
         res.status(500).json({ error: err.message });

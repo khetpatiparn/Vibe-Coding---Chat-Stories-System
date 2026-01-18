@@ -13,6 +13,10 @@ class ChatStory {
     this.typingIndicator = document.getElementById("typing-indicator");
     this.typingAvatar = document.querySelector(".typing-avatar img");
     
+    // Intro overlay elements
+    this.introOverlay = document.getElementById("intro-overlay");
+    this.introTitle = document.getElementById("intro-title");
+    
     // Audio settings (synced from parent dashboard)
     this.sfxEnabled = true;
     this.sfxPath = null;
@@ -63,10 +67,98 @@ class ChatStory {
     return path;
   }
 
+  /**
+   * Play intro screen with room name and TTS audio
+   */
+  async playIntro() {
+    if (!this.introOverlay || !this.introTitle) return;
+    
+    // Check if horror theme (skip voice)
+    const isHorror = document.body.classList.contains('theme-horror') || (this.data.category && this.data.category.toLowerCase() === 'drama');
+    
+    // Set title text
+    this.introTitle.textContent = this.data.room_name || '';
+    
+    // Show intro overlay
+    this.introOverlay.classList.remove('hidden');
+    
+    // Horror theme: no voice, just show for 2 seconds
+    if (isHorror) {
+      await this.wait(2000);
+    } 
+    // Normal theme: play intro audio if available
+    else if (this.data.intro_path) {
+      try {
+        const audioPath = this.resolvePath(this.data.intro_path);
+        const audio = new Audio(audioPath);
+        audio.volume = 1.0;
+        
+        // Wait for audio to finish or timeout after 5 seconds
+        await new Promise((resolve) => {
+          audio.onended = resolve;
+          audio.onerror = () => {
+            console.log('Intro audio error');
+            resolve();
+          };
+          setTimeout(resolve, 5000); // Max 5 seconds
+          audio.play().catch(e => {
+            console.log('Intro audio blocked:', e);
+            resolve();
+          });
+        });
+      } catch (e) {
+        console.log('Intro audio error:', e);
+      }
+    } else {
+      // No audio, just show for 2 seconds
+      await this.wait(2000);
+    }
+    
+    // Extra delay for horror (suspense)
+    if (isHorror) {
+      await this.wait(500);
+    }
+    
+    // Play swoosh transition sound (if available from parent)
+    this.playSwooshSound();
+    
+    // Cut directly to chat (no fade animation)
+    this.introOverlay.classList.add('hidden');
+    
+    // Notify parent to start BGM
+    window.parent.postMessage({ type: 'bgm-start' }, '*');
+  }
+
+  /**
+   * Play swoosh transition sound
+   */
+  playSwooshSound() {
+    try {
+      const swooshPath = window.parent.swooshPath;
+      if (swooshPath) {
+        const resolvedPath = this.resolvePath(swooshPath);
+        const audio = new Audio(resolvedPath);
+        audio.volume = window.parent.swooshVolume || 0.7;
+        audio.play().catch(e => console.log('Swoosh sound blocked:', e));
+      }
+    } catch (e) {
+      console.log('Swoosh sound error:', e);
+    }
+  }
+
   async play() {
     // Get startAt from URL
     const urlParams = new URLSearchParams(window.location.search);
     const startAt = parseInt(urlParams.get('startAt')) || 0;
+    const skipIntro = urlParams.get('skipIntro') === 'true';
+
+    // Play intro if available and not skipped
+    if (!skipIntro && startAt === 0 && this.data.intro_path) {
+      await this.playIntro();
+    } else {
+       // If no intro or skipped, notify parent to start BGM immediately
+       window.parent.postMessage({ type: 'bgm-start' }, '*');
+    }
 
     this.lastSender = null; // Reset sender tracking for playback
 
@@ -173,6 +265,17 @@ class ChatStory {
 
   hideTyping() {
     this.typingIndicator.classList.add("hidden");
+  }
+
+  playTypingBubbleSound() {
+    try {
+      const soundPath = this.resolvePath('assets/typingBubble/bubble-pop-406640.mp3');
+      const audio = new Audio(soundPath);
+      audio.volume = 0.2; // 20% volume
+      audio.play().catch(e => console.log('Typing bubble sound blocked:', e));
+    } catch (e) {
+      console.log('Typing bubble sound error:', e);
+    }
   }
 
   renderStory() {

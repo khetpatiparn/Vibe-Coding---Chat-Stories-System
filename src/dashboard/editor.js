@@ -1507,12 +1507,12 @@ function reloadPreview() {
         if (currentBgm) {
             currentBgm.pause();
             currentBgm.currentTime = 0;
-            currentBgm.play().catch(e => console.log('BGM play error:', e));
+            // Wait for signal
         } else {
             currentBgm = new Audio('/' + selectedBgmPath);
             currentBgm.loop = true;
             currentBgm.volume = bgmVolume;
-            currentBgm.play().catch(e => console.log('BGM play error:', e));
+            // Wait for signal
         }
     }
 }
@@ -2179,14 +2179,27 @@ async function loadAudioOptions() {
             }
         }
         
-        // Load SFX
-        const sfxRes = await fetch(`${API_BASE}/sounds/type/sfx`);
+        // Load SFX (Pop)
+        const sfxRes = await fetch(`${API_BASE}/sounds/collection-name/pop`);
         const sfxSounds = await sfxRes.json();
         const sfxSelect = document.getElementById('select-sfx');
         if (sfxSelect) {
             sfxSelect.innerHTML = '<option value="">ปิด</option>';
             for (const sound of sfxSounds) {
                 sfxSelect.innerHTML += `<option value="${sound.filename}">${sound.collection_name ? sound.collection_name + ' - ' : ''}${sound.name}</option>`;
+            }
+        }
+        
+        // Load Swoosh (Intro transition)
+        // Load Swoosh (Intro transition)
+        // Fetch from the specific collection named "swoosh"
+        const swooshRes = await fetch(`${API_BASE}/sounds/collection-name/swoosh`);
+        const swooshSounds = await swooshRes.json();
+        const swooshSelect = document.getElementById('select-swoosh');
+        if (swooshSelect) {
+            swooshSelect.innerHTML = '<option value="">ปิด</option>';
+            for (const sound of swooshSounds) {
+                swooshSelect.innerHTML += `<option value="${sound.filename}">${sound.collection_name ? sound.collection_name + ' - ' : ''}${sound.name}</option>`;
             }
         }
     } catch (err) {
@@ -2261,6 +2274,8 @@ function toggleSfx() {
 // Volume controls
 let bgmVolume = 0.3;
 let sfxVolume = 0.5;
+let swooshVolume = 0.7;
+let selectedSwooshPath = null;
 
 function onBgmVolumeChange(value) {
     bgmVolume = value / 100;
@@ -2276,13 +2291,27 @@ function onSfxVolumeChange(value) {
     window.sfxVolume = sfxVolume;
 }
 
+function onSwooshVolumeChange(value) {
+    swooshVolume = value / 100;
+    window.swooshVolume = swooshVolume;
+}
+
+function onSwooshChange() {
+    const select = document.getElementById('select-swoosh');
+    selectedSwooshPath = select.value || null;
+    window.swooshPath = selectedSwooshPath;
+    console.log('Swoosh changed:', selectedSwooshPath);
+}
+
 // Get audio settings for render
 function getAudioSettings() {
     return {
         bgMusicPath: bgmEnabled ? selectedBgmPath : null,
         sfxPath: sfxEnabled ? selectedSfxPath : null,
+        swooshPath: selectedSwooshPath, // NEW: Intro swoosh sound
         bgmVolume: bgmVolume,
-        sfxVolume: sfxVolume
+        sfxVolume: sfxVolume,
+        swooshVolume: swooshVolume // NEW
     };
 }
 
@@ -2381,3 +2410,16 @@ async function selectGiphy(url) {
     }
 }
 window.selectGiphy = selectGiphy; // Expose to global scope for onclick handler
+
+// ============================================
+// Cross-Origin Messaging (iframe visualizer -> dashboard)
+// ============================================
+window.addEventListener('message', (event) => {
+    // Handle BGM Start Signal (e.g., after intro finishes)
+    if (event.data && event.data.type === 'bgm-start') {
+        if (bgmEnabled && selectedBgmPath && currentBgm) {
+            console.log('🎵 Received bgm-start signal. Playing BGM...');
+            currentBgm.play().catch(e => console.log('BGM play error:', e));
+        }
+    }
+});

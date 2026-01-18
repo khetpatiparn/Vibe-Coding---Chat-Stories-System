@@ -104,7 +104,9 @@ function getCollectionIcon(name) {
         'chill': '🌴',
         'pop': '🔔',
         'notification': '📢',
-        'typing': '⌨️'
+        'typing': '⌨️',
+        'swoosh': '💨',
+        'transition': '💨'
     };
     return icons[name.toLowerCase()] || '🎵';
 }

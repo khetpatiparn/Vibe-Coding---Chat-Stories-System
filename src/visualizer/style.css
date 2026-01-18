@@ -537,3 +537,71 @@ body.theme-horror .typing-bubble {
 body.theme-horror .typing-bubble .dot {
   background: #6b7280; /* Match text-light */
 }
+
+/* ============================================
+   Intro Screen Overlay
+   ============================================ */
+
+.intro-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  background: linear-gradient(135deg, #075e54, #128c7e); /* Match header gradient */
+}
+
+.intro-overlay.hidden {
+  display: none; /* Cut directly, no fade */
+}
+
+.intro-content {
+  text-align: center;
+  padding: 20px;
+  animation: introFadeIn 0.5s ease;
+}
+
+.intro-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff; /* White text on header gradient */
+  text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.4);
+  line-height: 1.4;
+  max-width: 95%;
+  margin: 0 auto;
+  white-space: nowrap; /* Prevent text wrapping */
+}
+
+/* Horror theme intro */
+body.theme-horror .intro-overlay {
+  background: #050505;
+}
+
+body.theme-horror .intro-title {
+  color: #d1d5db;
+  text-shadow: 0 0 20px rgba(200, 50, 50, 0.3);
+}
+
+@keyframes introFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes introFadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
