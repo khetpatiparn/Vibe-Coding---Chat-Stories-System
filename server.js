@@ -152,6 +152,19 @@ app.put('/api/projects/:id', async (req, res) => {
         }
         if (room_name !== undefined) {
             await Project.updateRoomName(req.params.id, room_name);
+            
+            // 🆕 Auto-regenerate intro TTS when room name changes
+            try {
+                const project = await Project.getById(req.params.id);
+                const introResult = await generateIntroTTS(room_name, req.params.id, project.category);
+                if (introResult) {
+                    await Project.updateIntroPath(req.params.id, introResult.audioPath);
+                    console.log(`🎙️ Re-generated intro TTS for room name change: ${room_name}`);
+                }
+            } catch (ttsErr) {
+                console.error('TTS regeneration failed:', ttsErr.message);
+                // Don't fail the whole request if TTS fails
+            }
         }
         if (show_partner_name !== undefined || show_my_name !== undefined) {
             // Fetch current project to merge
