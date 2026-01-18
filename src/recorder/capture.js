@@ -51,7 +51,7 @@ async function calculateTimeline(story) {
     
     // Calculate Intro Duration
     let introDuration = 0;
-    const isHorror = story.theme === 'horror' || (story.category && story.category.toLowerCase() === 'drama');
+    const isHorror = story.theme === 'horror' || (story.category && (story.category.toLowerCase() === 'horror' || story.category.toLowerCase() === 'drama'));
     
     if (isHorror) {
         introDuration = 2.5; // 2s + 0.5s suspense

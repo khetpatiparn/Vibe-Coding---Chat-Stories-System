@@ -61,10 +61,14 @@ function getAudioConfig(category) {
 async function generateIntroTTS(roomName, projectId, category = 'default') {
     console.log(`🎙️ Generating intro TTS for: "${roomName}" (${category})`);
     
-    // Skip TTS for specific categories that prefer silence/suspense
+    // Horror/Drama categories: text-only intro (no voice)
     if (category && (category.toLowerCase() === 'horror' || category.toLowerCase() === 'drama')) {
-        console.log(`🔇 Category '${category}' skips intro TTS.`);
-        return null;
+        console.log(`🔇 Category '${category}' uses text-only intro (no voice).`);
+        return {
+            audioPath: null,
+            duration: 0,
+            textOnly: true
+        };
     }
 
     if (!roomName || roomName.trim().length === 0) {

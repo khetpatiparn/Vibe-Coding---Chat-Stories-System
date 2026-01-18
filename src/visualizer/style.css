@@ -22,7 +22,8 @@
 
 body {
   font-family: "Mali", cursive;
-  background: var(--phone-bg); /* Same as chat background */
+  background: var(--phone-bg);
+  /* Same as chat background */
   min-height: 100vh;
   display: flex;
   justify-content: center;
@@ -84,13 +85,16 @@ body.rendering .header-avatar {
 
 /* 1. Chat Container - Move closer to right edge */
 body.rendering #chat-container {
-  padding-right: 15px !important; /* Closer to edge like real app */
-  padding-bottom: 150px !important; /* Caption safe zone */
+  padding-right: 15px !important;
+  /* Closer to edge like real app */
+  padding-bottom: 150px !important;
+  /* Caption safe zone */
 }
 
 /* 2. Header - Push down for TikTok top UI safe zone */
 body.rendering #chat-header {
-  padding-top: 50px !important; /* Avoid TikTok search bar */
+  padding-top: 50px !important;
+  /* Avoid TikTok search bar */
 }
 
 /* 3. Right messages - Constrain width to avoid TikTok buttons */
@@ -100,7 +104,8 @@ body.rendering .message.right {
 }
 
 body.rendering .message.right .message-bubble {
-  max-width: 70% !important; /* Text wraps before hitting TikTok icons */
+  max-width: 70% !important;
+  /* Text wraps before hitting TikTok icons */
 }
 
 /* Tighter gap for right-side avatar and bubble */
@@ -112,7 +117,8 @@ body.rendering .message.right {
 #chat-header {
   background: linear-gradient(135deg, #075e54, #128c7e);
   padding: 15px 20px;
-  padding-top: 60px; /* Safe zone for TikTok search bar */
+  padding-top: 60px;
+  /* Safe zone for TikTok search bar */
   padding-bottom: 15px;
   display: flex;
   align-items: center;
@@ -160,8 +166,10 @@ body.rendering .message.right {
   height: 100%;
   overflow-y: auto;
   padding: 15px 10px;
-  padding-bottom: 150px; /* TikTok Safe Zone - Bottom */
-  padding-right: 15px; /* Flush to right edge */
+  padding-bottom: 150px;
+  /* TikTok Safe Zone - Bottom */
+  padding-right: 15px;
+  /* Flush to right edge */
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -173,7 +181,8 @@ body.rendering .message.right {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  max-width: 85%; /* Wider bubbles */
+  max-width: 85%;
+  /* Wider bubbles */
   width: fit-content;
   animation: popIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   clear: both;
@@ -185,8 +194,10 @@ body.rendering .message.right {
 
 .message.right {
   align-self: flex-end;
-  flex-direction: row; /* Keep HTML order: [Bubble] [Avatar] */
-  justify-content: flex-end; /* Anchor to right edge */
+  flex-direction: row;
+  /* Keep HTML order: [Bubble] [Avatar] */
+  justify-content: flex-end;
+  /* Anchor to right edge */
   max-width: 80%;
   margin-right: 0;
 }
@@ -201,11 +212,13 @@ body.rendering .message.right {
 }
 
 .message.consecutive {
-    margin-top: -8px; /* Pull closer to previous message */
+  margin-top: -8px;
+  /* Pull closer to previous message */
 }
+
 /* Ensure consecutive avatar is hidden but takes space */
 .message.consecutive .message-avatar {
-    visibility: hidden;
+  visibility: hidden;
 }
 
 .message-avatar img {
@@ -215,9 +228,11 @@ body.rendering .message.right {
 }
 
 .message-bubble {
-  padding: 10px 14px; /* Reduced for smaller text */
+  padding: 10px 14px;
+  /* Reduced for smaller text */
   border-radius: 18px;
-  font-size: 0.95rem; /* Reduced from 1rem (~15% smaller) */
+  font-size: 0.95rem;
+  /* Reduced from 1rem (~15% smaller) */
   line-height: 1.4;
   position: relative;
   word-wrap: break-word;
@@ -238,7 +253,8 @@ body.rendering .message.right {
   color: var(--text-dark);
   border-bottom-right-radius: 5px;
   box-shadow: 0 2px 5px var(--shadow-soft);
-  overflow: hidden; /* Prevent image overflow */
+  overflow: hidden;
+  /* Prevent image overflow */
   /* max-width: 70%; */
 }
 
@@ -252,17 +268,19 @@ body.rendering .message.right {
   display: block;
   margin-bottom: 4px;
   object-fit: cover;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Nice floating shadow */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  /* Nice floating shadow */
   transition: transform 0.2s ease;
 }
+
 .chat-image:hover {
-    transform: scale(1.02);
+  transform: scale(1.02);
 }
 
 /* Remove shadow for Stickers (Transparent GIFs) */
 .chat-image.sticker {
-    box-shadow: none;
-    background: transparent;
+  box-shadow: none;
+  background: transparent;
 }
 
 /* Sender Name */
@@ -283,8 +301,10 @@ body.rendering .message.right {
 }
 
 .message-sender {
-  font-size: 0.75rem; /* Small text */
-  color: #555; /* Dark gray for visibility */
+  font-size: 0.75rem;
+  /* Small text */
+  color: #555;
+  /* Dark gray for visibility */
   margin-bottom: 2px;
   margin-left: 8px;
 }
@@ -304,13 +324,15 @@ body.rendering .message.right {
 /* Typing Indicator */
 #typing-indicator {
   position: absolute;
-  bottom: 15px; /* Moved up slightly */
+  bottom: 15px;
+  /* Moved up slightly */
   left: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
   transition: opacity 0.3s;
-  z-index: 20; /* Ensure on top */
+  z-index: 20;
+  /* Ensure on top */
 }
 
 #typing-indicator.hidden {
@@ -367,6 +389,7 @@ body.rendering .message.right {
     opacity: 0;
     transform: scale(0.8) translateY(20px);
   }
+
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -374,11 +397,13 @@ body.rendering .message.right {
 }
 
 @keyframes typingDot {
+
   0%,
   60%,
   100% {
     transform: translateY(0);
   }
+
   30% {
     transform: translateY(-5px);
   }
@@ -397,10 +422,12 @@ body.rendering .message.right {
 }
 
 @keyframes blink {
+
   0%,
   50% {
     opacity: 1;
   }
+
   51%,
   100% {
     opacity: 0;
@@ -441,7 +468,8 @@ body.rendering .message.right {
   left: 0;
   right: 0;
   bottom: 0;
-  pointer-events: none; /* Allow clicks through */
+  pointer-events: none;
+  /* Allow clicks through */
   z-index: 100;
   display: flex;
   align-items: stretch;
@@ -456,7 +484,8 @@ body.rendering .message.right {
 .tiktok-overlay-image {
   width: 100%;
   height: 100%;
-  object-fit: fill; /* Stretch to fit the container exactly */
+  object-fit: fill;
+  /* Stretch to fit the container exactly */
   pointer-events: none;
 }
 
@@ -466,33 +495,39 @@ body.rendering .message.right {
 
 /* Playback Overlay (Blackout) */
 .time-divider-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: black;
-    color: white;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.5rem;
-    font-weight: bold;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.5s ease;
-    z-index: 10000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  z-index: 10000;
 }
+
 .time-divider-overlay.active {
-    opacity: 1;
-    pointer-events: all;
+  opacity: 1;
+  pointer-events: all;
 }
 
 /* Static Chat History Divider */
 .time-divider {
-    text-align: center;
-    color: #999;
-    font-size: 0.85rem;
-    font-style: italic;
-    margin: 20px 0;
-    width: 100%;
-    position: relative;
-    z-index: 1;
+  text-align: center;
+  color: #999;
+  font-size: 0.85rem;
+  font-style: italic;
+  margin: 20px 0;
+  width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 /* ============================================
@@ -501,10 +536,14 @@ body.rendering .message.right {
 
 /* Horror Theme (Dark Blue-Gray) */
 body.theme-horror {
-  --phone-bg: #050505;  /* Almost Black */
-  --bubble-left: #151922; /* Deep Blue-Gray (Visitor) */
-  --bubble-right: #2c3440; /* Mid Blue-Gray (Me) */
-  --text-dark: #d1d5db; /* Cool White */
+  --phone-bg: #050505;
+  /* Almost Black */
+  --bubble-left: #151922;
+  /* Deep Blue-Gray (Visitor) */
+  --bubble-right: #2c3440;
+  /* Mid Blue-Gray (Me) */
+  --text-dark: #d1d5db;
+  /* Cool White */
   --text-light: #6b7280;
   --shadow-soft: rgba(0, 0, 0, 0.5);
 }
@@ -531,11 +570,13 @@ body.theme-horror .time-divider {
 
 body.theme-horror .typing-bubble {
   background: var(--bubble-left);
-  border: 1px solid rgba(255, 255, 255, 0.05); /* Match bubble border */
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  /* Match bubble border */
 }
 
 body.theme-horror .typing-bubble .dot {
-  background: #6b7280; /* Match text-light */
+  background: #6b7280;
+  /* Match text-light */
 }
 
 /* ============================================
@@ -552,11 +593,13 @@ body.theme-horror .typing-bubble .dot {
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  background: linear-gradient(135deg, #075e54, #128c7e); /* Match header gradient */
+  background: linear-gradient(135deg, #075e54, #128c7e);
+  /* Match header gradient */
 }
 
 .intro-overlay.hidden {
-  display: none; /* Cut directly, no fade */
+  display: none;
+  /* Cut directly, no fade */
 }
 
 .intro-content {
@@ -568,17 +611,26 @@ body.theme-horror .typing-bubble .dot {
 .intro-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #ffffff; /* White text on header gradient */
+  color: #ffffff;
+  /* White text on header gradient */
   text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.4);
   line-height: 1.4;
   max-width: 95%;
   margin: 0 auto;
-  white-space: nowrap; /* Prevent text wrapping */
+  white-space: nowrap;
+  /* Prevent text wrapping */
 }
 
-/* Horror theme intro */
+/* Horror theme intro - No fade in, instant appear */
 body.theme-horror .intro-overlay {
   background: #050505;
+}
+
+body.theme-horror .intro-content {
+  animation: none;
+  /* Remove fade-in animation for horror */
+  opacity: 1;
+  transform: scale(1);
 }
 
 body.theme-horror .intro-title {
@@ -586,11 +638,17 @@ body.theme-horror .intro-title {
   text-shadow: 0 0 20px rgba(200, 50, 50, 0.3);
 }
 
+/* Fade out animation for intro */
+.intro-overlay.fade-out {
+  animation: introFadeOut 0.5s ease forwards;
+}
+
 @keyframes introFadeIn {
   0% {
     opacity: 0;
     transform: scale(0.9);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -601,6 +659,7 @@ body.theme-horror .intro-title {
   0% {
     opacity: 1;
   }
+
   100% {
     opacity: 0;
   }

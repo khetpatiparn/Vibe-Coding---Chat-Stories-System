@@ -73,8 +73,8 @@ class ChatStory {
   async playIntro() {
     if (!this.introOverlay || !this.introTitle) return;
     
-    // Check if horror theme (skip voice)
-    const isHorror = document.body.classList.contains('theme-horror') || (this.data.category && this.data.category.toLowerCase() === 'drama');
+    // Check if horror/drama theme (skip voice, text-only intro)
+    const isHorror = this.data.theme === 'horror' || this.data.theme === 'drama';
     
     // Set title text
     this.introTitle.textContent = this.data.room_name || '';
@@ -122,7 +122,13 @@ class ChatStory {
     // Play swoosh transition sound (if available from parent)
     this.playSwooshSound();
     
-    // Cut directly to chat (no fade animation)
+    // Horror: Fade out before entering chat
+    if (isHorror) {
+      this.introOverlay.classList.add('fade-out');
+      await this.wait(500); // Wait for fade animation
+    }
+    
+    // Hide intro overlay
     this.introOverlay.classList.add('hidden');
     
     // Notify parent to start BGM
@@ -153,7 +159,11 @@ class ChatStory {
     const skipIntro = urlParams.get('skipIntro') === 'true';
 
     // Play intro if available and not skipped
-    if (!skipIntro && startAt === 0 && this.data.intro_path) {
+    // Horror/Drama themes show text-only intro even without audio path
+    const isHorrorOrDrama = this.data.theme === 'horror' || this.data.theme === 'drama';
+    const hasIntro = this.data.intro_path || isHorrorOrDrama;
+    
+    if (!skipIntro && startAt === 0 && hasIntro) {
       await this.playIntro();
     } else {
        // If no intro or skipped, notify parent to start BGM immediately
