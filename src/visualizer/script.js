@@ -28,8 +28,7 @@ class ChatStory {
     this.setupHeader();
     this.applyTheme();
     // Clear existing messages only
-    this.container.innerHTML = ''; 
-    // Do not re-inject typing indicator logic here, relying on index.html structure
+    this.container.innerHTML = '';
   }
 
   setupHeader() {

@@ -166,8 +166,8 @@ body.rendering .message.right {
   height: 100%;
   overflow-y: auto;
   padding: 15px 10px;
-  padding-bottom: 150px;
-  /* TikTok Safe Zone - Bottom */
+  padding-bottom: 200px;
+  /* Extra space for TikTok safe zone + typing indicator */
   padding-right: 15px;
   /* Flush to right edge */
   display: flex;
@@ -321,18 +321,16 @@ body.rendering .message.right {
   text-align: right;
 }
 
-/* Typing Indicator */
+/* Typing Indicator - Fixed position at bottom left */
 #typing-indicator {
   position: absolute;
   bottom: 15px;
-  /* Moved up slightly */
   left: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
   transition: opacity 0.3s;
   z-index: 20;
-  /* Ensure on top */
 }
 
 #typing-indicator.hidden {
