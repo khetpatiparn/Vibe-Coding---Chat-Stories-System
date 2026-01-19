@@ -660,12 +660,27 @@ async function saveToMemory() {
             return;
         }
         
+        // Transform dialogues: replace sender IDs with display_name for AI clarity
+        const transformedDialogues = currentDialogues.map(d => {
+            let senderName = d.sender;
+            // Try to find character by various matching strategies
+            const char = customCharacters.find(c => 
+                c.display_name === d.sender || 
+                c.name === d.sender ||
+                `custom_${c.id}` === d.sender
+            );
+            if (char) {
+                senderName = char.display_name; // Use human-readable name
+            }
+            return { ...d, sender: senderName };
+        });
+        
         const res = await fetch(`${API_BASE}/memories/summarize`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 projectId: currentProject,
-                dialogues: currentDialogues,
+                dialogues: transformedDialogues, // Use transformed version
                 characterIds: characterIds
             })
         });
