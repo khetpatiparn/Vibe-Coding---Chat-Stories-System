@@ -73,9 +73,14 @@ async function calculateTimeline(story) {
     
     for (let i = 0; i < story.dialogues.length; i++) {
         const dialogue = story.dialogues[i];
+        const isFirstMessage = i === 0;
         
-        // 1. Reaction Time
-        const reaction = (dialogue.reaction_delay !== undefined && dialogue.reaction_delay !== null) 
+        // Get character side for timing logic
+        const senderChar = story.characters?.[dialogue.sender];
+        const isLeft = senderChar?.side === 'left';
+        
+        // 1. Reaction Time (first message: no reaction delay)
+        let reaction = (dialogue.reaction_delay !== undefined && dialogue.reaction_delay !== null) 
                          ? parseFloat(dialogue.reaction_delay) 
                          : TIMING.DEFAULT_REACTION_DELAY;
         
@@ -88,6 +93,13 @@ async function calculateTimeline(story) {
         } else if (!typingTotal) {
              const charCount = dialogue.message ? dialogue.message.length : 0;
              typingTotal = CONFIG.baseDelay + (charCount * CONFIG.delayPerChar);
+        }
+        
+        // First message special timing: no reaction delay
+        // Left (others): 1s typing, Right (me): 0.5s wait
+        if (isFirstMessage) {
+            reaction = 0;
+            typingTotal = isLeft ? 1.0 : 0.5;
         }
         
         const typingDuration = typingTotal * CONFIG.typingRatio;
