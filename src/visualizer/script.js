@@ -82,9 +82,9 @@ class ChatStory {
     // Show intro overlay
     this.introOverlay.classList.remove('hidden');
     
-    // Horror theme: no voice, just show for 2 seconds
+    // Horror theme: no voice, text-only intro (1.5s + 0.5s fade = 2s total)
     if (isHorror) {
-      await this.wait(2000);
+      await this.wait(1500);
     } 
     // Normal theme: play intro audio if available
     else if (this.data.intro_path) {
@@ -114,10 +114,7 @@ class ChatStory {
       await this.wait(2000);
     }
     
-    // Extra delay for horror (suspense)
-    if (isHorror) {
-      await this.wait(500);
-    }
+    // No extra delay for horror - keep it quick
     
     // Play swoosh transition sound (if available from parent)
     this.playSwooshSound();

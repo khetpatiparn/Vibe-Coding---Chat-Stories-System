@@ -54,7 +54,7 @@ async function calculateTimeline(story) {
     const isHorror = story.theme === 'horror' || (story.category && (story.category.toLowerCase() === 'horror' || story.category.toLowerCase() === 'drama'));
     
     if (isHorror) {
-        introDuration = 2.5; // 2s + 0.5s suspense
+        introDuration = 2.0; // Text-only intro for horror
     } else if (story.intro_path) {
         // Measure audio file
         const duration = await getAudioDuration(story.intro_path);
