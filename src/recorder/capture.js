@@ -49,14 +49,14 @@ const CONFIG = {
 // ============================================
 function openOutputFolder(videoPath) {
     const absolutePath = path.resolve(videoPath);
-    // Windows: explorer /select,"path" opens folder and highlights file
-    const command = `explorer /select,"${absolutePath}"`;
+    const folderPath = path.dirname(absolutePath);
     
-    exec(command, (error) => {
+    console.log(`📂 Opening folder: ${folderPath}`);
+    
+    // Simple approach: just open the folder
+    exec(`start "" "${folderPath}"`, (error) => {
         if (error) {
-            console.log('📂 Could not open folder automatically');
-        } else {
-            console.log(`📂 Opened: ${absolutePath}`);
+            console.log('📂 Could not open folder:', error.message);
         }
     });
 }
