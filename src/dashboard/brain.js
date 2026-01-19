@@ -9,9 +9,11 @@ let memories = [];
 let relationships = [];
 
 // DOM Elements
-const selectCharacter = document.getElementById('select-character');
+const characterGridView = document.getElementById('character-grid-view');
+const brainCharGrid = document.getElementById('brain-char-grid');
+const btnBackGrid = document.getElementById('btn-back-grid');
+
 const btnAddMemory = document.getElementById('btn-add-memory');
-const emptyState = document.getElementById('empty-state');
 const memoryPanel = document.getElementById('memory-panel');
 const memoryCount = document.getElementById('memory-count');
 
@@ -31,39 +33,79 @@ async function loadCharacters() {
     try {
         const res = await fetch('/api/characters/custom');
         characters = await res.json();
-        
-        // Populate dropdown
-        selectCharacter.innerHTML = '<option value="">-- Select Character --</option>';
-        characters.forEach(char => {
-            const opt = document.createElement('option');
-            opt.value = char.id;
-            opt.textContent = char.display_name;
-            selectCharacter.appendChild(opt);
-        });
+        renderCharacterGrid();
     } catch (err) {
         console.error('Failed to load characters:', err);
     }
+}
+
+function renderCharacterGrid() {
+    brainCharGrid.innerHTML = '';
+    
+    if (characters.length === 0) {
+        brainCharGrid.innerHTML = '<div class="empty-state">No characters found. Create one in Manage Characters!</div>';
+        return;
+    }
+
+    characters.forEach(char => {
+        let avatarPath = char.avatar_path || '/assets/avatars/person1.png';
+        if (avatarPath && !avatarPath.startsWith('http') && !avatarPath.startsWith('/')) {
+            avatarPath = '/' + avatarPath;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'brain-char-card';
+        card.innerHTML = `
+            <img class="brain-char-avatar" src="${avatarPath}" alt="${char.display_name}">
+            <div class="brain-char-info">
+                <h3>${char.display_name}</h3>
+                <span>${char.name}</span>
+            </div>
+            <div class="brain-stats">
+                <span class="stat-item"><strong>?</strong> Memories</span>
+                <span class="stat-item"><strong>?</strong> Relations</span>
+            </div>
+        `;
+        
+        card.onclick = () => selectCharacterForBrain(char);
+        brainCharGrid.appendChild(card);
+    });
+}
+
+async function selectCharacterForBrain(char) {
+    selectedCharacter = char;
+    
+    // Toggle Views
+    characterGridView.classList.add('hidden');
+    memoryPanel.classList.remove('hidden');
+    
+    // Toggle Buttons
+    btnBackGrid.classList.remove('hidden');
+    btnAddMemory.classList.remove('hidden');
+    
+    await loadCharacterData(char.id);
+    updatePanelHeader();
+}
+
+function showCharacterGrid() {
+    selectedCharacter = null;
+    
+    // Toggle Views
+    memoryPanel.classList.add('hidden');
+    characterGridView.classList.remove('hidden');
+    
+    // Toggle Buttons
+    btnBackGrid.classList.add('hidden');
+    btnAddMemory.classList.add('hidden');
 }
 
 // ============================================
 // Event Listeners
 // ============================================
 function setupEventListeners() {
-    // Character selection
-    selectCharacter.addEventListener('change', async (e) => {
-        const charId = parseInt(e.target.value);
-        if (charId) {
-            selectedCharacter = characters.find(c => c.id === charId);
-            btnAddMemory.disabled = false;
-            await loadCharacterData(charId);
-            showMemoryPanel();
-        } else {
-            selectedCharacter = null;
-            btnAddMemory.disabled = true;
-            hideMemoryPanel();
-        }
-    });
-
+    // Back Button
+    btnBackGrid.addEventListener('click', showCharacterGrid);
+    
     // Add Memory Button
     btnAddMemory.addEventListener('click', () => {
         modalAddMemory.classList.remove('hidden');
@@ -135,24 +177,19 @@ async function loadCharacterData(charId) {
 // ============================================
 // Rendering
 // ============================================
-function showMemoryPanel() {
-    emptyState.style.display = 'none';
-    memoryPanel.classList.remove('hidden');
-    
+// ============================================
+// Rendering
+// ============================================
+function updatePanelHeader() {
     // Update header - fix avatar path
     let avatarPath = selectedCharacter.avatar_path || '/assets/avatars/person1.png';
-    // If path doesn't start with http or /, add prefix
     if (avatarPath && !avatarPath.startsWith('http') && !avatarPath.startsWith('/')) {
         avatarPath = '/' + avatarPath;
     }
+    
     document.getElementById('char-avatar').src = avatarPath;
     document.getElementById('char-name').textContent = selectedCharacter.display_name;
-    document.getElementById('char-team').textContent = selectedCharacter.team_id ? `Team: ${selectedCharacter.team_id}` : 'No Team';
-}
-
-function hideMemoryPanel() {
-    emptyState.style.display = 'flex';
-    memoryPanel.classList.add('hidden');
+    document.getElementById('char-team').textContent = selectedCharacter.team_id ? `Team: ${selectedCharacter.team_id}` : 'General Team';
 }
 
 function renderMemories() {

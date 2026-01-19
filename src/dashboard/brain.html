@@ -41,25 +41,28 @@
         <main id="brain-area">
             <header class="top-bar">
                 <div class="breadcrumbs">
-                    <span>🧠 Character Memory & Relationships</span>
+                    <span id="page-title">🧠 Character Memory Center</span>
                 </div>
                 <div class="actions">
-                    <select id="select-character" class="btn-secondary" style="padding: 8px 16px; min-width: 200px;">
-                        <option value="">-- Select Character --</option>
-                    </select>
-                    <button id="btn-add-memory" class="btn-primary" disabled>+ Add Memory</button>
+                    <!-- Actions will be context-dependent -->
+                    <button id="btn-back-grid" class="btn-secondary hidden">← Back to Characters</button>
+                    <button id="btn-add-memory" class="btn-primary hidden">+ Add Memory</button>
                 </div>
             </header>
 
             <div class="content-area">
-                <!-- Empty State -->
-                <div id="empty-state" class="empty-state-large">
-                    <div class="empty-icon">🧠</div>
-                    <h2>Character Memory Center</h2>
-                    <p>Select a character to view their memories and relationships</p>
+                <!-- Grid View (Default) -->
+                <div id="character-grid-view" class="character-grid-container">
+                    <div class="grid-header">
+                        <h2>Select a Character</h2>
+                        <p>View memories, relationships, and backstory</p>
+                    </div>
+                    <div id="brain-char-grid" class="character-grid-layout">
+                        <!-- Character Cards will be injected here -->
+                    </div>
                 </div>
 
-                <!-- Memory Panel (hidden by default) -->
+                <!-- Memory Panel (Detail View - Hidden by default) -->
                 <div id="memory-panel" class="memory-panel hidden">
                     <div class="panel-header">
                         <div class="char-info">
