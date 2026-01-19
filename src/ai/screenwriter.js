@@ -559,7 +559,7 @@ async function generatePremise(category, characterNames = []) {
 // Generate Story (with Auto-Retry and Fallback)
 // ============================================
 async function generateStory(options = {}) {
-    let category, characters, customPrompt, characterData, relationship, length;
+    let category, characters, customPrompt, characterData, relationship, length, memoryContext;
     
     if (typeof options === 'string') {
         category = options;
@@ -568,13 +568,14 @@ async function generateStory(options = {}) {
         characterData = [];
         relationship = 'friend';
         length = 35;
+        memoryContext = null;
     } else {
         category = options.category || 'funny';
         characters = options.characters || ['me', 'boss'];
         customPrompt = options.customPrompt || null;
         characterData = options.characterData || [];
         relationship = options.relationship || 'friend';
-        relationship = options.relationship || 'friend';
+        memoryContext = options.memoryContext || null;  // Sitcom Engine: Memory context
         
         // Randomize length between 30-42 if not specified (V2.1 - Natural Variation)
         if (options.length) {
@@ -604,7 +605,7 @@ async function generateStory(options = {}) {
         }
     }
 
-    const prompt = buildPrompt(category, characters, customPrompt, characterData, relationship, length);
+    const prompt = buildPrompt(category, characters, customPrompt, characterData, relationship, length, memoryContext);
     
     for (let modelIndex = 0; modelIndex < MODEL_PRIORITY.length; modelIndex++) {
         const currentModel = MODEL_PRIORITY[modelIndex];

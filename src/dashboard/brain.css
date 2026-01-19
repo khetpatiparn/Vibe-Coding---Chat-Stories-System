@@ -1,0 +1,284 @@
+/* Brain Tab Styles */
+
+.empty-state-large {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    color: var(--text-gray);
+}
+
+.empty-state-large .empty-icon {
+    font-size: 5rem;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state-large h2 {
+    color: var(--text-white);
+    margin-bottom: 10px;
+}
+
+.memory-panel {
+    padding: 20px;
+}
+
+.memory-panel.hidden {
+    display: none;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: var(--bg-card);
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.panel-header .char-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.panel-header .char-info img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary);
+}
+
+.panel-header .char-info h2 {
+    margin: 0;
+    color: var(--text-white);
+}
+
+.char-team {
+    display: inline-block;
+    padding: 4px 12px;
+    background: var(--bg-dark);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: var(--text-gray);
+    margin-top: 5px;
+}
+
+.memory-section {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.memory-section h3 {
+    margin: 0 0 15px 0;
+    color: var(--text-white);
+    font-size: 1.1rem;
+}
+
+.memory-list,
+.relationship-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.empty-memory {
+    color: var(--text-gray);
+    font-style: italic;
+    padding: 10px;
+    text-align: center;
+}
+
+.memory-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: var(--bg-dark);
+    border-radius: 8px;
+    border-left: 4px solid var(--primary);
+}
+
+.memory-item.event {
+    border-left-color: #f59f00;
+}
+
+.memory-item .memory-text {
+    flex: 1;
+    color: var(--text-white);
+}
+
+.memory-item .memory-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.memory-item .importance-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    background: var(--bg-card);
+    color: var(--text-gray);
+}
+
+.memory-item .btn-delete {
+    background: transparent;
+    border: none;
+    color: var(--text-gray);
+    cursor: pointer;
+    padding: 5px;
+    font-size: 1rem;
+    transition: color 0.2s;
+}
+
+.memory-item .btn-delete:hover {
+    color: #ff6b6b;
+}
+
+/* Relationship Items */
+.relationship-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: var(--bg-dark);
+    border-radius: 8px;
+}
+
+.relationship-item .rel-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.relationship-item .rel-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.relationship-item .rel-details h4 {
+    margin: 0;
+    color: var(--text-white);
+}
+
+.relationship-item .rel-status {
+    font-size: 0.85rem;
+    color: var(--text-gray);
+}
+
+.relationship-item .rel-score {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.relationship-item .score-bar {
+    width: 100px;
+    height: 8px;
+    background: var(--bg-card);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.relationship-item .score-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+.relationship-item .score-text {
+    font-weight: bold;
+    min-width: 40px;
+    text-align: right;
+}
+
+.relationship-item .btn-edit {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-white);
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.relationship-item .btn-edit:hover {
+    background: var(--primary);
+}
+
+/* Add Relationship Button */
+.btn-add-rel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    background: transparent;
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    color: var(--text-gray);
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.btn-add-rel:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Modal Improvements */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+}
+
+.modal-content h2 {
+    margin: 0 0 20px 0;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-white);
+    font-weight: 500;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}

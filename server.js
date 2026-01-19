@@ -405,14 +405,55 @@ app.post('/api/generate', async (req, res) => {
             targetProjectId = await Project.create('AI Generated Story', category);
         }
         
-        // Generate story with AI using new parameters
+        // ============================================
+        // Sitcom Engine: Fetch Memory Context
+        // ============================================
+        let memoryContext = null;
+        try {
+            // Extract custom character IDs from characterData
+            const customCharIds = characterData
+                .filter(c => c.is_custom && c.id)
+                .map(c => parseInt(c.id.toString().replace('custom_', '')));
+            
+            if (customCharIds.length > 0) {
+                console.log('🧠 Fetching memories for character IDs:', customCharIds);
+                
+                // Fetch memories
+                const memories = await Memory.getForCharacters(customCharIds);
+                
+                // Fetch relationships between characters
+                const relationships = [];
+                for (let i = 0; i < customCharIds.length; i++) {
+                    for (let j = i + 1; j < customCharIds.length; j++) {
+                        const rel = await Relationship.get(customCharIds[i], customCharIds[j]);
+                        if (rel) {
+                            const char1 = await CustomCharacter.getById(customCharIds[i]);
+                            const char2 = await CustomCharacter.getById(customCharIds[j]);
+                            rel.char1_name = char1?.display_name || 'Unknown';
+                            rel.char2_name = char2?.display_name || 'Unknown';
+                            relationships.push(rel);
+                        }
+                    }
+                }
+                
+                if (memories.length > 0 || relationships.length > 0) {
+                    memoryContext = { memories, relationships };
+                    console.log(`🧠 Found ${memories.length} memories, ${relationships.length} relationships`);
+                }
+            }
+        } catch (memErr) {
+            console.warn('⚠️ Failed to fetch memory context:', memErr.message);
+        }
+        
+        // Generate story with AI using new parameters + memory context
         const story = await generateStory({
             category: category || 'funny',
             characters: characters || ['me', 'boss'],
             characterData: characterData || [],
             customPrompt: customPrompt || null,
             relationship: relationship || 'friend',  // V2.0: Pass relationship
-            length: length // Let screenwriter.js handle randomization if undefined
+            length: length, // Let screenwriter.js handle randomization if undefined
+            memoryContext: memoryContext  // Sitcom Engine: Pass memory context
         });
         
         // Clear existing dialogues if generating for existing project
@@ -1421,15 +1462,35 @@ app.post('/api/memories/summarize', async (req, res) => {
         
         // Save facts to memories table
         const savedMemories = [];
-        if (summary.facts && characterIds && characterIds.length > 0) {
+        
+        // Fetch all participating characters first for better matching
+        const participatingChars = [];
+        if (characterIds && characterIds.length > 0) {
+            for (const id of characterIds) {
+                const char = await CustomCharacter.getById(id);
+                if (char) participatingChars.push(char);
+            }
+        }
+        
+        if (summary.facts && participatingChars.length > 0) {
             for (const fact of summary.facts) {
-                // Find the character ID by name
-                const aboutChar = await new Promise((resolve, reject) => {
-                    db.get('SELECT id FROM custom_characters WHERE display_name = ?', [fact.about], (err, row) => {
-                        if (err) reject(err);
-                        else resolve(row);
-                    });
-                });
+                // Improved Matching Strategy:
+                // 1. Exact match display_name
+                // 2. Contains match (e.g. "Boss" in "Boss Somchai")
+                // 3. Name match (english name)
+                
+                const targetName = fact.about.toLowerCase();
+                let aboutChar = participatingChars.find(c => c.display_name.toLowerCase() === targetName);
+                
+                if (!aboutChar) {
+                    // Try partial match
+                    aboutChar = participatingChars.find(c => c.display_name.toLowerCase().includes(targetName) || targetName.includes(c.display_name.toLowerCase()));
+                }
+                
+                if (!aboutChar) {
+                    // Try matching with 'name' field (often english)
+                    aboutChar = participatingChars.find(c => c.name.toLowerCase() === targetName);
+                }
                 
                 if (aboutChar) {
                     const memId = await Memory.add(
@@ -1440,24 +1501,37 @@ app.post('/api/memories/summarize', async (req, res) => {
                         fact.importance || 5,   // importance
                         projectId               // source
                     );
-                    savedMemories.push({ id: memId, fact: fact.fact });
+                    savedMemories.push({ id: memId, fact: fact.fact, owner: aboutChar.display_name });
                 }
             }
+            console.log(`Saved ${savedMemories.length} facts`);
         }
         
-        // Save event summary
+        // Save event summary to ALL participating characters (Shared Memory)
         if (summary.event_summary && characterIds && characterIds.length > 0) {
-            const mainChar = characterIds[0];
-            await Memory.add(mainChar, null, summary.event_summary, 'event', 7, projectId);
+            for (const charId of characterIds) {
+                await Memory.add(charId, null, summary.event_summary, 'event', 7, projectId);
+            }
+            console.log(`Saved event summary to ${characterIds.length} characters`);
         }
         
-        // Update relationships
+        // Update relationships (Round Robin for all pairs)
         if (summary.relationship_impact && characterIds && characterIds.length >= 2) {
-            const currentRel = await Relationship.get(characterIds[0], characterIds[1]);
-            const currentScore = currentRel ? currentRel.score : 50;
-            const newScore = Math.max(0, Math.min(100, currentScore + summary.relationship_impact.change));
-            await Relationship.upsert(characterIds[0], characterIds[1], newScore, 'friend');
-            console.log(`💕 Relationship updated: ${currentScore} -> ${newScore} (${summary.relationship_impact.reason})`);
+            // Update every pair in the group
+             for (let i = 0; i < characterIds.length; i++) {
+                for (let j = i + 1; j < characterIds.length; j++) {
+                    const id1 = characterIds[i];
+                    const id2 = characterIds[j];
+                    
+                    const currentRel = await Relationship.get(id1, id2);
+                    const currentScore = currentRel ? currentRel.score : 50;
+                    // Apply change (maybe diluted for group? or full impact? Let's keep full for now)
+                    const newScore = Math.max(0, Math.min(100, currentScore + summary.relationship_impact.change));
+                    
+                    await Relationship.upsert(id1, id2, newScore, 'friend');
+                }
+            }
+            console.log(`💕 Updated relationships for ${characterIds.length} characters (${summary.relationship_impact.reason})`);
         }
         
         res.json({ 

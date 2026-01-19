@@ -84,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-generate-ai').onclick = openStorySettings;
     document.getElementById('btn-export-json').onclick = exportProjectAsJSON;
     document.getElementById('btn-import-json').onclick = openImportModal;
+    document.getElementById('btn-save-memory').onclick = saveToMemory;
     
     // Room Name Input - Auto-save on change
     document.getElementById('room-name-input').onchange = saveRoomName;
@@ -619,6 +620,78 @@ function exportProjectAsJSON() {
     URL.revokeObjectURL(url);
     
     showToast('📦 Export สำเร็จ!', 'success');
+}
+
+// ===================================
+// Save to Memory (Sitcom Engine)
+// ===================================
+async function saveToMemory() {
+    if (!currentProject || currentDialogues.length < 5) {
+        showToast('⚠️ ต้องมีอย่างน้อย 5 Dialogues เพื่อสรุปเป็น Memory', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-save-memory');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '🧠 Saving...';
+    btn.disabled = true;
+    
+    try {
+        // Get unique senders from dialogues and find their custom character IDs
+        const senders = [...new Set(currentDialogues.map(d => d.sender))];
+        const characterIds = [];
+        
+        for (const sender of senders) {
+            // Check if sender matches a custom character
+            const customChar = customCharacters.find(c => 
+                c.display_name === sender || 
+                c.name === sender ||
+                `custom_${c.id}` === sender
+            );
+            if (customChar) {
+                characterIds.push(customChar.id);
+            }
+        }
+        
+        if (characterIds.length === 0) {
+            showToast('⚠️ ไม่พบตัวละคร Custom ใน Story นี้', 'error');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+        }
+        
+        const res = await fetch(`${API_BASE}/memories/summarize`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: currentProject,
+                dialogues: currentDialogues,
+                characterIds: characterIds
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            const memCount = data.memories?.length || 0;
+            showToast(`🧠 สรุป Memory สำเร็จ! บันทึก ${memCount} ข้อมูลใหม่`, 'success');
+            
+            if (data.summary) {
+                console.log('📝 Story Summary:', data.summary);
+            }
+            if (data.relationship_change) {
+                console.log('💕 Relationship Change:', data.relationship_change);
+            }
+        } else {
+            showToast(`⚠️ ${data.message || 'Failed to summarize'}`, 'error');
+        }
+    } catch (err) {
+        console.error('Save to memory error:', err);
+        showToast('❌ Error: ' + err.message, 'error');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
 }
 
 // ===================================
