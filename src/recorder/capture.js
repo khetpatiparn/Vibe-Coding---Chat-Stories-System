@@ -8,6 +8,7 @@ const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 const fs = require('fs-extra');
 const path = require('path');
+const { exec } = require('child_process');
 const TIMING = require('../config/timing');
 
 // Set FFmpeg path
@@ -44,6 +45,23 @@ const CONFIG = {
 };
 
 // ============================================
+// Open Output Folder (Windows)
+// ============================================
+function openOutputFolder(videoPath) {
+    const absolutePath = path.resolve(videoPath);
+    // Windows: explorer /select,"path" opens folder and highlights file
+    const command = `explorer /select,"${absolutePath}"`;
+    
+    exec(command, (error) => {
+        if (error) {
+            console.log('📂 Could not open folder automatically');
+        } else {
+            console.log(`📂 Opened: ${absolutePath}`);
+        }
+    });
+}
+
+// ============================================
 // Calculate Timeline from Story
 // ============================================
 async function calculateTimeline(story) {
@@ -65,7 +83,7 @@ async function calculateTimeline(story) {
     
     console.log(`⏱️ Intro Duration: ${introDuration.toFixed(2)}s`);
 
-    let currentTime = introDuration + 1.0; // Start chat 1s after intro
+    let currentTime = introDuration; // Start chat immediately after intro (first message handles timing)
     
     if (!story.dialogues || story.dialogues.length === 0) {
         return { timeline: [], totalDuration: introDuration + 2 };
@@ -106,6 +124,16 @@ async function calculateTimeline(story) {
         const typingStart = currentTime + reaction;
         const typingEnd = typingStart + typingDuration;
         const appearTime = currentTime + reaction + typingTotal;
+        
+        // Debug: Log first message timing
+        if (isFirstMessage) {
+            console.log(`📌 First Message Timing:`);
+            console.log(`   - Side: ${isLeft ? 'LEFT' : 'RIGHT'}`);
+            console.log(`   - Reaction: ${reaction}s`);
+            console.log(`   - TypingTotal: ${typingTotal}s`);
+            console.log(`   - TypingStart: ${typingStart.toFixed(2)}s`);
+            console.log(`   - AppearTime: ${appearTime.toFixed(2)}s`);
+        }
         
         timeline.push({
             index: i,
@@ -640,6 +668,9 @@ async function recordStory(story, options = {}) {
         
         const videoPath = await assembleVideo(framesDir, outputName, audioOptions);
         if (!options.keepFrames) await fs.remove(framesDir);
+        
+        // Open output folder and highlight the video file
+        openOutputFolder(videoPath);
         
         return videoPath;
     } catch (error) {
