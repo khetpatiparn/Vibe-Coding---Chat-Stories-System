@@ -196,6 +196,53 @@ function initSchema() {
             if (err) console.error('Failed to create sounds table:', err);
             else console.log('✅ sounds table ready');
         });
+
+        // 7. Memories Table (Sitcom Engine - Long-Term Memory)
+        db.run(`CREATE TABLE IF NOT EXISTS memories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            owner_char_id INTEGER,
+            about_char_id INTEGER,
+            source_project_id INTEGER,
+            memory_text TEXT NOT NULL,
+            type TEXT DEFAULT 'fact',
+            importance INTEGER DEFAULT 5,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(owner_char_id) REFERENCES custom_characters(id) ON DELETE CASCADE,
+            FOREIGN KEY(about_char_id) REFERENCES custom_characters(id) ON DELETE SET NULL,
+            FOREIGN KEY(source_project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )`, (err) => {
+            if (err) console.error('Failed to create memories table:', err);
+            else console.log('✅ memories table ready (Sitcom Engine)');
+        });
+
+        // 8. Relationships Table (Sitcom Engine - Character Dynamics)
+        db.run(`CREATE TABLE IF NOT EXISTS relationships (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            char_id_1 INTEGER NOT NULL,
+            char_id_2 INTEGER NOT NULL,
+            score INTEGER DEFAULT 50,
+            status TEXT DEFAULT 'stranger',
+            last_interaction DATETIME,
+            FOREIGN KEY(char_id_1) REFERENCES custom_characters(id) ON DELETE CASCADE,
+            FOREIGN KEY(char_id_2) REFERENCES custom_characters(id) ON DELETE CASCADE
+        )`, (err) => {
+            if (err) console.error('Failed to create relationships table:', err);
+            else console.log('✅ relationships table ready (Sitcom Engine)');
+        });
+
+        // Migration: Add team_id to custom_characters for Shared Universe
+        db.all("PRAGMA table_info(custom_characters)", (err, rows) => {
+            if (!err) {
+                const hasTeamId = rows.some(r => r.name === 'team_id');
+                if (!hasTeamId) {
+                    console.log('Migrating: Adding team_id to custom_characters...');
+                    db.run("ALTER TABLE custom_characters ADD COLUMN team_id TEXT", (err) => {
+                        if (err) console.error("Migration failed (team_id):", err);
+                        else console.log("✅ Migration successful: team_id added for Shared Universe.");
+                    });
+                }
+            }
+        });
         
         console.log('Database schema initialized.');
     });
@@ -666,6 +713,128 @@ const Sound = {
     }
 };
 
+// ============================================
+// Memory Helper (Sitcom Engine - Phase 3)
+// ============================================
+const Memory = {
+    // Get all memories involving specific characters
+    getForCharacters: (charIds) => {
+        return new Promise((resolve, reject) => {
+            const placeholders = charIds.map(() => '?').join(',');
+            db.all(`SELECT m.*, 
+                    c1.display_name as owner_name, 
+                    c2.display_name as about_name
+                    FROM memories m
+                    LEFT JOIN custom_characters c1 ON m.owner_char_id = c1.id
+                    LEFT JOIN custom_characters c2 ON m.about_char_id = c2.id
+                    WHERE m.owner_char_id IN (${placeholders}) 
+                       OR m.about_char_id IN (${placeholders})
+                    ORDER BY m.importance DESC, m.created_at DESC
+                    LIMIT 20`, [...charIds, ...charIds], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows || []);
+            });
+        });
+    },
+
+    // Add a new memory
+    add: (ownerCharId, aboutCharId, memoryText, type = 'fact', importance = 5, sourceProjectId = null) => {
+        return new Promise((resolve, reject) => {
+            db.run(`INSERT INTO memories (owner_char_id, about_char_id, memory_text, type, importance, source_project_id)
+                    VALUES (?, ?, ?, ?, ?, ?)`,
+                [ownerCharId, aboutCharId, memoryText, type, importance, sourceProjectId],
+                function(err) {
+                    if (err) reject(err);
+                    else resolve(this.lastID);
+                });
+        });
+    },
+
+    // Delete a specific memory
+    delete: (id) => {
+        return new Promise((resolve, reject) => {
+            db.run('DELETE FROM memories WHERE id = ?', [id], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    },
+
+    // Get all memories for a character (for Brain Tab UI)
+    getAllForCharacter: (charId) => {
+        return new Promise((resolve, reject) => {
+            db.all(`SELECT m.*, c.display_name as about_name
+                    FROM memories m
+                    LEFT JOIN custom_characters c ON m.about_char_id = c.id
+                    WHERE m.owner_char_id = ?
+                    ORDER BY m.created_at DESC`, [charId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows || []);
+            });
+        });
+    }
+};
+
+// ============================================
+// Relationship Helper (Sitcom Engine - Phase 3)
+// ============================================
+const Relationship = {
+    // Get relationship between two characters
+    get: (charId1, charId2) => {
+        return new Promise((resolve, reject) => {
+            db.get(`SELECT * FROM relationships 
+                    WHERE (char_id_1 = ? AND char_id_2 = ?) 
+                       OR (char_id_1 = ? AND char_id_2 = ?)`,
+                [charId1, charId2, charId2, charId1], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+        });
+    },
+
+    // Create or update relationship
+    upsert: (charId1, charId2, score, status = 'friend') => {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const existing = await Relationship.get(charId1, charId2);
+                if (existing) {
+                    db.run(`UPDATE relationships SET score = ?, status = ?, last_interaction = CURRENT_TIMESTAMP
+                            WHERE id = ?`, [score, status, existing.id], (err) => {
+                        if (err) reject(err);
+                        else resolve(existing.id);
+                    });
+                } else {
+                    db.run(`INSERT INTO relationships (char_id_1, char_id_2, score, status, last_interaction)
+                            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+                        [charId1, charId2, score, status], function(err) {
+                            if (err) reject(err);
+                            else resolve(this.lastID);
+                        });
+                }
+            } catch (e) {
+                reject(e);
+            }
+        });
+    },
+
+    // Get all relationships for a character
+    getAllForCharacter: (charId) => {
+        return new Promise((resolve, reject) => {
+            db.all(`SELECT r.*, 
+                    c1.display_name as char1_name, 
+                    c2.display_name as char2_name
+                    FROM relationships r
+                    LEFT JOIN custom_characters c1 ON r.char_id_1 = c1.id
+                    LEFT JOIN custom_characters c2 ON r.char_id_2 = c2.id
+                    WHERE r.char_id_1 = ? OR r.char_id_2 = ?`,
+                [charId, charId], (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows || []);
+                });
+        });
+    }
+};
+
 module.exports = {
     db,
     Project,
@@ -674,6 +843,8 @@ module.exports = {
     CustomCharacter,
     SoundCollection,
     Sound,
+    Memory,
+    Relationship,
     importStoryJSON,
     exportStoryJSON
 };

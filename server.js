@@ -11,8 +11,8 @@ const open = require('open'); // Optional: opens browser on start
 const multer = require('multer');
 const fs = require('fs-extra');
 
-const { db, Project, Dialogue, Character, CustomCharacter, SoundCollection, Sound, importStoryJSON, exportStoryJSON } = require('./database');
-const { generateStory, continueStory } = require('./src/ai/screenwriter');
+const { db, Project, Dialogue, Character, CustomCharacter, SoundCollection, Sound, Memory, Relationship, importStoryJSON, exportStoryJSON } = require('./database');
+const { generateStory, continueStory, summarizeStory } = require('./src/ai/screenwriter');
 const TIMING = require('./src/config/timing');
 const { recordStory } = require('./src/recorder/capture');
 const { generateIntroTTS } = require('./src/ai/intro-tts');
@@ -1334,9 +1334,188 @@ app.delete('/api/sounds/:id', async (req, res) => {
 
 
 // ============================================
+// Sitcom Engine: Memory API (Phase 3)
+// ============================================
+
+// Get memories for specific characters (for story generation context)
+app.get('/api/memories/characters', async (req, res) => {
+    try {
+        const charIds = req.query.ids ? req.query.ids.split(',').map(Number) : [];
+        if (charIds.length === 0) {
+            return res.json({ memories: [], relationships: [] });
+        }
+        
+        const memories = await Memory.getForCharacters(charIds);
+        
+        // Get relationships between these characters
+        const relationships = [];
+        for (let i = 0; i < charIds.length; i++) {
+            for (let j = i + 1; j < charIds.length; j++) {
+                const rel = await Relationship.get(charIds[i], charIds[j]);
+                if (rel) {
+                    // Add display names
+                    const char1 = await CustomCharacter.getById(charIds[i]);
+                    const char2 = await CustomCharacter.getById(charIds[j]);
+                    rel.char1_name = char1?.display_name || 'Unknown';
+                    rel.char2_name = char2?.display_name || 'Unknown';
+                    relationships.push(rel);
+                }
+            }
+        }
+        
+        res.json({ memories, relationships });
+    } catch (err) {
+        console.error('Memory fetch error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get all memories for a single character (Brain Tab)
+app.get('/api/memories/character/:charId', async (req, res) => {
+    try {
+        const memories = await Memory.getAllForCharacter(Number(req.params.charId));
+        res.json(memories);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Add a memory manually
+app.post('/api/memories', async (req, res) => {
+    try {
+        const { ownerCharId, aboutCharId, memoryText, type, importance, sourceProjectId } = req.body;
+        if (!ownerCharId || !memoryText) {
+            return res.status(400).json({ error: 'ownerCharId and memoryText required' });
+        }
+        const id = await Memory.add(ownerCharId, aboutCharId || null, memoryText, type || 'fact', importance || 5, sourceProjectId || null);
+        res.json({ success: true, id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete a memory
+app.delete('/api/memories/:id', async (req, res) => {
+    try {
+        await Memory.delete(Number(req.params.id));
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Summarize and save story memories (Auto-Journaling)
+app.post('/api/memories/summarize', async (req, res) => {
+    try {
+        const { projectId, dialogues, characterIds } = req.body;
+        if (!dialogues || dialogues.length < 5) {
+            return res.json({ success: false, message: 'Story too short' });
+        }
+        
+        console.log('🧠 Summarizing story for memory...');
+        const summary = await summarizeStory(dialogues);
+        
+        if (!summary) {
+            return res.json({ success: false, message: 'Summarization failed' });
+        }
+        
+        // Save facts to memories table
+        const savedMemories = [];
+        if (summary.facts && characterIds && characterIds.length > 0) {
+            for (const fact of summary.facts) {
+                // Find the character ID by name
+                const aboutChar = await new Promise((resolve, reject) => {
+                    db.get('SELECT id FROM custom_characters WHERE display_name = ?', [fact.about], (err, row) => {
+                        if (err) reject(err);
+                        else resolve(row);
+                    });
+                });
+                
+                if (aboutChar) {
+                    const memId = await Memory.add(
+                        aboutChar.id,           // owner
+                        null,                   // about (self-fact)
+                        fact.fact,              // text
+                        'fact',                 // type
+                        fact.importance || 5,   // importance
+                        projectId               // source
+                    );
+                    savedMemories.push({ id: memId, fact: fact.fact });
+                }
+            }
+        }
+        
+        // Save event summary
+        if (summary.event_summary && characterIds && characterIds.length > 0) {
+            const mainChar = characterIds[0];
+            await Memory.add(mainChar, null, summary.event_summary, 'event', 7, projectId);
+        }
+        
+        // Update relationships
+        if (summary.relationship_impact && characterIds && characterIds.length >= 2) {
+            const currentRel = await Relationship.get(characterIds[0], characterIds[1]);
+            const currentScore = currentRel ? currentRel.score : 50;
+            const newScore = Math.max(0, Math.min(100, currentScore + summary.relationship_impact.change));
+            await Relationship.upsert(characterIds[0], characterIds[1], newScore, 'friend');
+            console.log(`💕 Relationship updated: ${currentScore} -> ${newScore} (${summary.relationship_impact.reason})`);
+        }
+        
+        res.json({ 
+            success: true, 
+            summary: summary.event_summary,
+            memories: savedMemories,
+            relationship_change: summary.relationship_impact
+        });
+    } catch (err) {
+        console.error('Summarize error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ============================================
+// Sitcom Engine: Relationship API
+// ============================================
+
+// Get relationship between two characters
+app.get('/api/relationships/:char1/:char2', async (req, res) => {
+    try {
+        const rel = await Relationship.get(Number(req.params.char1), Number(req.params.char2));
+        res.json(rel || { score: 50, status: 'stranger' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update relationship
+app.post('/api/relationships', async (req, res) => {
+    try {
+        const { charId1, charId2, score, status } = req.body;
+        if (!charId1 || !charId2) {
+            return res.status(400).json({ error: 'charId1 and charId2 required' });
+        }
+        const id = await Relationship.upsert(charId1, charId2, score || 50, status || 'friend');
+        res.json({ success: true, id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get all relationships for a character
+app.get('/api/relationships/character/:charId', async (req, res) => {
+    try {
+        const relationships = await Relationship.getAllForCharacter(Number(req.params.charId));
+        res.json(relationships);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ============================================
 // Start Server
 // ============================================
 app.listen(PORT, () => {
     console.log(`\n🚀 AutoChat Studio Pro running at http://localhost:${PORT}`);
     console.log(`📂 Dashboard: http://localhost:${PORT}/dashboard`);
+    console.log(`🧠 Sitcom Engine: Memory API enabled`);
 });

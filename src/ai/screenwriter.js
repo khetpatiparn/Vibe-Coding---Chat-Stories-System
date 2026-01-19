@@ -153,9 +153,9 @@ function generateCharacterProfiles(characters, characterData) {
 }
 
 // ============================================
-// Master Prompt Builder (V2.0)
+// Master Prompt Builder (V2.0 + Memory Context)
 // ============================================
-function buildPrompt(category, characters = ['me', 'boss'], customPrompt = null, characterData = [], relationship = 'friend', length = 35) {
+function buildPrompt(category, characters = ['me', 'boss'], customPrompt = null, characterData = [], relationship = 'friend', length = 35, memoryContext = null) {
     
     // Category -> Detailed Direction
     const categoryInstructions = {
@@ -305,6 +305,41 @@ ${personalityDescriptions.join('\n')}
         promptText += `
 
 **TOPIC/SITUATION:** ${customPrompt}`;
+    }
+
+    // Phase 3: Memory Context Injection (Sitcom Engine)
+    // IMPORTANT: This is BACKGROUND context - AI knows this internally but doesn't expose directly
+    if (memoryContext && (memoryContext.memories?.length > 0 || memoryContext.relationships?.length > 0)) {
+        promptText += `
+
+---
+**🧠 MEMORY CONTEXT (Internal Knowledge - Do NOT state these facts explicitly. Use them to inform behavior/reactions):**`;
+        
+        if (memoryContext.memories && memoryContext.memories.length > 0) {
+            promptText += `
+**Past Events/Facts:**`;
+            memoryContext.memories.forEach(m => {
+                promptText += `
+- ${m.memory_text}`;
+            });
+        }
+        
+        if (memoryContext.relationships && memoryContext.relationships.length > 0) {
+            promptText += `
+**Relationship Status:**`;
+            memoryContext.relationships.forEach(r => {
+                const statusEmoji = r.score >= 70 ? '💚' : r.score >= 40 ? '💛' : '❤️‍🩹';
+                promptText += `
+- ${r.char1_name} ↔ ${r.char2_name}: ${statusEmoji} Score ${r.score}/100 (${r.status})`;
+            });
+        }
+        
+        promptText += `
+**MEMORY USAGE RULES:**
+1. DO NOT directly say "Remember when we..." or "Last time you..." - that breaks immersion.
+2. USE this knowledge to inform reactions (e.g., if they fought before, be slightly cold/sarcastic).
+3. REFERENCE past events only if it makes sense for the plot (e.g., "นี่ไม่ใช่ครั้งแรกที่มึงทำแบบนี้").
+---`;
     }
     
     promptText += `
@@ -466,6 +501,61 @@ typing_speed: slow (ดราม่า หนักๆ), normal (ปกติ), 
 }
 
 // ============================================
+// Generate Premise (Phase 2: Infinite Ideas)
+// ============================================
+async function generatePremise(category, characterNames = []) {
+    const categoryHints = {
+        funny: 'สถานการณ์วุ่นวายตลกๆ ที่ Snowball Effect (แย่ลงเรื่อยๆ) เช่น ส่งแชทผิดคน, ลืมปิดกล้อง, สั่งของมาแปลกๆ',
+        drama: 'ความลับถูกเปิดเผย, ความสัมพันธ์พัง, คนทรยศ, หลักฐานหลุด',
+        horror: 'เรื่องหลอนที่เกิดขึ้นตอนนี้ (ได้ยินเสียง, เห็นเงา, คนตามมา, ห้องน้ำ, ลิฟต์)',
+        office: 'ดราม่าออฟฟิศ, บอสเรียกคุย, งานพัง, เพื่อนร่วมงานปล่อยเรื่อง, ไมค์ไม่ปิด',
+        love: 'จีบกัน, หึงหวง, สารภาพรัก, แอบชอบ, เขินๆ',
+        gossip: 'แฉดราม่า, ซุบซิบเรื่องคนรู้จัก, ข่าวลือที่อาจจะจริง',
+        consult: 'ปัญหาชีวิตหนักๆ (เงิน, ความรัก, งาน, ครอบครัว)',
+        fight: 'ทะเลาะกันรุนแรง, โกรธจัด, คำพูดที่ถอนไม่ได้',
+        debate: 'ถกเถียงประเด็นร้อน, คนละความคิด, ไม่มีใครยอมใคร',
+        tie_in: 'เม้าท์ๆ แล้วพูดถึงของที่เพิ่งซื้อมา',
+        auto: 'อะไรก็ได้ที่น่าสนใจ ดราม่า ตลก หรือซึ้ง'
+    };
+
+    const hint = categoryHints[category] || categoryHints['auto'];
+    const charsText = characterNames.length > 0 ? characterNames.join(', ') : 'ตัวละครหลัก';
+
+    const prompt = `คุณคือ Creative Director ที่ต้องคิด "พล็อตเรื่อง" สำหรับ Chat Story สไตล์ไทยวัยรุ่น
+
+**หมวดหมู่:** ${category} (${hint})
+**ตัวละคร:** ${charsText}
+
+**กฎ:**
+1. คิดสถานการณ์ที่ **เฉพาะเจาะจง** และ **แปลกใหม่** (ห้ามซ้ำกับเรื่องทั่วไป)
+2. ต้องมี **Conflict** หรือ **Twist** ที่ชัดเจน
+3. ตอบแค่ **1 ประโยค** บอกสถานการณ์เท่านั้น (ไม่ต้องเขียนบท)
+
+**ตัวอย่าง Output:**
+- "ส่งแชทด่าเพื่อนไปหากลุ่มที่มีคนนั้นอยู่"
+- "สั่งอาหารมาแต่ไรเดอร์ส่งถุงยางมาแทน แล้วบอกว่าไม่ใช่ความผิดเขา"
+- "ได้ยินเสียงกรี๊ดจากห้องข้างๆ ตอนตี 3 แล้วเพื่อนบอกว่าไม่มีใครอยู่ห้องนั้น"
+
+**ตอบเลย (1 ประโยค):**`;
+
+    try {
+        // Use faster/cheaper model for premise generation
+        const flashModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const result = await flashModel.generateContent(prompt);
+        const premise = result.response.text().trim();
+        
+        // Clean up any quotes or extra formatting
+        const cleanedPremise = premise.replace(/^["']|["']$/g, '').trim();
+        console.log(`💡 AI Premise: "${cleanedPremise}"`);
+        
+        return cleanedPremise;
+    } catch (error) {
+        console.warn('⚠️ Premise generation failed, using category default:', error.message);
+        return null; // Fallback to original behavior
+    }
+}
+
+// ============================================
 // Generate Story (with Auto-Retry and Fallback)
 // ============================================
 async function generateStory(options = {}) {
@@ -494,6 +584,23 @@ async function generateStory(options = {}) {
             const maxLen = 42;
             length = Math.floor(Math.random() * (maxLen - minLen + 1)) + minLen;
             console.log(`🎲 Randomized Story Length: ${length} messages`);
+        }
+    }
+
+    // Phase 2: Infinite Idea Generator - Auto-generate premise if no custom prompt
+    if (!customPrompt && category !== 'tie_in') {
+        console.log('🧠 No custom prompt provided. Generating unique premise...');
+        
+        // Get character names for context
+        const characterNames = characters.map(charId => {
+            const customChar = characterData.find(c => c.id === charId && c.is_custom);
+            return customChar ? customChar.display_name : charId;
+        });
+        
+        const generatedPremise = await generatePremise(category, characterNames);
+        if (generatedPremise) {
+            customPrompt = generatedPremise;
+            console.log(`✨ Using AI-generated premise: "${customPrompt}"`);
         }
     }
 
@@ -701,12 +808,72 @@ Generate JSON:`;
 }
 
 // ============================================
+// Summarize Story (Phase 3: Auto-Journaling)
+// ============================================
+async function summarizeStory(dialogues, characterData = []) {
+    if (!dialogues || dialogues.length < 5) {
+        console.warn('⚠️ Story too short to summarize');
+        return null;
+    }
+
+    const chatLog = dialogues.map(d => `${d.sender}: ${d.message}`).join('\n');
+    
+    // Get character names involved
+    const senders = [...new Set(dialogues.map(d => d.sender))];
+    const charsText = senders.join(', ');
+
+    const prompt = `คุณคือ AI Analyst ที่ต้องวิเคราะห์ Chat Log และสรุปข้อมูลสำคัญ
+
+**CHAT LOG:**
+${chatLog}
+
+**ตัวละครในเรื่อง:** ${charsText}
+
+**สิ่งที่ต้องทำ:**
+1. สรุป "Facts" (ข้อเท็จจริง) ที่เรียนรู้ได้จากบทสนทนานี้ (เช่น นิสัย, ความชอบ, ความลับ)
+2. สรุป "Event" (เหตุการณ์สำคัญ) ที่เกิดขึ้น
+3. ประเมินผลกระทบต่อความสัมพันธ์ (บวก/ลบ)
+
+**OUTPUT (JSON only):**
+{
+  "facts": [
+    {"about": "ชื่อตัวละคร", "fact": "ข้อเท็จจริง", "importance": 1-10}
+  ],
+  "event_summary": "สรุปเหตุการณ์ 1 บรรทัด",
+  "relationship_impact": {
+    "change": -10 to +10,
+    "reason": "เหตุผล"
+  }
+}
+
+ตอบ JSON เท่านั้น:`;
+
+    try {
+        const flashModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const result = await flashModel.generateContent(prompt);
+        let text = result.response.text().trim();
+        
+        // Clean JSON
+        text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const summary = JSON.parse(text);
+        
+        console.log('📝 Story summarized:', summary.event_summary);
+        return summary;
+    } catch (error) {
+        console.error('⚠️ Failed to summarize story:', error.message);
+        return null;
+    }
+}
+
+// ============================================
 // Exports
 // ============================================
 module.exports = {
     generateStory,
     generateMultipleStories,
     continueStory,
+    generatePremise,
+    summarizeStory,
     CATEGORIES,
     RELATIONSHIPS
 };
