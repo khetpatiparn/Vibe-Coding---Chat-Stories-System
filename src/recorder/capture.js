@@ -639,6 +639,145 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
 }
 
 // ============================================
+// Normalize Audio Loudness (LUFS)
+// ============================================
+
+// Helper: Measure LUFS of a file
+function measureLufs(filePath) {
+    return new Promise((resolve) => {
+        let stderr = '';
+        const proc = require('child_process').spawn(ffmpegPath, [
+            '-i', filePath,
+            '-af', 'loudnorm=print_format=summary',
+            '-f', 'null', '-'
+        ]);
+        
+        proc.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+        
+        proc.on('close', () => {
+            // Parse LUFS from stderr
+            const integratedMatch = stderr.match(/Input Integrated:\s+([-\d.]+)/);
+            const truePeakMatch = stderr.match(/Input True Peak:\s+([-\d.]+)/);
+            
+            resolve({
+                integrated: integratedMatch ? parseFloat(integratedMatch[1]) : null,
+                truePeak: truePeakMatch ? parseFloat(truePeakMatch[1]) : null
+            });
+        });
+        
+        proc.on('error', () => resolve({ integrated: null, truePeak: null }));
+    });
+}
+
+async function normalizeAudio(inputPath, targetLufs = -14) {
+    const ext = path.extname(inputPath);
+    const baseName = path.basename(inputPath, ext);
+    const outputPath = path.join(path.dirname(inputPath), `${baseName}_normalized${ext}`);
+    
+    console.log(`\n🎚️ Normalizing audio to ${targetLufs} LUFS (Two-pass)...`);
+    
+    // ========== PASS 1: Measure current loudness ==========
+    console.log(`   Pass 1: Measuring...`);
+    const measured = await new Promise((resolve) => {
+        let stderr = '';
+        const proc = require('child_process').spawn(ffmpegPath, [
+            '-i', inputPath,
+            '-af', `loudnorm=I=${targetLufs}:TP=-1.5:LRA=11:print_format=json`,
+            '-f', 'null', '-'
+        ]);
+        
+        proc.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+        
+        proc.on('close', () => {
+            // Extract JSON from stderr (loudnorm outputs JSON at the end)
+            const jsonMatch = stderr.match(/\{[\s\S]*"input_i"[\s\S]*\}/);
+            if (jsonMatch) {
+                try {
+                    const data = JSON.parse(jsonMatch[0]);
+                    resolve(data);
+                } catch (e) {
+                    resolve(null);
+                }
+            } else {
+                resolve(null);
+            }
+        });
+        
+        proc.on('error', () => resolve(null));
+    });
+    
+    if (!measured) {
+        console.log(`   ⚠️ Could not measure loudness, using single-pass fallback`);
+        // Fallback to single-pass
+        return new Promise((resolve) => {
+            ffmpeg(inputPath)
+                .audioFilters([`loudnorm=I=${targetLufs}:TP=-1.5:LRA=11`])
+                .outputOptions(['-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k'])
+                .output(outputPath)
+                .on('end', async () => {
+                    await fs.remove(inputPath);
+                    await fs.move(outputPath, inputPath);
+                    resolve(inputPath);
+                })
+                .on('error', () => resolve(inputPath))
+                .run();
+        });
+    }
+    
+    console.log(`   Input: ${parseFloat(measured.input_i).toFixed(1)} LUFS | TP: ${parseFloat(measured.input_tp).toFixed(1)} dBTP`);
+    
+    // ========== PASS 2: Apply correction with measured values ==========
+    console.log(`   Pass 2: Normalizing...`);
+    return new Promise((resolve) => {
+        ffmpeg(inputPath)
+            .audioFilters([
+                `loudnorm=I=${targetLufs}:TP=-1.5:LRA=11:` +
+                `measured_I=${measured.input_i}:` +
+                `measured_TP=${measured.input_tp}:` +
+                `measured_LRA=${measured.input_lra}:` +
+                `measured_thresh=${measured.input_thresh}:` +
+                `offset=${measured.target_offset}:` +
+                `linear=true:print_format=summary`
+            ])
+            .outputOptions([
+                '-c:v', 'copy',
+                '-c:a', 'aac',
+                '-b:a', '192k'
+            ])
+            .output(outputPath)
+            .on('end', async () => {
+                console.log(`✅ Audio normalized!`);
+                
+                // Measure final LUFS
+                const lufs = await measureLufs(outputPath);
+                if (lufs.integrated !== null) {
+                    console.log(`📊 Final Loudness: ${lufs.integrated.toFixed(1)} LUFS | True Peak: ${lufs.truePeak?.toFixed(1) || '?'} dBTP`);
+                }
+                
+                // Replace original with normalized version
+                try {
+                    await fs.remove(inputPath);
+                    await fs.move(outputPath, inputPath);
+                    console.log(`📦 Replaced original with normalized version.`);
+                    resolve(inputPath);
+                } catch (err) {
+                    console.log(`⚠️ Could not replace original. Normalized file: ${outputPath}`);
+                    resolve(outputPath);
+                }
+            })
+            .on('error', (err) => {
+                console.error('❌ Normalization failed:', err.message);
+                resolve(inputPath);
+            })
+            .run();
+    });
+}
+
+// ============================================
 // Exports
 // ============================================
 async function recordStory(story, options = {}) {
@@ -666,8 +805,13 @@ async function recordStory(story, options = {}) {
             totalDuration: totalDuration  // ✅ NEW: Pass total duration to assembleVideo
         };
         
-        const videoPath = await assembleVideo(framesDir, outputName, audioOptions);
+        let videoPath = await assembleVideo(framesDir, outputName, audioOptions);
         if (!options.keepFrames) await fs.remove(framesDir);
+        
+        // Auto-normalize audio loudness to -14 LUFS (TikTok standard)
+        if (options.normalizeAudio !== false) {
+            videoPath = await normalizeAudio(videoPath, -14);
+        }
         
         // Open output folder and highlight the video file
         openOutputFolder(videoPath);
