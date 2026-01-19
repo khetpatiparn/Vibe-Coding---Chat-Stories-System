@@ -215,11 +215,22 @@ class ChatStory {
     // Default fallback if delay missing
     const defaultDelay = 1.0 + (item.message ? item.message.length * 0.05 : 0);
     
+    // First message special timing: no reaction delay (intro already handled transition)
+    const isFirstMessage = this.currentIndex === 0;
+    
     // Additive Logic: Reaction + Typing
-    const reactionTime = (item.reaction_delay !== undefined && item.reaction_delay !== null) 
+    let reactionTime = (item.reaction_delay !== undefined && item.reaction_delay !== null) 
                          ? parseFloat(item.reaction_delay) 
                          : (window.TIMING_CONFIG?.DEFAULT_REACTION_DELAY || 0.8);
-    const typingTotal = (item.delay || defaultDelay);
+    let typingTotal = (item.delay || defaultDelay);
+    
+    // Override for first message: no reaction delay, adjust typing by side
+    // Left (others): 1s typing indicator, Right (me): 0.5s wait
+    if (isFirstMessage) {
+        reactionTime = 0;
+        typingTotal = isLeft ? 1.0 : 0.5;
+    }
+    
     const totalDuration = reactionTime + typingTotal;
 
     // 1. Delays & Typing (Skip if instant)
