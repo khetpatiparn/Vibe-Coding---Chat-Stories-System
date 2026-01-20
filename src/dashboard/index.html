@@ -309,6 +309,15 @@
             </div>
             <small style="color: var(--text-gray);">Relationship มีผลต่อภาษาที่ AI ใช้ (กู/มึง vs คุณ/ครับ)</small>
 
+            <div class="form-group" style="margin-top: 15px;">
+                <label>📊 Message Count (Optional)</label>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="number" id="message-count" min="15" max="80" placeholder="Auto (28-40)"
+                        style="width: 150px; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
+                    <small style="color: var(--text-gray);">ถ้าว่าง = Auto 28-40 messages (~1 นาที)</small>
+                </div>
+            </div>
+
 
             <div class="modal-actions">
                 <button id="btn-cancel-settings" class="btn-secondary">Cancel</button>

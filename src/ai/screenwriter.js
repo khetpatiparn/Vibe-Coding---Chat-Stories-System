@@ -411,7 +411,7 @@ ${personalityDescriptions.join('\n')}
 ${pacingInstruction}
 
 **OUTPUT REQUIREMENTS:**
-- Generate 28-40 messages (aim for around 32-35 for optimal ~1 minute TikTok length)
+- Generate ${length ? `approximately ${length} messages` : '28-40 messages (aim for around 32-35 for optimal ~1 minute TikTok length)'}
 - Use "Written Speech" Thai (NOT formal Thai)
 - NO EMOJI - Use 555, TT, ... instead
 - Keep messages SHORT (1-2 sentences max)

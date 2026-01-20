@@ -393,9 +393,10 @@ app.post('/api/projects/:id/set_main_character', async (req, res) => {
 // 4. Generate New Story (AI)
 app.post('/api/generate', async (req, res) => {
     try {
-        const { category, characters, characterData, customPrompt, projectId, relationship, length } = req.body;
+        const { category, characters, characterData, customPrompt, projectId, relationship, length, messageCount } = req.body;
+        const storyLength = messageCount || length; // messageCount takes priority, fallback to length, then default in screenwriter
         
-        console.log('Generating story with settings:', { category, characters, customPrompt, projectId, relationship, length });
+        console.log('Generating story with settings:', { category, characters, customPrompt, projectId, relationship, storyLength });
         console.log('Character data:', characterData);
         
         let targetProjectId = projectId;
@@ -452,7 +453,7 @@ app.post('/api/generate', async (req, res) => {
             characterData: characterData || [],
             customPrompt: customPrompt || null,
             relationship: relationship || 'friend',  // V2.0: Pass relationship
-            length: length, // Let screenwriter.js handle randomization if undefined
+            length: storyLength, // Custom message count or default range
             memoryContext: memoryContext  // Sitcom Engine: Pass memory context
         });
         

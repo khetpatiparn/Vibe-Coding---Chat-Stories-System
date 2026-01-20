@@ -261,6 +261,8 @@ async function generateWithAI() {
     const customPrompt = document.getElementById('custom-prompt').value.trim();
     const category = document.getElementById('story-category').value;
     const relationship = document.getElementById('story-relationship')?.value || 'friend';  // V2.0
+    const messageCountInput = document.getElementById('message-count')?.value;
+    const messageCount = messageCountInput ? parseInt(messageCountInput) : null; // null = use default range
     
     // Build character data with custom character info
     const characterData = selectedCharacters.map(charId => {
@@ -305,7 +307,8 @@ async function generateWithAI() {
                 characterData: characterData, // NEW - Send full character data
                 customPrompt: customPrompt || null,
                 projectId: currentProject,
-                relationship  // V2.0
+                relationship,  // V2.0
+                messageCount   // NEW - Custom message count
             })
         });
         
