@@ -62,3 +62,14 @@
 ### version 2.2
 
 - [✅] เพิ่ม intro ก่อนเข้าคลิป
+
+### version 2.3 (Brain Tab & Sticker Fixes)
+
+- [✅] Brain Tab (Memory Viewer) - ดู Memory ของตัวละคร
+- [✅] Memory System (Sitcom Engine) - AI จำเรื่องเก่าได้
+- [✅] Audio LUFS Normalization (-14 LUFS) - เสียงไม่ดังไม่เบา
+- [✅] libgif-js สำหรับ Sticker Sync - GIF render ตรงกับ preview
+- [✅] PopIn Animation สำหรับ Sticker - เด้งสวยเหมือน preview
+- [✅] Add GIF ถามเลือกตัวละคร - ไม่ Default เป็น "me" แล้ว
+- [✅] คลิก Sticker เพื่อเปลี่ยนได้เลย - ไม่ต้องลบแล้วเพิ่มใหม่
+- [✅] Character Selector Modal สวยขึ้น - Grid 4 columns
