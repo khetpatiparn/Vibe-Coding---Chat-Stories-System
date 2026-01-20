@@ -2474,6 +2474,54 @@ async function searchGiphy() {
     }
 }
 
+// Load trending GIFs from GIPHY
+async function loadGiphyTrending() {
+    const container = document.getElementById('giphy-results');
+    container.innerHTML = '<p style="text-align:center; color:gray;">Loading trending... 🔥</p>';
+    
+    try {
+        const res = await fetch(`${API_BASE}/giphy/trending`);
+        const data = await res.json();
+        
+        if (data.success && data.data.length > 0) {
+            container.innerHTML = data.data.map(gif => `
+                <div class="giphy-item" onclick="selectGiphy('${gif.url}')" style="cursor: pointer; border-radius: 8px; overflow: hidden; transition: transform 0.2s;">
+                    <img src="${gif.preview}" alt="${gif.title}" style="width: 100%; height: 100px; object-fit: cover; display: block;">
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p style="text-align:center; color:white;">No trending GIFs found.</p>';
+        }
+    } catch (err) {
+        container.innerHTML = '<p style="text-align:center; color:red;">Error fetching trending GIFs.</p>';
+    }
+}
+window.loadGiphyTrending = loadGiphyTrending;
+
+// Search GIPHY by category keyword
+async function searchGiphyCategory(category) {
+    const container = document.getElementById('giphy-results');
+    container.innerHTML = `<p style="text-align:center; color:gray;">Searching ${category}... 🧸</p>`;
+    
+    try {
+        const res = await fetch(`${API_BASE}/giphy/search?q=${encodeURIComponent(category)}`);
+        const data = await res.json();
+        
+        if (data.success && data.data.length > 0) {
+            container.innerHTML = data.data.map(gif => `
+                <div class="giphy-item" onclick="selectGiphy('${gif.url}')" style="cursor: pointer; border-radius: 8px; overflow: hidden; transition: transform 0.2s;">
+                    <img src="${gif.preview}" alt="${gif.title}" style="width: 100%; height: 100px; object-fit: cover; display: block;">
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p style="text-align:center; color:white;">No results found.</p>';
+        }
+    } catch (err) {
+        container.innerHTML = '<p style="text-align:center; color:red;">Error fetching GIFs.</p>';
+    }
+}
+window.searchGiphyCategory = searchGiphyCategory;
+
 // Store pending GIF URL for character selection
 let pendingGiphyUrl = null;
 

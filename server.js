@@ -852,13 +852,12 @@ const axios = require('axios');
 app.get('/api/giphy/search', async (req, res) => {
     try {
         const query = req.query.q;
-        const limit = req.query.limit || 20;
+        const limit = req.query.limit || 50; // Increased from 20 to 50
         // Use ENV key if available, otherwise try public beta key
         // 403 Forbidden usually means key is invalid or quota exceeded
         const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC'; 
         
         console.log(`🔍 Searching GIPHY: ${query}`);
-        console.log(`🔑 Using Key length: ${apiKey ? apiKey.length : 0} | Key start: ${apiKey ? apiKey.substring(0, 4) : 'null'}`);
         
         const response = await axios.get(`https://api.giphy.com/v1/stickers/search`, {
             params: {
@@ -882,6 +881,37 @@ app.get('/api/giphy/search', async (req, res) => {
     } catch (err) {
         console.error("GIPHY Error:", err.response?.data || err.message);
         res.status(500).json({ error: 'Failed to fetch GIFs' });
+    }
+});
+
+// 6.1 GIPHY Trending - Get popular stickers
+app.get('/api/giphy/trending', async (req, res) => {
+    try {
+        const limit = req.query.limit || 50;
+        const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC';
+        
+        console.log(`🔥 Fetching Trending GIPHY stickers`);
+        
+        const response = await axios.get(`https://api.giphy.com/v1/stickers/trending`, {
+            params: {
+                api_key: apiKey,
+                limit: limit,
+                rating: 'pg-13'
+            }
+        });
+        
+        const gifs = response.data.data.map(gif => ({
+            id: gif.id,
+            title: gif.title,
+            url: gif.images.fixed_height.url,
+            preview: gif.images.fixed_height_small.url
+        }));
+        
+        res.json({ success: true, data: gifs });
+        
+    } catch (err) {
+        console.error("GIPHY Trending Error:", err.response?.data || err.message);
+        res.status(500).json({ error: 'Failed to fetch trending GIFs' });
     }
 });
 

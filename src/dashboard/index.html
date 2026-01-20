@@ -494,24 +494,53 @@
 
 
     <div id="modal-giphy-picker" class="modal hidden">
-        <div class="modal-content" style="max-width: 600px; height: 80vh; display: flex; flex-direction: column;">
+        <div class="modal-content"
+            style="max-width: 900px; width: 90%; height: 85vh; display: flex; flex-direction: column;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2 style="margin: 0;">🧸 Add Sticker/GIF</h2>
                 <button id="btn-close-giphy"
                     style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">&times;</button>
             </div>
 
-            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                 <input type="text" id="giphy-search-input" placeholder="Search GIPHY (e.g. funny cat, shocked)..."
                     style="flex: 1; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 8px;">
                 <button id="btn-search-giphy" class="btn-primary">🔍 Search</button>
+            </div>
+
+            <!-- Category Tabs -->
+            <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
+                <button class="giphy-tab" onclick="loadGiphyTrending()"
+                    style="padding: 6px 12px; background: #ff6b6b; border: none; border-radius: 20px; color: white; cursor: pointer; font-size: 0.85rem;">🔥
+                    Trending</button>
+                <button class="giphy-tab" onclick="searchGiphyCategory('reaction')"
+                    style="padding: 6px 12px; background: #4ecdc4; border: none; border-radius: 20px; color: white; cursor: pointer; font-size: 0.85rem;">😱
+                    Reactions</button>
+                <button class="giphy-tab" onclick="searchGiphyCategory('love heart')"
+                    style="padding: 6px 12px; background: #f78fb3; border: none; border-radius: 20px; color: white; cursor: pointer; font-size: 0.85rem;">❤️
+                    Love</button>
+                <button class="giphy-tab" onclick="searchGiphyCategory('happy excited')"
+                    style="padding: 6px 12px; background: #ffd93d; border: none; border-radius: 20px; color: #333; cursor: pointer; font-size: 0.85rem;">😄
+                    Happy</button>
+                <button class="giphy-tab" onclick="searchGiphyCategory('sad crying')"
+                    style="padding: 6px 12px; background: #6c5ce7; border: none; border-radius: 20px; color: white; cursor: pointer; font-size: 0.85rem;">😢
+                    Sad</button>
+                <button class="giphy-tab" onclick="searchGiphyCategory('angry mad')"
+                    style="padding: 6px 12px; background: #e17055; border: none; border-radius: 20px; color: white; cursor: pointer; font-size: 0.85rem;">😡
+                    Angry</button>
+                <button class="giphy-tab" onclick="searchGiphyCategory('lol funny')"
+                    style="padding: 6px 12px; background: #00b894; border: none; border-radius: 20px; color: white; cursor: pointer; font-size: 0.85rem;">🤣
+                    Funny</button>
+                <button class="giphy-tab" onclick="searchGiphyCategory('cute kawaii')"
+                    style="padding: 6px 12px; background: #a29bfe; border: none; border-radius: 20px; color: white; cursor: pointer; font-size: 0.85rem;">🥰
+                    Cute</button>
             </div>
 
             <div id="giphy-results"
                 style="flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; padding-right: 5px;">
                 <!-- GIFs will render here -->
                 <div style="grid-column: 1/-1; text-align: center; color: var(--text-gray); margin-top: 50px;">
-                    Search to find GIFs...
+                    กด Tab หรือ Search เพื่อหา Sticker...
                 </div>
             </div>
         </div>
