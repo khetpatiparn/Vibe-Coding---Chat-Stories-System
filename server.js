@@ -419,8 +419,11 @@ app.post('/api/generate', async (req, res) => {
             if (customCharIds.length > 0) {
                 console.log('🧠 Fetching memories for character IDs:', customCharIds);
                 
-                // Fetch memories
-                const memories = await Memory.getForCharacters(customCharIds);
+                // Fetch memories (Optimized: Recent 20 + Important >= 7)
+                const memories = await Memory.getForCharactersOptimized(customCharIds, {
+                    recentLimit: 20,
+                    importanceThreshold: 7
+                });
                 
                 // Fetch relationships between characters
                 const relationships = [];
@@ -823,9 +826,17 @@ app.post('/api/render/:id', async (req, res) => {
             console.log(`✂️ Filtered to ${story.dialogues.length} dialogues (Part: #${dialogueRange.start}-#${dialogueRange.end})`);
         }
         
-        // Generate unique filename with range info
+        // Smart filename: YYYY-MM-DD_category_title
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+        const category = story.category || 'story';
+        // Clean title for filename (remove special chars, limit length)
+        const cleanTitle = (story.title || story.room_name || `p${projectId}`)
+            .replace(/[^\u0E00-\u0E7Fa-zA-Z0-9]/g, '_')  // Keep Thai + alphanumeric
+            .replace(/_+/g, '_')                         // Remove multiple underscores
+            .substring(0, 30);                           // Limit length
         const rangeStr = dialogueRange ? `_part${dialogueRange.start}-${dialogueRange.end}` : '';
-        const outputName = `project_${projectId}${rangeStr}_${Date.now()}`;
+        const outputName = `${dateStr}_${category}${rangeStr}_${cleanTitle}`;
         
         const videoPath = await recordStory(story, {
             outputName: outputName,

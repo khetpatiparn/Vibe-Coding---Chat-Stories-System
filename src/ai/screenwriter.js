@@ -335,10 +335,12 @@ ${personalityDescriptions.join('\n')}
         }
         
         promptText += `
-**MEMORY USAGE RULES:**
-1. DO NOT directly say "Remember when we..." or "Last time you..." - that breaks immersion.
-2. USE this knowledge to inform reactions (e.g., if they fought before, be slightly cold/sarcastic).
-3. REFERENCE past events only if it makes sense for the plot (e.g., "นี่ไม่ใช่ครั้งแรกที่มึงทำแบบนี้").
+**MEMORY USAGE RULES (CRITICAL - MUST FOLLOW):**
+1. ❌ DO NOT directly say "Remember when we..." or "Last time you..." - that breaks immersion.
+2. ✅ USE this knowledge to inform reactions (e.g., if they fought before, be slightly cold/sarcastic).
+3. ✅ REFERENCE past events subtly (e.g., "นี่ไม่ใช่ครั้งแรกที่มึงทำแบบนี้").
+4. ⚠️ **DO NOT REPEAT SCENARIOS:** If a past event already happened (e.g., "left group"), **DO NOT** create a new story where they leave the group again. Create a **DIFFERENT** story about the **AFTERMATH** or a **NEW SITUATION**.
+5. ⚠️ **RESPECT PAST STATE:** If memories say "X already happened", treat it as FACT. Don't reset or ignore it.
 ---`;
     }
     
@@ -831,23 +833,28 @@ ${chatLog}
 
 **ตัวละครในเรื่อง:** ${charsText}
 
-**สิ่งที่ต้องทำ:**
+**สิ่งที่ต้องทำ (REQUIRED - ต้องทำทั้งหมด):**
 1. สรุป "Facts" (ข้อเท็จจริง) ที่เรียนรู้ได้จากบทสนทนานี้ (เช่น นิสัย, ความชอบ, ความลับ)
-2. สรุป "Event" (เหตุการณ์สำคัญ) ที่เกิดขึ้น
-3. ประเมินผลกระทบต่อความสัมพันธ์ (บวก/ลบ)
+2. สรุป "Event" (เหตุการณ์สำคัญ) ที่เกิดขึ้น - ต้องมีเสมอ
+3. ⚠️ **CRITICAL:** ประเมินผลกระทบต่อความสัมพันธ์ (relationship_impact) - **MUST HAVE**
+   - ถ้าเรื่องตลก/มีความสุข → +3 ถึง +10
+   - ถ้าเรื่องธรรมดา → +1 ถึง +3
+   - ถ้ามีความขัดแย้งเล็กน้อย → -1 ถึง -5
+   - ถ้าทะเลาะ/วีรกรรม/โดนแกล้งหนัก → -5 ถึง -20
 
 **OUTPUT (JSON only):**
 {
   "facts": [
     {"about": "ชื่อตัวละคร", "fact": "ข้อเท็จจริง", "importance": 1-10}
   ],
-  "event_summary": "สรุปเหตุการณ์ 1 บรรทัด",
+  "event_summary": "สรุปเหตุการณ์ 1 บรรทัด (REQUIRED)",
   "relationship_impact": {
-    "change": -10 to +10,
-    "reason": "เหตุผล"
+    "change": -20 to +10,
+    "reason": "เหตุผล (REQUIRED - ห้ามเว้นว่าง)"
   }
 }
 
+⚠️ **CRITICAL:** relationship_impact ต้องมีเสมอ ห้าม null/undefined
 ตอบ JSON เท่านั้น:`;
 
     try {
@@ -859,7 +866,14 @@ ${chatLog}
         text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         const summary = JSON.parse(text);
         
+        // Validate relationship_impact exists (CRITICAL for continuity)
+        if (!summary.relationship_impact || typeof summary.relationship_impact.change !== 'number') {
+            console.warn('⚠️ AI forgot relationship_impact! Adding default +1');
+            summary.relationship_impact = { change: 1, reason: 'Default (AI forgot to analyze)' };
+        }
+        
         console.log('📝 Story summarized:', summary.event_summary);
+        console.log(`💕 Relationship change: ${summary.relationship_impact.change > 0 ? '+' : ''}${summary.relationship_impact.change}`);
         return summary;
     } catch (error) {
         console.error('⚠️ Failed to summarize story:', error.message);
