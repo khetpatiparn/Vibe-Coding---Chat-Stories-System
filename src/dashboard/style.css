@@ -64,10 +64,12 @@ body {
   align-items: center;
   gap: 10px;
 }
+
 .brand h1 {
   font-size: 1.2rem;
   font-weight: 700;
 }
+
 .btn-primary-full:hover {
   background: linear-gradient(135deg, #9333ea, #6366f1);
   transform: translateY(-2px);
@@ -178,9 +180,11 @@ body {
   border-radius: 50%;
   background: #666;
 }
+
 .status-dot.approved {
   background: var(--success);
 }
+
 .status-dot.rendering {
   background: var(--warning);
   animation: pulse 1s infinite;
@@ -190,6 +194,7 @@ body {
   font-size: 0.9rem;
   margin-bottom: 4px;
 }
+
 .project-info span {
   font-size: 0.75rem;
   color: var(--text-gray);
@@ -235,9 +240,11 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px; /* Reduced padding */
+  padding: 0 20px;
+  /* Reduced padding */
   background: var(--bg-panel);
-  overflow-x: auto; /* Allow horizontal scroll if needed */
+  overflow-x: auto;
+  /* Allow horizontal scroll if needed */
   overflow-y: hidden;
 }
 
@@ -247,8 +254,10 @@ body {
   gap: 8px;
 }
 
-.actions .btn-secondary, .actions .btn-primary {
-  padding: 8px 12px; /* Smaller padding for top bar buttons */
+.actions .btn-secondary,
+.actions .btn-primary {
+  padding: 8px 12px;
+  /* Smaller padding for top bar buttons */
   white-space: nowrap;
   font-size: 0.9rem;
 }
@@ -258,6 +267,7 @@ body {
   align-items: center;
   gap: 15px;
 }
+
 .status-badge {
   background: #334155;
   padding: 4px 8px;
@@ -305,6 +315,7 @@ body {
   background: #444;
   overflow: hidden;
 }
+
 .dialogue-avatar img {
   width: 100%;
   height: 100%;
@@ -314,6 +325,7 @@ body {
 .dialogue-content {
   flex: 1;
 }
+
 .dialogue-header {
   display: flex;
   justify-content: space-between;
@@ -321,6 +333,7 @@ body {
   font-size: 0.8rem;
   color: var(--text-gray);
 }
+
 .dialogue-input {
   width: 100%;
   background: rgba(0, 0, 0, 0.2);
@@ -338,6 +351,7 @@ body {
   gap: 10px;
   align-items: center;
 }
+
 .meta-tag {
   background: #333;
   padding: 2px 6px;
@@ -354,7 +368,8 @@ button[title="Delete"] {
   padding: 6px 12px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 1rem; /* Increased from 0.7rem */
+  font-size: 1rem;
+  /* Increased from 0.7rem */
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -430,7 +445,8 @@ button[title="Delete"]:hover {
   border: none;
   cursor: pointer;
   font-size: 1.2rem;
-  color: #444; /* Dim star */
+  color: #444;
+  /* Dim star */
   transition: all 0.2s;
   z-index: 10;
   padding: 2px;
@@ -492,6 +508,7 @@ iframe {
   cursor: pointer;
   font-weight: 600;
 }
+
 .btn-primary:hover {
   background: var(--primary-hover);
 }
@@ -520,6 +537,7 @@ iframe {
   cursor: pointer;
   transition: all 0.2s;
 }
+
 .btn-dashed:hover {
   border-color: var(--primary);
   color: var(--primary);
@@ -534,6 +552,7 @@ iframe {
   cursor: pointer;
   font-weight: 600;
 }
+
 .btn-danger:hover {
   background: #dc2626;
 }
@@ -545,6 +564,7 @@ iframe {
   padding: 10px 20px;
   cursor: pointer;
 }
+
 .btn-text:hover {
   color: var(--text-white);
 }
@@ -562,9 +582,11 @@ iframe {
   justify-content: center;
   z-index: 100;
 }
+
 .modal.hidden {
   display: none;
 }
+
 .modal-content {
   background: var(--bg-panel);
   padding: 30px;
@@ -581,9 +603,11 @@ iframe {
 .modal-content h2 {
   margin-bottom: 20px;
 }
+
 .form-group {
   margin-bottom: 20px;
 }
+
 .form-group label {
   display: block;
   margin-bottom: 8px;
@@ -620,7 +644,7 @@ iframe {
   cursor: pointer;
 }
 
-.character-option input[type="checkbox"]:checked + span {
+.character-option input[type="checkbox"]:checked+span {
   color: var(--primary);
   font-weight: 600;
 }
@@ -633,6 +657,7 @@ iframe {
   color: white;
   border-radius: 6px;
 }
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -643,9 +668,11 @@ iframe {
   0% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
+
   100% {
     opacity: 1;
   }
@@ -713,9 +740,12 @@ iframe {
 
 .dialogue-input {
   width: 100%;
-  background: rgba(0, 0, 0, 0.2); /* Darker distinct background */
-  border: 1px solid var(--border); /* Subtle border */
-  border-radius: 8px; /* Rounded corners */
+  background: rgba(0, 0, 0, 0.2);
+  /* Darker distinct background */
+  border: 1px solid var(--border);
+  /* Subtle border */
+  border-radius: 8px;
+  /* Rounded corners */
   color: var(--text-white);
   font-size: 1rem;
   padding: 12px;
@@ -787,12 +817,53 @@ iframe {
 /* Modal Customizations */
 #modal-character-selector .modal-content {
   width: 90%;
-  max-width: 800px; /* Wide enough for 4 cols */
+  max-width: 800px;
+  /* Wide enough for 4 cols */
 }
 
 #modal-character-selector .character-grid-selector {
+  display: grid;
   grid-template-columns: repeat(4, 1fr);
-  max-height: 60vh; /* Allow taller */
+  gap: 15px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+#modal-character-selector .character-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px 10px;
+  background: #2a2d35;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+#modal-character-selector .character-card:hover {
+  background: #3a3d45;
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+#modal-character-selector .character-card img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 8px;
+}
+
+#modal-character-selector .character-card span {
+  font-size: 0.85rem;
+  color: #e0e0e0;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 /* Toast Notification (Undo) */
@@ -826,6 +897,7 @@ iframe {
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -914,11 +986,9 @@ iframe {
 .audio-settings {
   margin-top: 15px;
   padding: 15px;
-  background: linear-gradient(
-    145deg,
-    rgba(99, 102, 241, 0.1),
-    rgba(0, 0, 0, 0.2)
-  );
+  background: linear-gradient(145deg,
+      rgba(99, 102, 241, 0.1),
+      rgba(0, 0, 0, 0.2));
   border-radius: 12px;
   border: 1px solid rgba(99, 102, 241, 0.3);
 }
@@ -1016,12 +1086,15 @@ iframe {
 .audio-toggle-btn.active .toggle-on {
   display: block;
 }
+
 .audio-toggle-btn.active .toggle-off {
   display: none;
 }
+
 .audio-toggle-btn:not(.active) .toggle-on {
   display: none;
 }
+
 .audio-toggle-btn:not(.active) .toggle-off {
   display: block;
 }
@@ -1116,6 +1189,7 @@ iframe {
     transform: translateY(-100%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -1126,6 +1200,7 @@ iframe {
   from {
     opacity: 1;
   }
+
   to {
     opacity: 0;
   }

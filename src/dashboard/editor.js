@@ -1109,9 +1109,12 @@ function renderDialogues(dialogues, characters) {
                 <div class="dialogue-attachment" style="margin-bottom: 5px; position: relative; display: inline-block;">
                     <!-- Debug: ${d.image_path} -->
                     <img src="${(d.image_path.startsWith('http') || d.image_path.startsWith('data:')) ? d.image_path : '/' + d.image_path}" 
-                         style="max-height: 100px; border-radius: 8px; border: 1px solid var(--border);"
+                         style="max-height: 100px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; transition: opacity 0.2s;"
+                         onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'"
+                         onclick="openReplaceSticker(${d.id})"
+                         title="Click to replace sticker"
                          onerror="console.error('Failed to load image:', '${d.image_path}'); this.src='https://placehold.co/100x100?text=Error';">
-                    <button onclick="removeDialogueImage(${index}, ${d.id})" style="position: absolute; top: -5px; right: -5px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer;">x</button>
+                    <button onclick="event.stopPropagation(); removeDialogueImage(${index}, ${d.id})" style="position: absolute; top: -5px; right: -5px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer;">x</button>
                 </div>
                 ` : ''}
 
@@ -2471,19 +2474,68 @@ async function searchGiphy() {
     }
 }
 
+// Store pending GIF URL for character selection
+let pendingGiphyUrl = null;
+
 async function selectGiphy(url) {
     modalGiphy.classList.add('hidden');
-    const sender = 'me'; // Default to me
+    
+    // Check if we're in replacement mode
+    if (replaceStickerDialogueId) {
+        await confirmReplaceSticker(url);
+        return;
+    }
+    
+    // Store the URL and show character selector (for new sticker)
+    pendingGiphyUrl = url;
+    const grid = document.getElementById('character-selector-grid');
+    const chars = window.currentProjectCharacters || {};
+    
+    grid.innerHTML = Object.entries(chars).map(([key, char]) => {
+        let avatarSrc = char.avatar || '/assets/fallback-avatar.png';
+        if (avatarSrc.startsWith('assets')) avatarSrc = '/' + avatarSrc;
+        
+        return `
+            <div class="character-card" onclick="confirmGiphyWithCharacter('${key}')" style="cursor: pointer;">
+                <img src="${avatarSrc}" alt="${char.name || key}" onerror="this.src='/assets/fallback-avatar.png'">
+                <span>${char.name || key}</span>
+            </div>
+        `;
+    }).join('');
+    
+    // Update title
+    document.getElementById('char-selector-title').textContent = '🧸 Who sends this sticker?';
+    
+    // Show modal
+    modalCharacterSelector.classList.remove('hidden');
+}
+window.selectGiphy = selectGiphy; // Expose to global scope for onclick handler
+
+// Store dialogue ID for replacement mode
+let replaceStickerDialogueId = null;
+
+// Open GIPHY picker to replace an existing sticker
+function openReplaceSticker(dialogueId) {
+    replaceStickerDialogueId = dialogueId;
+    modalGiphy.classList.remove('hidden');
+    document.getElementById('giphy-search-input').focus();
+}
+window.openReplaceSticker = openReplaceSticker;
+
+// Called when user selects a character for the sticker (or confirms replacement)
+async function confirmGiphyWithCharacter(charKey) {
+    modalCharacterSelector.classList.add('hidden');
+    
+    if (!pendingGiphyUrl) return;
     
     try {
-        // Use addDialogue API directly
         await fetch(`${API_BASE}/projects/${currentProject}/dialogues`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                sender: sender,
+                sender: charKey,
                 message: '',
-                imagePath: url, // Standardize to match DB column
+                imagePath: pendingGiphyUrl,
                 delay: 1.0,
                 reaction_delay: 0.8,
                 order: currentDialogues.length + 1
@@ -2496,8 +2548,32 @@ async function selectGiphy(url) {
     } catch (err) {
         showToast('Failed to add sticker: ' + err.message, 'error');
     }
+    
+    pendingGiphyUrl = null;
 }
-window.selectGiphy = selectGiphy; // Expose to global scope for onclick handler
+window.confirmGiphyWithCharacter = confirmGiphyWithCharacter;
+
+// Called when selecting a new sticker in replacement mode
+async function confirmReplaceSticker(url) {
+    if (!replaceStickerDialogueId) return;
+    
+    try {
+        await fetch(`${API_BASE}/projects/${currentProject}/dialogues/${replaceStickerDialogueId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_path: url })
+        });
+        
+        showToast('🔄 Sticker replaced', 'success');
+        await selectProject(currentProject); // Refresh
+        
+    } catch (err) {
+        showToast('Failed to replace sticker: ' + err.message, 'error');
+    }
+    
+    replaceStickerDialogueId = null;
+}
+window.confirmReplaceSticker = confirmReplaceSticker;
 
 // ============================================
 // Cross-Origin Messaging (iframe visualizer -> dashboard)
