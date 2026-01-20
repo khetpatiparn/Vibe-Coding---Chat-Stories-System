@@ -689,7 +689,7 @@ app.post('/api/generate/continue', async (req, res) => {
             if (d.sticker_keyword) {
                 try {
                     const response = await axios.get(`https://api.giphy.com/v1/stickers/search`, {
-                        params: { api_key: apiKey, q: d.sticker_keyword, limit: 10, rating: 'pg-13' }
+                        params: { api_key: apiKey, q: d.sticker_keyword, limit: 25, rating: 'pg-13' }
                     });
                     
                     if (response.data.data.length > 0) {
@@ -853,7 +853,7 @@ const axios = require('axios');
 app.get('/api/giphy/search', async (req, res) => {
     try {
         const query = req.query.q;
-        const limit = req.query.limit || 50; // Increased from 20 to 50
+        const limit = req.query.limit || 100; // Increased to 100 stickers
         // Use ENV key if available, otherwise try public beta key
         // 403 Forbidden usually means key is invalid or quota exceeded
         const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC'; 
@@ -888,7 +888,7 @@ app.get('/api/giphy/search', async (req, res) => {
 // 6.1 GIPHY Trending - Get popular stickers
 app.get('/api/giphy/trending', async (req, res) => {
     try {
-        const limit = req.query.limit || 50;
+        const limit = req.query.limit || 100;
         const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC';
         
         console.log(`🔥 Fetching Trending GIPHY stickers`);
