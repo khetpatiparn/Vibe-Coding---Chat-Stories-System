@@ -362,8 +362,9 @@ ${personalityDescriptions.join('\n')}
     - 😍 **Love/Cute:** "heart eyes", "blushing anime", "squealing", "uwu", "crush mode", "lovesick"
     - 😬 **Cringe/Facepalm:** "cringe face", "facepalm", "yikes", "nervous sweat", "awkward smile"
     - 🤔 **Disbelief:** "sus face", "really meme", "confused thinking", "wait what", "excuse me", "processing meme"
-  - **QUANTITY RULE (CRITICAL):**
-    - **Range:** 0-3 stickers max per story.
+  - **QUANTITY RULE (CRITICAL - FOLLOW STRICTLY):**
+    - **HARD LIMIT:** Maximum 4-6 stickers per story for FUNNY/GOSSIP. If you exceed 6, you have FAILED.
+    - **NEVER** send 2 stickers in a row (unrealistic behavior).
     - **0 is OK:** If the text humor is strong/dry/sarcastic, DO NOT force a sticker.
     - **Timing:** Use stickers ONLY for a "Punchline" or a "Big Reaction". Do not use them as filler.
 

@@ -39,7 +39,7 @@ async function loadCharacters() {
     }
 }
 
-function renderCharacterGrid() {
+async function renderCharacterGrid() {
     brainCharGrid.innerHTML = '';
     
     if (characters.length === 0) {
@@ -47,11 +47,36 @@ function renderCharacterGrid() {
         return;
     }
 
+    // Fetch counts for all characters in parallel
+    const countsPromises = characters.map(async (char) => {
+        try {
+            const [memRes, relRes] = await Promise.all([
+                fetch(`/api/memories/character/${char.id}`),
+                fetch(`/api/relationships/character/${char.id}`)
+            ]);
+            const memories = await memRes.json();
+            const relations = await relRes.json();
+            return {
+                id: char.id,
+                memoryCount: Array.isArray(memories) ? memories.length : 0,
+                relationCount: Array.isArray(relations) ? relations.length : 0
+            };
+        } catch (err) {
+            return { id: char.id, memoryCount: 0, relationCount: 0 };
+        }
+    });
+    
+    const counts = await Promise.all(countsPromises);
+    const countMap = {};
+    counts.forEach(c => { countMap[c.id] = c; });
+
     characters.forEach(char => {
         let avatarPath = char.avatar_path || '/assets/avatars/person1.png';
         if (avatarPath && !avatarPath.startsWith('http') && !avatarPath.startsWith('/')) {
             avatarPath = '/' + avatarPath;
         }
+
+        const charCounts = countMap[char.id] || { memoryCount: 0, relationCount: 0 };
 
         const card = document.createElement('div');
         card.className = 'brain-char-card';
@@ -62,8 +87,8 @@ function renderCharacterGrid() {
                 <span>${char.name}</span>
             </div>
             <div class="brain-stats">
-                <span class="stat-item"><strong>?</strong> Memories</span>
-                <span class="stat-item"><strong>?</strong> Relations</span>
+                <span class="stat-item"><strong>${charCounts.memoryCount}</strong> Memories</span>
+                <span class="stat-item"><strong>${charCounts.relationCount}</strong> Relations</span>
             </div>
         `;
         
