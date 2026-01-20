@@ -371,7 +371,7 @@ ${personalityDescriptions.join('\n')}
   - Add "sticker_keyword" field ONLY for FUNNY/GOSSIP/LOVE modes.
   - **ALWAYS OMIT** "sticker_keyword" field for HORROR/DRAMA/FIGHT.`;
 
-    const targetLength = length || 35;
+    const targetLength = length || 34; // Midpoint of 28-40 range
     let pacingInstruction = '';
 
     // สร้าง Logic การเดินเรื่องตาม Category (Adaptive Narrative Arc)
@@ -411,7 +411,7 @@ ${personalityDescriptions.join('\n')}
 ${pacingInstruction}
 
 **OUTPUT REQUIREMENTS:**
-- Generate ${length || 35} messages
+- Generate 28-40 messages (aim for around 32-35 for optimal ~1 minute TikTok length)
 - Use "Written Speech" Thai (NOT formal Thai)
 - NO EMOJI - Use 555, TT, ... instead
 - Keep messages SHORT (1-2 sentences max)
