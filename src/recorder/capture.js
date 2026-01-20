@@ -253,6 +253,16 @@ async function captureFrames(story, outputName = 'story', timelineData) {
             
             /* Time Divider Overlay - No Transition in Render */
             .time-divider-overlay { transition: none !important; }
+            
+            /* 🎬 libgif-js Styles for GIF Frame Control */
+            .jsgif { position: relative !important; display: inline-block !important; }
+            .jsgif canvas { display: block !important; max-width: 150px !important; }
+            .jsgif_toolbar { display: none !important; } /* Hide loading bar */
+            .gif-canvas-wrapper { 
+                display: inline-block !important; 
+                max-width: 150px !important; 
+                transition: none !important;
+            }
         `
     });
     
@@ -265,7 +275,7 @@ async function captureFrames(story, outputName = 'story', timelineData) {
             const story = new ChatStory(storyData);
             let shownMessages = new Set();
             
-            // ✅ FIX 2: Monkey-patch addMessage to track appear time
+            // ✅ FIX 2: Monkey-patch addMessage to track appear time + Init SuperGif for stickers
             const originalAddMessage = story.addMessage.bind(story);
             story.addMessage = function(item, char) {
                 originalAddMessage(item, char);
@@ -273,6 +283,52 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                 if (lastMsg) {
                     lastMsg.dataset.appearTime = window.currentFrameTime || 0;
                     lastMsg.style.animationPlayState = 'paused'; // Ensure paused immediately
+                    
+                    // 🎬 STICKER DETECTION: Check for GIPHY GIF images
+                    const stickerImg = lastMsg.querySelector('img.chat-image.sticker');
+                    if (stickerImg && stickerImg.src.includes('giphy.com')) {
+                        try {
+                            // Create wrapper for libgif
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'gif-canvas-wrapper';
+                            wrapper.style.opacity = '0'; // Start hidden for animation
+                            wrapper.style.transform = 'scale(0.8) translateY(20px)';
+                            
+                            // Clone img for SuperGif (it replaces the original)
+                            const gifImg = document.createElement('img');
+                            gifImg.src = stickerImg.src;
+                            gifImg.className = 'gif-controllable';
+                            gifImg.rel = 'nofollow';
+                            
+                            wrapper.appendChild(gifImg);
+                            stickerImg.parentNode.replaceChild(wrapper, stickerImg);
+                            
+                            // Initialize SuperGif
+                            const rub = new SuperGif({ 
+                                gif: gifImg, 
+                                auto_play: false,
+                                progressbar_height: 0 // Hide loading bar
+                            });
+                            
+                            rub.load(() => {
+                                wrapper.dataset.gifLoaded = 'true';
+                                wrapper.dataset.frameCount = rub.get_length();
+                                wrapper._supergif = rub;
+                                
+                                // Force canvas to fit wrapper
+                                const canvas = wrapper.querySelector('canvas');
+                                if (canvas) {
+                                    canvas.style.maxWidth = '150px';
+                                    canvas.style.height = 'auto';
+                                }
+                                
+                                rub.move_to(0);
+                                console.log('[R] Loaded GIF with', rub.get_length(), 'frames');
+                            });
+                        } catch (e) {
+                            console.log('[R] SuperGif init error:', e.toString());
+                        }
+                    }
                 }
             };
 
@@ -378,6 +434,52 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                                 v.currentTime = relativeTime % v.duration;
                             } else {
                                 v.currentTime = 0;
+                            }
+                        }
+                    });
+                    
+                    // 🎬 SYNC 4: Sync GIF Stickers (libgif-js) + PopIn Animation
+                    const gifWrappers = document.querySelectorAll('.gif-canvas-wrapper');
+                    gifWrappers.forEach(wrapper => {
+                        if (wrapper._supergif && wrapper.dataset.gifLoaded === 'true') {
+                            const msg = wrapper.closest('.message');
+                            if (!msg) return;
+                            
+                            const appearTime = parseFloat(msg.dataset.appearTime || 0);
+                            const relativeTime = currentTime - appearTime;
+                            
+                            if (relativeTime >= 0) {
+                                const rub = wrapper._supergif;
+                                const frameCount = parseInt(wrapper.dataset.frameCount) || 1;
+                                const gifFps = 10; // Typical GIF framerate (~100ms per frame)
+                                const frameIndex = Math.floor(relativeTime * gifFps) % frameCount;
+                                
+                                // Seek to the correct frame
+                                rub.move_to(frameIndex);
+                                
+                                // 🎨 PopIn Animation (match CSS: scale 0.8→1, translateY 20→0)
+                                const animDuration = 0.3;
+                                let scale = 1;
+                                let translateY = 0;
+                                let opacity = 1;
+                                
+                                if (relativeTime < animDuration) {
+                                    const t = relativeTime / animDuration;
+                                    // Ease-out curve for smooth deceleration
+                                    const eased = 1 - Math.pow(1 - t, 3);
+                                    
+                                    scale = 0.8 + (0.2 * eased);     // 0.8 → 1.0
+                                    translateY = 20 * (1 - eased);   // 20px → 0px
+                                    opacity = eased;                  // 0 → 1
+                                }
+                                
+                                wrapper.style.opacity = opacity;
+                                wrapper.style.transform = `scale(${scale}) translateY(${translateY}px)`;
+                                wrapper.style.transformOrigin = 'center bottom';
+                            } else {
+                                // Before appear: hidden
+                                wrapper.style.opacity = 0;
+                                wrapper.style.transform = 'scale(0.8) translateY(20px)';
                             }
                         }
                     });
