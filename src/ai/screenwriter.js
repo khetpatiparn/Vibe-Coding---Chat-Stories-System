@@ -365,7 +365,7 @@ ${personalityDescriptions.join('\n')}
     - 😬 **Cringe/Facepalm:** "cringe face", "facepalm", "yikes", "nervous sweat", "awkward smile"
     - 🤔 **Disbelief:** "sus face", "really meme", "confused thinking", "wait what", "excuse me", "processing meme"
   - **QUANTITY RULE (CRITICAL - FOLLOW STRICTLY):**
-    - **HARD LIMIT:** Maximum 4-6 stickers per story for FUNNY/GOSSIP. If you exceed 6, you have FAILED.
+    - **SMART LIMIT:** Use ${Math.max(2, Math.floor((length || 34) * 0.05))}-${Math.max(4, Math.ceil((length || 34) * 0.15))} stickers for ${length || '28-40'} messages (based on real chat behavior: ~5-15% sticker usage)
     - **NEVER** send 2 stickers in a row (unrealistic behavior).
     - **0 is OK:** If the text humor is strong/dry/sarcastic, DO NOT force a sticker.
     - **Timing:** Use stickers ONLY for a "Punchline" or a "Big Reaction". Do not use them as filler.
@@ -414,7 +414,7 @@ ${personalityDescriptions.join('\n')}
 ${pacingInstruction}
 
 **OUTPUT REQUIREMENTS:**
-- Generate ${length ? `approximately ${length} messages` : '28-40 messages (aim for around 32-35 for optimal ~1 minute TikTok length)'}
+- Generate ${length ? `exactly ${length} messages (±2 is acceptable, but stay as close as possible)` : '28-40 messages (aim for around 32-35 for optimal ~1 minute TikTok length)'}
 - Use "Written Speech" Thai (NOT formal Thai)
 - NO EMOJI - Use 555, TT, ... instead
 - Keep messages SHORT (1-2 sentences max)
