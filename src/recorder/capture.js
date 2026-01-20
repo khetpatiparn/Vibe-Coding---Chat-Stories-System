@@ -441,46 +441,47 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                     // 🎬 SYNC 4: Sync GIF Stickers (libgif-js) + PopIn Animation
                     const gifWrappers = document.querySelectorAll('.gif-canvas-wrapper');
                     gifWrappers.forEach(wrapper => {
-                        if (wrapper._supergif && wrapper.dataset.gifLoaded === 'true') {
-                            const msg = wrapper.closest('.message');
-                            if (!msg) return;
+                        const msg = wrapper.closest('.message');
+                        if (!msg) return;
+                        
+                        const appearTime = parseFloat(msg.dataset.appearTime || 0);
+                        const relativeTime = currentTime - appearTime;
+                        
+                        // 🎨 PopIn Animation (runs immediately, doesn't wait for GIF load)
+                        const animDuration = 0.3;
+                        let scale = 1;
+                        let translateY = 0;
+                        let opacity = 1;
+                        
+                        if (relativeTime >= 0) {
+                            if (relativeTime < animDuration) {
+                                const t = relativeTime / animDuration;
+                                // EaseOutBack curve for bouncy "pop" effect
+                                const c1 = 1.70158;
+                                const c3 = c1 + 1;
+                                const eased = 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+                                
+                                scale = 0.8 + (0.2 * eased);     // 0.8 → ~1.05 → 1.0
+                                translateY = 20 * (1 - eased);   // 20px → 0px
+                                opacity = t;                      // 0 → 1
+                            }
                             
-                            const appearTime = parseFloat(msg.dataset.appearTime || 0);
-                            const relativeTime = currentTime - appearTime;
+                            wrapper.style.opacity = opacity;
+                            wrapper.style.transform = `scale(${scale}) translateY(${translateY}px)`;
+                            wrapper.style.transformOrigin = 'center bottom';
                             
-                            if (relativeTime >= 0) {
+                            // 🎬 GIF Frame Sync (only after loaded)
+                            if (wrapper._supergif && wrapper.dataset.gifLoaded === 'true') {
                                 const rub = wrapper._supergif;
                                 const frameCount = parseInt(wrapper.dataset.frameCount) || 1;
-                                const gifFps = 10; // Typical GIF framerate (~100ms per frame)
+                                const gifFps = 10;
                                 const frameIndex = Math.floor(relativeTime * gifFps) % frameCount;
-                                
-                                // Seek to the correct frame
                                 rub.move_to(frameIndex);
-                                
-                                // 🎨 PopIn Animation (match CSS: scale 0.8→1, translateY 20→0)
-                                const animDuration = 0.3;
-                                let scale = 1;
-                                let translateY = 0;
-                                let opacity = 1;
-                                
-                                if (relativeTime < animDuration) {
-                                    const t = relativeTime / animDuration;
-                                    // Ease-out curve for smooth deceleration
-                                    const eased = 1 - Math.pow(1 - t, 3);
-                                    
-                                    scale = 0.8 + (0.2 * eased);     // 0.8 → 1.0
-                                    translateY = 20 * (1 - eased);   // 20px → 0px
-                                    opacity = eased;                  // 0 → 1
-                                }
-                                
-                                wrapper.style.opacity = opacity;
-                                wrapper.style.transform = `scale(${scale}) translateY(${translateY}px)`;
-                                wrapper.style.transformOrigin = 'center bottom';
-                            } else {
-                                // Before appear: hidden
-                                wrapper.style.opacity = 0;
-                                wrapper.style.transform = 'scale(0.8) translateY(20px)';
                             }
+                        } else {
+                            // Before appear: hidden
+                            wrapper.style.opacity = 0;
+                            wrapper.style.transform = 'scale(0.8) translateY(20px)';
                         }
                     });
 
