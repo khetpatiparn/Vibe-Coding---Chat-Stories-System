@@ -361,14 +361,142 @@ const Character = {
 };
 
 const Dialogue = {
-    add: (projectId, data, order) => {
+    // ============================================
+    // FIX #1: Race Condition Prevention
+    // ใช้ Atomic Operation สำหรับ seq_order
+    // ============================================
+    
+    /**
+     * Get next available seq_order atomically
+     * ป้องกัน Race Condition โดยใช้ COALESCE + MAX ใน single query
+     */
+    getNextSeqOrder: (projectId) => {
+        return new Promise((resolve, reject) => {
+            db.get(
+                `SELECT COALESCE(MAX(seq_order), -1) + 1 as next_order FROM dialogues WHERE project_id = ?`,
+                [projectId],
+                (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row.next_order);
+                }
+            );
+        });
+    },
+
+    /**
+     * Add dialogue with automatic seq_order (Race-Condition Safe)
+     * ถ้าไม่ส่ง order มา จะ auto-calculate ด้วย Transaction
+     */
+    add: (projectId, data, order = null) => {
         return new Promise((resolve, reject) => {
             const { sender, message, delay, reaction_delay, typing_speed, image_path } = data;
-            db.run(`INSERT INTO dialogues (project_id, sender, message, delay, reaction_delay, typing_speed, seq_order, image_path) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
-                [projectId, sender, message, delay, reaction_delay || TIMING.DEFAULT_REACTION_DELAY, typing_speed, order, image_path || null], function(err) {
-                if (err) reject(err);
-                else resolve(this.lastID);
+            
+            // ใช้ serialize + transaction เพื่อ atomic operation
+            db.serialize(() => {
+                db.run('BEGIN IMMEDIATE TRANSACTION', (beginErr) => {
+                    if (beginErr) {
+                        return reject(new Error(`Transaction start failed: ${beginErr.message}`));
+                    }
+                    
+                    // ถ้าไม่ได้กำหนด order ให้ query หา next order
+                    const getOrder = order !== null 
+                        ? Promise.resolve(order)
+                        : new Promise((res, rej) => {
+                            db.get(
+                                `SELECT COALESCE(MAX(seq_order), -1) + 1 as next_order FROM dialogues WHERE project_id = ?`,
+                                [projectId],
+                                (err, row) => err ? rej(err) : res(row.next_order)
+                            );
+                        });
+                    
+                    getOrder.then(finalOrder => {
+                        db.run(
+                            `INSERT INTO dialogues (project_id, sender, message, delay, reaction_delay, typing_speed, seq_order, image_path) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                            [projectId, sender, message, delay, reaction_delay || TIMING.DEFAULT_REACTION_DELAY, typing_speed, finalOrder, image_path || null],
+                            function(insertErr) {
+                                if (insertErr) {
+                                    db.run('ROLLBACK', () => reject(insertErr));
+                                } else {
+                                    const lastId = this.lastID;
+                                    db.run('COMMIT', (commitErr) => {
+                                        if (commitErr) {
+                                            db.run('ROLLBACK', () => reject(commitErr));
+                                        } else {
+                                            resolve(lastId);
+                                        }
+                                    });
+                                }
+                            }
+                        );
+                    }).catch(err => {
+                        db.run('ROLLBACK', () => reject(err));
+                    });
+                });
+            });
+        });
+    },
+
+    /**
+     * Bulk add dialogues with Transaction (Race-Condition Safe)
+     * สำหรับ AI Generation ที่ต้องเพิ่มหลาย dialogue พร้อมกัน
+     */
+    addBulk: (projectId, dialoguesArray, startOrder = null) => {
+        return new Promise((resolve, reject) => {
+            db.serialize(() => {
+                db.run('BEGIN IMMEDIATE TRANSACTION', async (beginErr) => {
+                    if (beginErr) {
+                        return reject(new Error(`Bulk transaction start failed: ${beginErr.message}`));
+                    }
+                    
+                    try {
+                        // Get starting order if not provided
+                        let currentOrder = startOrder;
+                        if (currentOrder === null) {
+                            currentOrder = await new Promise((res, rej) => {
+                                db.get(
+                                    `SELECT COALESCE(MAX(seq_order), -1) + 1 as next_order FROM dialogues WHERE project_id = ?`,
+                                    [projectId],
+                                    (err, row) => err ? rej(err) : res(row.next_order)
+                                );
+                            });
+                        }
+                        
+                        const insertedIds = [];
+                        const stmt = db.prepare(
+                            `INSERT INTO dialogues (project_id, sender, message, delay, reaction_delay, typing_speed, seq_order, image_path) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+                        );
+                        
+                        for (const data of dialoguesArray) {
+                            const { sender, message, delay, reaction_delay, typing_speed, image_path } = data;
+                            await new Promise((res, rej) => {
+                                stmt.run(
+                                    [projectId, sender, message, delay, reaction_delay || TIMING.DEFAULT_REACTION_DELAY, typing_speed, currentOrder++, image_path || null],
+                                    function(err) {
+                                        if (err) rej(err);
+                                        else {
+                                            insertedIds.push(this.lastID);
+                                            res();
+                                        }
+                                    }
+                                );
+                            });
+                        }
+                        
+                        stmt.finalize();
+                        
+                        db.run('COMMIT', (commitErr) => {
+                            if (commitErr) {
+                                db.run('ROLLBACK', () => reject(commitErr));
+                            } else {
+                                resolve(insertedIds);
+                            }
+                        });
+                    } catch (err) {
+                        db.run('ROLLBACK', () => reject(err));
+                    }
+                });
             });
         });
     },
@@ -500,19 +628,49 @@ async function exportStoryJSON(projectId) {
         }
     });
 
+    // ============================================
+    // FIX #2: Custom Character Injection Failure
+    // เพิ่ม Fallback Avatar เมื่อ character ถูกลบไปแล้ว
+    // ============================================
+    const FALLBACK_AVATAR = 'assets/avatars/default.png';
+    const DELETED_CHARACTER_NAME = 'Unknown User';
+    
     if (usedCustomIds.size > 0) {
         for (const id of usedCustomIds) {
             try {
                 const customChar = await CustomCharacter.getById(id);
                 if (customChar) {
+                    // ตรวจสอบว่า avatar file ยังมีอยู่หรือไม่
+                    let avatarPath = customChar.avatar_path;
+                    if (avatarPath && !fs.existsSync(avatarPath)) {
+                        console.warn(`⚠️ Avatar file missing for custom_${id}: ${avatarPath}, using fallback`);
+                        avatarPath = FALLBACK_AVATAR;
+                    }
+                    
                     characters[`custom_${id}`] = {
                         name: customChar.display_name,
-                        avatar: customChar.avatar_path,
+                        avatar: avatarPath || FALLBACK_AVATAR,
                         side: 'left' // Default side for guests
+                    };
+                } else {
+                    // Character ถูกลบไปแล้ว - ใช้ Fallback
+                    console.warn(`⚠️ Custom character ${id} was deleted, using fallback`);
+                    characters[`custom_${id}`] = {
+                        name: DELETED_CHARACTER_NAME,
+                        avatar: FALLBACK_AVATAR,
+                        side: 'left',
+                        _deleted: true // Flag สำหรับ UI แสดง warning
                     };
                 }
             } catch (err) {
-                console.error(`Failed to inject custom character ${id}`, err);
+                console.error(`Failed to inject custom character ${id}:`, err.message);
+                // Fallback เมื่อเกิด error
+                characters[`custom_${id}`] = {
+                    name: DELETED_CHARACTER_NAME,
+                    avatar: FALLBACK_AVATAR,
+                    side: 'left',
+                    _error: true
+                };
             }
         }
     }

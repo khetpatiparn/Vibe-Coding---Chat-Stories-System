@@ -67,21 +67,50 @@ function openOutputFolder(videoPath) {
 async function calculateTimeline(story) {
     const timeline = [];
     
-    // Calculate Intro Duration
+    // ============================================
+    // INTRO TIMING (IMPROVED)
+    // Timeline: [DELAY_BEFORE] -> [FADE_IN + TTS] -> [BUFFER_AFTER] -> CHAT
+    // ============================================
+    const INTRO_DELAY_BEFORE = TIMING.INTRO_DELAY_BEFORE || 1.0;  // รอ 1 วิ ก่อนแสดงชื่อ
+    const INTRO_FADE_IN = TIMING.INTRO_FADE_IN || 0.5;            // Fade in 0.5 วิ
+    const INTRO_BUFFER_AFTER = TIMING.INTRO_BUFFER_AFTER || 1.5;  // ค้าง 1.5 วิ หลัง TTS
+    const INTRO_MIN_DURATION = TIMING.INTRO_MIN_DURATION || 2.0;  // ถ้าไม่มี TTS
+    
     let introDuration = 0;
+    let ttsDuration = 0;
     const isHorror = story.theme === 'horror' || (story.category && (story.category.toLowerCase() === 'horror' || story.category.toLowerCase() === 'drama'));
     
     if (isHorror) {
-        introDuration = 2.0; // Text-only intro for horror
+        // Horror: Text-only intro with simple timing
+        introDuration = INTRO_DELAY_BEFORE + INTRO_MIN_DURATION + INTRO_BUFFER_AFTER;
+        ttsDuration = 0;
     } else if (story.intro_path) {
-        // Measure audio file
-        const duration = await getAudioDuration(story.intro_path);
-        introDuration = duration > 0 ? duration : 2.0; // Fallback 2s
+        // Normal: Measure TTS audio file
+        ttsDuration = await getAudioDuration(story.intro_path);
+        ttsDuration = ttsDuration > 0 ? ttsDuration : INTRO_MIN_DURATION;
+        
+        // Total = delay before + TTS duration + buffer after
+        introDuration = INTRO_DELAY_BEFORE + ttsDuration + INTRO_BUFFER_AFTER;
     } else {
-        introDuration = 2.0; // Default text-only intro
+        // No TTS: use minimum duration
+        introDuration = INTRO_DELAY_BEFORE + INTRO_MIN_DURATION + INTRO_BUFFER_AFTER;
+        ttsDuration = 0;
     }
     
-    console.log(`⏱️ Intro Duration: ${introDuration.toFixed(2)}s`);
+    // Store timing breakdown for render use
+    const introTiming = {
+        delayBefore: INTRO_DELAY_BEFORE,
+        fadeIn: INTRO_FADE_IN,
+        ttsDuration: ttsDuration,
+        bufferAfter: INTRO_BUFFER_AFTER,
+        total: introDuration
+    };
+    
+    console.log(`⏱️ Intro Timing:`);
+    console.log(`   - Delay Before: ${INTRO_DELAY_BEFORE}s`);
+    console.log(`   - TTS Duration: ${ttsDuration.toFixed(2)}s`);
+    console.log(`   - Buffer After: ${INTRO_BUFFER_AFTER}s`);
+    console.log(`   - Total Intro:  ${introDuration.toFixed(2)}s`);
 
     let currentTime = introDuration; // Start chat immediately after intro (first message handles timing)
     
@@ -152,7 +181,7 @@ async function calculateTimeline(story) {
         : TIMING.ENDING_BUFFER;
 
     const totalDuration = currentTime + endingBuffer;
-    return { timeline, totalDuration, introDuration };
+    return { timeline, totalDuration, introDuration, introTiming };
 }
 
 // ============================================
@@ -188,13 +217,14 @@ async function captureFrames(story, outputName = 'story', timelineData) {
     // Debug: Pipe browser logs to node console
     page.on('console', msg => console.log('PAGE LOG:', msg.text()));
     
-    // Inject Data
-    await page.evaluateOnNewDocument((storyData, timelineData, introDuration) => {
+    // Inject Data (including introTiming for proper phase rendering)
+    await page.evaluateOnNewDocument((storyData, timelineData, introDuration, introTiming) => {
         window.__INJECTED_STORY__ = storyData;
         window.__INJECTED_TIMELINE__ = timelineData;
         window.__INJECTED_INTRO_DURATION__ = introDuration;
+        window.__INJECTED_INTRO_TIMING__ = introTiming;
         window.__INJECTED_MODE__ = true;
-    }, story, timeline, timelineData.introDuration);
+    }, story, timeline, timelineData.introDuration, timelineData.introTiming);
     
     // Load Visualizer
     const cacheBuster = Date.now();
@@ -343,14 +373,19 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                 }
                 const storyData = window.__INJECTED_STORY__;
                 
-                // --- INTRO HANDLING (Render Mode) ---
-                const introDuration = window.__INJECTED_INTRO_DURATION__ || 0;
-                const introOverlay = document.getElementById('intro-overlay');
-                const introTitle = document.getElementById('intro-title');
+                // --- INTRO HANDLING (Render Mode) - IMPROVED ---
+                const introTiming = window.__INJECTED_INTRO_TIMING__ || {
+                    delayBefore: 1.0,
+                    fadeIn: 0.5,
+                    ttsDuration: 0,
+                    bufferAfter: 1.5,
+                    total: window.__INJECTED_INTRO_DURATION__ || 4.0
+                };
+                const introDuration = introTiming.total;
                 
                 // Debug Log (only once per second)
                 if (Math.floor(currentTime * 10) % 10 === 0) {
-                    console.log(`[R] Time: ${currentTime.toFixed(2)}s | Intro: ${introDuration}s | Overlay: ${introOverlay ? 'found' : 'null'} | Title: ${introTitle ? introTitle.textContent : 'null'}`);
+                    console.log(`[R] Time: ${currentTime.toFixed(2)}s | Intro Total: ${introDuration}s | Phase: ${currentTime < introTiming.delayBefore ? 'DELAY' : currentTime < introDuration ? 'SHOW' : 'CHAT'}`);
                 }
                 
                 if (currentTime < introDuration) {
@@ -381,14 +416,38 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                         contentWrap = document.getElementById('render-intro-content');
                     }
                     
-                    // Match introFadeIn keyframe: scale 0.9→1, opacity 0→1 over 0.5s
-                    const fadeInDuration = 0.5; // seconds
-                    let progress = Math.min(1, currentTime / fadeInDuration);
-                    // Ease-out effect
-                    progress = 1 - Math.pow(1 - progress, 3);
+                    // ============================================
+                    // INTRO ANIMATION PHASES
+                    // Phase 1: Delay (0 to delayBefore) - Keep hidden
+                    // Phase 2: Fade In (delayBefore to delayBefore + fadeIn)
+                    // Phase 3: Hold (TTS playing + buffer after)
+                    // ============================================
+                    const delayBefore = introTiming.delayBefore;
+                    const fadeInDuration = introTiming.fadeIn;
+                    const fadeInStart = delayBefore;
+                    const fadeInEnd = delayBefore + fadeInDuration;
                     
-                    let opacity = progress;
-                    let scale = 0.9 + (0.1 * progress); // 0.9 → 1.0
+                    let opacity = 0;
+                    let scale = 0.9;
+                    
+                    if (currentTime < delayBefore) {
+                        // Phase 1: Delay before showing - keep hidden
+                        opacity = 0;
+                        scale = 0.9;
+                    } else if (currentTime < fadeInEnd) {
+                        // Phase 2: Fade in animation
+                        let progress = (currentTime - fadeInStart) / fadeInDuration;
+                        progress = Math.min(1, Math.max(0, progress));
+                        // Ease-out cubic
+                        progress = 1 - Math.pow(1 - progress, 3);
+                        
+                        opacity = progress;
+                        scale = 0.9 + (0.1 * progress); // 0.9 → 1.0
+                    } else {
+                        // Phase 3: Hold visible while TTS plays + buffer
+                        opacity = 1;
+                        scale = 1.0;
+                    }
                     
                     if (contentWrap) {
                         contentWrap.style.opacity = opacity.toFixed(3);
@@ -438,17 +497,23 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                         }
                     });
                     
-                    // 🎬 SYNC 4: Sync GIF Stickers (libgif-js) + PopIn Animation
-                    const gifWrappers = document.querySelectorAll('.gif-canvas-wrapper');
-                    gifWrappers.forEach(wrapper => {
-                        const msg = wrapper.closest('.message');
+                    // ============================================
+                    // FIX: Sticker Pop-In Animation (IMPROVED)
+                    // Animation ทำงานทันที ไม่รอ GIF load
+                    // ============================================
+                    
+                    // 🎬 SYNC 4: Sync ALL Sticker Elements (img.sticker + gif-canvas-wrapper)
+                    // ต้อง sync ทั้ง raw img.sticker และ gif-canvas-wrapper
+                    const stickerElements = document.querySelectorAll('.chat-image.sticker, .gif-canvas-wrapper');
+                    stickerElements.forEach(element => {
+                        const msg = element.closest('.message');
                         if (!msg) return;
                         
                         const appearTime = parseFloat(msg.dataset.appearTime || 0);
                         const relativeTime = currentTime - appearTime;
                         
-                        // 🎨 PopIn Animation (runs immediately, doesn't wait for GIF load)
-                        const animDuration = 0.3;
+                        // 🎨 PopIn Animation - ALWAYS apply (ไม่รอ GIF load)
+                        const animDuration = 0.35; // เพิ่มเวลา animation เล็กน้อย
                         let scale = 1;
                         let translateY = 0;
                         let opacity = 1;
@@ -456,32 +521,61 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                         if (relativeTime >= 0) {
                             if (relativeTime < animDuration) {
                                 const t = relativeTime / animDuration;
-                                // EaseOutBack curve for bouncy "pop" effect
+                                
+                                // EaseOutBack curve for bouncy "pop" effect (overshoot)
+                                // c1 = 1.70158 คือค่า standard สำหรับ easeOutBack
                                 const c1 = 1.70158;
                                 const c3 = c1 + 1;
                                 const eased = 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
                                 
-                                scale = 0.8 + (0.2 * eased);     // 0.8 → ~1.05 → 1.0
-                                translateY = 20 * (1 - eased);   // 20px → 0px
-                                opacity = t;                      // 0 → 1
+                                // Scale: 0.6 → overshoot ~1.1 → settle at 1.0
+                                scale = 0.6 + (0.4 * eased);
+                                
+                                // TranslateY: 30px → 0px (เพิ่มระยะเพื่อให้เห็น bounce ชัด)
+                                translateY = 30 * (1 - eased);
+                                
+                                // Opacity: 0 → 1 (ช่วงแรก 60% ของ animation)
+                                opacity = Math.min(1, t / 0.6);
+                            } else {
+                                // Animation complete - ensure final state
+                                scale = 1;
+                                translateY = 0;
+                                opacity = 1;
                             }
                             
-                            wrapper.style.opacity = opacity;
-                            wrapper.style.transform = `scale(${scale}) translateY(${translateY}px)`;
-                            wrapper.style.transformOrigin = 'center bottom';
+                            // Apply styles directly
+                            element.style.opacity = opacity.toString();
+                            element.style.transform = `scale(${scale.toFixed(4)}) translateY(${translateY.toFixed(2)}px)`;
+                            element.style.transformOrigin = 'center bottom';
                             
-                            // 🎬 GIF Frame Sync (only after loaded)
-                            if (wrapper._supergif && wrapper.dataset.gifLoaded === 'true') {
-                                const rub = wrapper._supergif;
-                                const frameCount = parseInt(wrapper.dataset.frameCount) || 1;
-                                const gifFps = 10;
-                                const frameIndex = Math.floor(relativeTime * gifFps) % frameCount;
-                                rub.move_to(frameIndex);
+                            // 🎬 GIF Frame Sync (only for loaded gif-canvas-wrapper)
+                            if (element.classList.contains('gif-canvas-wrapper') && 
+                                element._supergif && 
+                                element.dataset.gifLoaded === 'true') {
+                                
+                                const rub = element._supergif;
+                                const frameCount = parseInt(element.dataset.frameCount) || 1;
+                                
+                                // Time-based frame calculation
+                                const gifDuration = parseFloat(element.dataset.gifDuration) || (frameCount * 0.1);
+                                const loopedTime = relativeTime % gifDuration;
+                                const timePerFrame = gifDuration / frameCount;
+                                const frameIndex = Math.min(
+                                    Math.floor(loopedTime / timePerFrame),
+                                    frameCount - 1
+                                );
+                                
+                                // Skip redundant frame moves
+                                const lastFrame = parseInt(element.dataset.lastFrameIndex) || -1;
+                                if (frameIndex !== lastFrame) {
+                                    rub.move_to(frameIndex);
+                                    element.dataset.lastFrameIndex = frameIndex;
+                                }
                             }
                         } else {
-                            // Before appear: hidden
-                            wrapper.style.opacity = 0;
-                            wrapper.style.transform = 'scale(0.8) translateY(20px)';
+                            // Before appear: hidden with initial transform
+                            element.style.opacity = '0';
+                            element.style.transform = 'scale(0.6) translateY(30px)';
                         }
                     });
 
@@ -630,10 +724,17 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
 
     await fs.ensureDir(CONFIG.outputDir);
     
-    const { bgMusicPath, sfxPath, timeline, bgmVolume = 0.3, sfxVolume = 0.5, totalDuration, swooshPath, swooshVolume = 0.7, introPath, introDuration = 0 } = audioOptions;
+    const { bgMusicPath, sfxPath, timeline, bgmVolume = 0.3, sfxVolume = 0.5, totalDuration, swooshPath, swooshVolume = 0.7, introPath, introDuration = 0, introTiming } = audioOptions;
     
     return new Promise((resolve, reject) => {
         console.log(`Assembling video... (duration: ${totalDuration?.toFixed(1) || '?'}s)`);
+        
+        // ============================================
+        // INTRO TIMING BREAKDOWN (for audio sync)
+        // Timeline: [delayBefore] -> [TTS plays] -> [bufferAfter] -> [SWOOSH + BGM + CHAT]
+        // ============================================
+        const delayBefore = introTiming?.delayBefore || TIMING.INTRO_DELAY_BEFORE || 1.0;
+        const bufferAfter = introTiming?.bufferAfter || TIMING.INTRO_BUFFER_AFTER || 1.5;
         
         // Log all audio paths for debugging
         console.log(`🔊 Audio Debug:`);
@@ -641,6 +742,7 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
         console.log(`  - swooshPath: ${swooshPath || 'null'} | exists: ${swooshPath ? fs.existsSync(swooshPath) : 'N/A'}`);
         console.log(`  - bgMusicPath: ${bgMusicPath || 'null'} | exists: ${bgMusicPath ? fs.existsSync(bgMusicPath) : 'N/A'}`);
         console.log(`  - sfxPath: ${sfxPath || 'null'} | exists: ${sfxPath ? fs.existsSync(sfxPath) : 'N/A'}`);
+        console.log(`  - Intro Timing: delayBefore=${delayBefore}s, total=${introDuration}s`);
         
         // 0: Video
         let command = ffmpeg()
@@ -652,36 +754,40 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
         let mixInputs = '';
         let hasAudio = false;
 
-        // 1. Intro Audio (if exists)
+        // 1. Intro TTS Audio (if exists) - starts AFTER delayBefore
         if (introPath && fs.existsSync(introPath)) {
             command.input(introPath);
-            filterComplex += `[${audioInputIndex}:a]volume=1.0[intro];`;
+            // TTS starts after the initial delay (when title appears)
+            const ttsDelay = Math.round(delayBefore * 1000);
+            filterComplex += `[${audioInputIndex}:a]adelay=${ttsDelay}|${ttsDelay},volume=1.0[intro];`;
             mixInputs += `[intro]`;
             audioInputIndex++;
             hasAudio = true;
-            console.log(`  ✅ Added intro audio`);
+            console.log(`  ✅ Added intro TTS audio (delay: ${ttsDelay}ms)`);
         }
 
-        // 2. Swoosh Audio (if exists)
+        // 2. Swoosh Audio (if exists) - plays at END of intro (transition to chat)
         if (swooshPath && fs.existsSync(swooshPath)) {
             command.input(swooshPath);
+            // Swoosh plays when intro ends and chat begins
             const swooshDelay = Math.round(introDuration * 1000);
             filterComplex += `[${audioInputIndex}:a]adelay=${swooshDelay}|${swooshDelay},volume=${swooshVolume}[swoosh];`;
             mixInputs += `[swoosh]`;
             audioInputIndex++;
             hasAudio = true;
-            console.log(`  ✅ Added swoosh audio (delay: ${swooshDelay}ms)`);
+            console.log(`  ✅ Added swoosh audio (delay: ${swooshDelay}ms - at intro end)`);
         }
 
-        // 3. BGM (if exists)
+        // 3. BGM (if exists) - starts when chat begins (after intro)
         if (bgMusicPath && fs.existsSync(bgMusicPath)) {
             command.input(bgMusicPath).inputOptions(['-stream_loop', '-1']);
+            // BGM starts when chat begins
             const bgmDelay = Math.round(introDuration * 1000);
             filterComplex += `[${audioInputIndex}:a]adelay=${bgmDelay}|${bgmDelay},volume=${bgmVolume}[bgm];`;
             mixInputs += `[bgm]`;
             audioInputIndex++;
             hasAudio = true;
-            console.log(`  ✅ Added BGM (delay: ${bgmDelay}ms, vol: ${bgmVolume})`);
+            console.log(`  ✅ Added BGM (delay: ${bgmDelay}ms - when chat starts, vol: ${bgmVolume})`);
         }
 
         // 4. SFX (Messages)
@@ -891,7 +997,7 @@ async function recordStory(story, options = {}) {
         // Pass pre-calculated timeline to captureFrames
         const { framesDir } = await captureFrames(story, outputName, timelineData);
         
-        const { timeline, totalDuration, introDuration } = timelineData;
+        const { timeline, totalDuration, introDuration, introTiming } = timelineData;
         
         const audioOptions = {
             bgMusicPath: options.bgMusicPath,
@@ -903,9 +1009,10 @@ async function recordStory(story, options = {}) {
             swooshVolume: options.swooshVolume,
             introPath: story.intro_path,
             introDuration: introDuration,
+            introTiming: introTiming,  // ✅ NEW: Pass intro timing breakdown
             
             timeline: timeline,
-            totalDuration: totalDuration  // ✅ NEW: Pass total duration to assembleVideo
+            totalDuration: totalDuration
         };
         
         let videoPath = await assembleVideo(framesDir, outputName, audioOptions);

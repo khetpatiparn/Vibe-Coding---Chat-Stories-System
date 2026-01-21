@@ -17,6 +17,14 @@ module.exports = {
     // Typing Animation
     TYPING_RATIO: 0.8,            
     
+    // ============================================
+    // INTRO TIMING (NEW)
+    // ============================================
+    INTRO_DELAY_BEFORE: 0.3,      // รอ 0.5 วิ ก่อนแสดงชื่อห้อง
+    INTRO_FADE_IN: 0.5,           // Fade in animation duration
+    INTRO_BUFFER_AFTER: 0.3,      // ค้าง 0.6 วิ หลัง TTS จบ ก่อนเข้า chat
+    INTRO_MIN_DURATION: 2.0,      // ถ้าไม่มี TTS ให้แสดง intro อย่างน้อย 2 วิ
+    
     // Video Recording
     FPS: 30,
     ENDING_BUFFER: 3,         // Standard ending delay (Requested: 3s)
