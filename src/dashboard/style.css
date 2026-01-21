@@ -195,6 +195,13 @@ body {
   margin-bottom: 4px;
 }
 
+.project-info h3 .memory-badge {
+  font-size: 0.75rem;
+  margin-left: 4px;
+  vertical-align: middle;
+  opacity: 0.8;
+}
+
 .project-info span {
   font-size: 0.75rem;
   color: var(--text-gray);

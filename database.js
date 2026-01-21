@@ -118,6 +118,20 @@ function initSchema() {
                     console.log('Migrating: Adding intro_path to projects table...');
                     db.run("ALTER TABLE projects ADD COLUMN intro_path TEXT");
                 }
+                
+                // Migration for memory_saved column (Memory Indicator)
+                const hasMemorySaved = rows.some(r => r.name === 'memory_saved');
+                if (!hasMemorySaved) {
+                    console.log('Migrating: Adding memory_saved to projects table...');
+                    db.run("ALTER TABLE projects ADD COLUMN memory_saved INTEGER DEFAULT 0");
+                }
+                
+                // Migration for custom_header_name column
+                const hasCustomHeader = rows.some(r => r.name === 'custom_header_name');
+                if (!hasCustomHeader) {
+                    console.log('Migrating: Adding custom_header_name to projects table...');
+                    db.run("ALTER TABLE projects ADD COLUMN custom_header_name TEXT");
+                }
             }
         });
 
@@ -307,6 +321,15 @@ const Project = {
         });
     },
 
+    updateCustomHeaderName: (id, headerName) => {
+        return new Promise((resolve, reject) => {
+            db.run(`UPDATE projects SET custom_header_name = ? WHERE id = ?`, [headerName, id], function(err) {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    },
+
     updateSettings: (id, settings) => {
          return new Promise((resolve, reject) => {
              // settings = { show_partner_name, show_my_name }
@@ -331,6 +354,15 @@ const Project = {
     updateIntroPath: (id, introPath) => {
         return new Promise((resolve, reject) => {
             db.run(`UPDATE projects SET intro_path = ? WHERE id = ?`, [introPath, id], function(err) {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    },
+
+    updateMemorySaved: (id, saved) => {
+        return new Promise((resolve, reject) => {
+            db.run(`UPDATE projects SET memory_saved = ? WHERE id = ?`, [saved ? 1 : 0, id], function(err) {
                 if (err) reject(err);
                 else resolve();
             });
@@ -678,12 +710,14 @@ async function exportStoryJSON(projectId) {
     return {
         id: project.id,
         title: project.title,
-        room_name: project.room_name, // Room name for header
+        room_name: project.room_name, // Room name for intro
+        custom_header_name: project.custom_header_name, // [NEW] Custom header (user-defined)
         intro_path: project.intro_path, // [NEW] Intro TTS audio path
         show_partner_name: project.show_partner_name, // [NEW] Checkbox
         show_my_name: project.show_my_name, // [NEW] Checkbox
         theme: project.theme || 'default', // [NEW] Theme
         status: project.status,
+        memory_saved: project.memory_saved || 0, // [NEW] Memory indicator
         characters,
         dialogues
     };

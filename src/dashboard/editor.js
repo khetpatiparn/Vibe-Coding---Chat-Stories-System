@@ -89,6 +89,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Room Name Input - Auto-save on change
     document.getElementById('room-name-input').onchange = saveRoomName;
     
+    // Custom Header Name - Auto-save on change
+    document.getElementById('custom-header-input').onchange = saveCustomHeaderName;
+    
     // Toggle Buttons - Auto-save
     document.getElementById('toggle-partner-name').onchange = saveSettings;
     document.getElementById('toggle-my-name').onchange = saveSettings;
@@ -385,6 +388,9 @@ async function selectProject(id) {
         
         // Load Room Name
         document.getElementById('room-name-input').value = data.room_name || '';
+        
+        // Load Custom Header Name
+        document.getElementById('custom-header-input').value = data.custom_header_name || '';
         
         // Load Toggles
         const valPartner = data.show_partner_name !== undefined ? data.show_partner_name : 1;
@@ -959,9 +965,27 @@ async function saveRoomName() {
             body: JSON.stringify({ room_name: value })
         });
         reloadPreview();
-        showToast('💬 Room name saved', 'success');
+        showToast('� Room name saved', 'success');
     } catch(e) {
         console.error('Failed to save room name:', e);
+    }
+}
+
+// Save Custom Header Name (Auto-save)
+async function saveCustomHeaderName() {
+    if (!currentProject) return;
+    const value = document.getElementById('custom-header-input').value.trim();
+    
+    try {
+        await fetch(`${API_BASE}/projects/${currentProject}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ custom_header_name: value })
+        });
+        reloadPreview();
+        showToast('💬 Header name saved', 'success');
+    } catch(e) {
+        console.error('Failed to save custom header name:', e);
     }
 }
 
@@ -974,7 +998,7 @@ function renderProjectList() {
         <div class="project-item ${currentProject == p.id ? 'active' : ''}" onclick="selectProject(${p.id})">
             <span class="status-dot ${p.status.toLowerCase()}"></span>
             <div class="project-info">
-                <h3>${p.title}</h3>
+                <h3>${p.title}${p.memory_saved ? ' <span class="memory-badge" title="Memory Saved">🧠</span>' : ''}</h3>
                 <span>${p.status}</span>
             </div>
             <button class="project-delete" onclick="deleteProject(event, ${p.id})" title="Delete Project">🗑️</button>
@@ -1401,19 +1425,9 @@ function openCharacterSelector(mode, id = null, index = null) {
          html += renderCharCard(key, char, false, true);
     });
 
-    // 3. Available Default Characters
-    const DEFAULT_ROLES = [
-        { role: 'me', name: 'ฉัน', avatar: 'assets/avatars/person1.png' },
-        { role: 'boss', name: 'เจ้านาย', avatar: 'assets/avatars/boss.png' }
-    ];
-
-    const availableDefaults = DEFAULT_ROLES.filter(def => !projectCharsObj[def.role]);
-    
-    if (availableDefaults.length > 0) {
-        availableDefaults.forEach(def => {
-             html += renderCharCard(def.role, { name: def.name, avatar: def.avatar }, false, true);
-        });
-    }
+    // 3. Available Default Characters - REMOVED (User Request)
+    // Default characters (me, boss) are no longer used
+    // All stories should use Custom Characters only
 
     // 4. Time Divider Option
     const isDividerSelected = (mode === 'edit' && currentDialogues[index] && currentDialogues[index].sender === 'time_divider');
@@ -1668,8 +1682,8 @@ async function addDialogue(sender) {
     }
     
     // Smart switch: Alternate from last speaker
-    let nextSender = sender || 'me';
-    const projectChars = Object.keys(window.currentProjectCharacters || {'me':{},'boss':{}});
+    let nextSender = sender;
+    const projectChars = Object.keys(window.currentProjectCharacters || {});
     
     if (!sender && currentDialogues.length > 0) {
         const last = currentDialogues[currentDialogues.length - 1];
@@ -1681,11 +1695,11 @@ async function addDialogue(sender) {
             nextSender = projectChars[nextIndex];
         } else {
             // If last sender not in list (legacy?), pick first available
-            nextSender = projectChars[0] || 'me';
+            nextSender = projectChars[0];
         }
     } else if (!sender) {
         // No dialogues yet, start with first character
-        nextSender = projectChars[0] || 'me';
+        nextSender = projectChars[0];
     }
 
     try {
@@ -1974,10 +1988,50 @@ function renderPreviewList(dialogues, nameMapping = {}) {
     }).join('');
 }
 
+// Helper: Add custom character to project when using AI continuation
+async function addCustomCharacterToProject(customId) {
+    try {
+        // Fetch custom character details
+        const res = await fetch(`${API_BASE}/custom-characters/${customId}`);
+        if (!res.ok) {
+            console.warn(`Custom character ${customId} not found`);
+            return;
+        }
+        const char = await res.json();
+        
+        // Add to project's characters table
+        const role = `custom_${customId}`;
+        await fetch(`${API_BASE}/projects/${currentProject}/characters`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                role: role,
+                name: char.display_name,
+                avatar: char.avatar_path,
+                side: 'left'  // Guest characters are on left side
+            })
+        });
+        
+        // Update local cache
+        if (window.currentProjectCharacters) {
+            window.currentProjectCharacters[role] = {
+                name: char.display_name,
+                avatar: char.avatar_path,
+                side: 'left'
+            };
+        }
+        
+        console.log(`✅ Added custom character ${char.display_name} to project`);
+    } catch (err) {
+        console.error(`Failed to add custom character ${customId}:`, err);
+        throw err;
+    }
+}
+
 async function commitContinuation() {
     const btn = document.getElementById('btn-confirm-preview');
     btn.textContent = 'Adding...';
-    btn.disabled = true;
+    btn.disabled = false;
     
     try {
         // 1. First, ensure all guest characters used in dialogues are added to the project

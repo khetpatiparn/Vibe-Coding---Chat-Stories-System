@@ -51,15 +51,16 @@ const CATEGORIES = {
 };
 
 // ============================================
-// Relationship Dynamics (V2.0)
+// Relationship Dynamics (V2.0) - Now "Group Vibe" for multi-character scenarios
 // ============================================
 const RELATIONSHIPS = {
     stranger: 'คนแปลกหน้า - Use polite, distant, formal pronouns (คุณ/ผม/ดิฉัน)',
-    colleague: 'เพื่อนร่วมงาน - Semi-formal, office particles (ครับ/ค่ะ/พี่/น้อง)',
-    friend: 'เพื่อนทั่วไป - Casual, mixture of polite and slang',
-    close_friend: 'เพื่อนสนิท/The Gang - Rude/Slang allowed (กู/มึง), No filters',
-    couple: 'แฟน/คู่รัก - Affectionate, Teasing, Pet names (ตัวเอง/ที่รัก/บ๊ะ)',
-    enemy: 'คู่กัด/คนไม่ถูกกัน - Sarcastic, Passive-aggressive, Short replies'
+    colleague: 'เพื่อนร่วมงาน/Office Vibe - Semi-formal, office particles (ครับ/ค่ะ/พี่/น้อง)',
+    friend: 'เพื่อนทั่วไป/Casual - Mix of polite and slang, friendly banter',
+    close_friend: 'เพื่อนสนิท/The Gang - Rude/Slang allowed (กู/มึง), No filters, roast each other',
+    couple: 'Romantic Tension - Flirty, Teasing, Sweet moments, possible jealousy or drama',
+    enemy: 'คู่กัด/คนไม่ถูกกัน - Sarcastic, Passive-aggressive, Short replies',
+    chaotic: 'Chaotic Energy - High energy, rapid fire messages, interruptions, dramatic reactions, everyone talks at once'
 };
 
 // ============================================
@@ -155,7 +156,7 @@ function generateCharacterProfiles(characters, characterData) {
 // ============================================
 // Master Prompt Builder (V2.0 + Memory Context)
 // ============================================
-function buildPrompt(category, characters = ['me', 'boss'], customPrompt = null, characterData = [], relationship = 'friend', length = 35, memoryContext = null) {
+function buildPrompt(category, characters = [], customPrompt = null, characterData = [], relationship = 'friend', length = 35, memoryContext = null) {
     
     // Category -> Detailed Direction
     const categoryInstructions = {
@@ -193,13 +194,13 @@ RULES:
     const characterNames = characters.map(charId => {
         const customChar = characterData.find(c => c.id === charId && c.is_custom);
         if (customChar) return customChar.display_name;
-        return defaultCharacterMap[charId]?.name || charId;
+        return charId; // Return ID as-is if not found
     });
     
     const selectedCharsText = characterNames.join(', ');
     
-    // Determine POV side
-    const rightSideCharId = characters.includes('me') ? 'me' : characters[0];
+    // Determine POV side - first character is always right side (protagonist)
+    const rightSideCharId = characters[0];
 
     // Build character JSON
     const characterJSON = {};
@@ -207,7 +208,6 @@ RULES:
         const customChar = characterData.find(c => c.id === charId && c.is_custom);
         let side = 'left';
         if (charId === rightSideCharId) side = 'right';
-        else if (defaultCharacterMap[charId]) side = defaultCharacterMap[charId].side;
         
         if (customChar) {
             characterJSON[charId] = {
@@ -575,7 +575,7 @@ async function generateStory(options = {}) {
     
     if (typeof options === 'string') {
         category = options;
-        characters = ['me', 'boss'];
+        characters = []; // No default characters - must be provided
         customPrompt = null;
         characterData = [];
         relationship = 'friend';
@@ -583,7 +583,7 @@ async function generateStory(options = {}) {
         memoryContext = null;
     } else {
         category = options.category || 'funny';
-        characters = options.characters || ['me', 'boss'];
+        characters = options.characters || []; // No default characters
         customPrompt = options.customPrompt || null;
         characterData = options.characterData || [];
         relationship = options.relationship || 'friend';
@@ -688,9 +688,24 @@ async function generateMultipleStories(count = 5, category = 'funny') {
 // ============================================
 // Continue Story (V2.0 Enhanced)
 // ============================================
-async function continueStory(prompt, existingDialogues = [], availableCharacters = [], length = 'medium', mode = 'normal', relationship = 'friend', characterData = []) {
+async function continueStory(prompt, existingDialogues = [], availableCharacters = [], length = 'medium', mode = 'normal', relationshipContext = 'friend', characterData = []) {
     const history = existingDialogues.map(d => `${d.sender}: ${d.message}`).join('\n');
-    const characterList = availableCharacters.length > 0 ? availableCharacters.join(', ') : 'ฉัน, เจ้านาย';
+    
+    // ============================================
+    // FIX: Build character name list from characterData (display_name)
+    // ไม่ใช้ ID โดยตรง แต่ใช้ชื่อจริงที่ AI จะใช้
+    // ============================================
+    const characterNames = characterData
+        .filter(c => c.is_custom && c.display_name)
+        .map(c => c.display_name);
+    
+    // Fallback ถ้าไม่มี characterData
+    const characterList = characterNames.length > 0 
+        ? characterNames.join(', ') 
+        : (availableCharacters.length > 0 ? availableCharacters.join(', ') : 'ตัวละคร');
+    
+    // Build name mapping for validation later
+    const validNames = new Set(characterNames);
 
     // Length Instruction
     let lengthInstruction = 'Generate 10-20 dialogues.';
@@ -731,11 +746,30 @@ ${personalityDescriptions.join('\n')}
    - **จอมมารเทพซ่า:** ถ้าคู่สนทนาหมั่นไส้ ให้เรียกว่า "น้อง", "หนู", หรือ "น้องยูสเซอร์" เพื่อลดทอนความเบียว`;
     }
 
-    const systemPrompt = `### THAI CHAT CONTINUATION ENGINE V2.2 (Profile Aware) ###
+    // Determine relationship context type
+    const isSmartContext = relationshipContext.includes('<->') || relationshipContext.includes('รู้จัก') || relationshipContext.includes('Strangers');
+    
+    let relationshipSection = '';
+    if (isSmartContext) {
+        // New: Smart Relationship Context from DB
+        relationshipSection = `
+**🤝 RELATIONSHIP MAP (จาก Memory จริง):**
+${relationshipContext}
+
+**CRITICAL RULES based on relationships:**
+- ถ้าเป็น "Strangers/ไม่เคยรู้จักกัน" → ต้องมีการแนะนำตัว, ถามว่า "เป็นใครอะ?", "รู้จักกันเหรอ?" หรือแสดงความงง
+- ถ้าเป็น "Close/สนิทกัน" → ใช้ กู/มึง, ล้อกันได้
+- ถ้าเป็น "Acquaintance/รู้จัก" → สุภาพปานกลาง, เรียกชื่อได้`;
+    } else {
+        // Legacy: Simple relationship type
+        relationshipSection = `**RELATIONSHIP:** ${RELATIONSHIPS[relationshipContext] || RELATIONSHIPS['friend']}`;
+    }
+
+    const systemPrompt = `### THAI CHAT CONTINUATION ENGINE V2.3 (Smart Relationship) ###
 
 You are continuing a Thai chat conversation. ${lengthInstruction} ${modeInstruction}
 
-**RELATIONSHIP:** ${RELATIONSHIPS[relationship] || RELATIONSHIPS['friend']}
+${relationshipSection}
 
 **LINGUISTIC RULES (MUST FOLLOW):**
 
@@ -760,8 +794,8 @@ You are continuing a Thai chat conversation. ${lengthInstruction} ${modeInstruct
 - **BANNED ALWAYS:** "wolf", "howling", "monkey puppet", "generic cartoon".
 - **OUTPUT:** Add "sticker_keyword" only if permitted. Otherwise, leave it out.
 
-**CHARACTERS IN SCENE:** [${characterList}]
-Use ONLY these names as senders. Match exactly.
+**⚠️ CRITICAL: CHARACTERS IN SCENE:** [${characterList}]
+**STRICT RULE: You MUST use ONLY these exact names as "sender". DO NOT invent new characters. DO NOT use any name not in this list. If you use a name not in this list, the output will be REJECTED.**
 
 **OUTPUT:** JSON array ONLY
 [
@@ -804,8 +838,29 @@ Generate JSON:`;
             
             if (jsonStartIndex !== -1 && jsonEndIndex !== -1 && jsonEndIndex > jsonStartIndex) {
                 const jsonString = text.substring(jsonStartIndex, jsonEndIndex + 1);
-                console.log(`✅ Continuation generated with ${modelName}`);
-                return JSON.parse(jsonString);
+                let dialogues = JSON.parse(jsonString);
+                
+                // ============================================
+                // FIX: Validate and filter invalid characters
+                // AI อาจสร้าง character ที่ไม่ได้อยู่ในรายการ
+                // ============================================
+                if (validNames.size > 0) {
+                    const originalCount = dialogues.length;
+                    dialogues = dialogues.filter(d => {
+                        const isValid = validNames.has(d.sender);
+                        if (!isValid) {
+                            console.warn(`⚠️ Filtered out invalid sender: "${d.sender}" (not in: ${[...validNames].join(', ')})`);
+                        }
+                        return isValid;
+                    });
+                    
+                    if (dialogues.length < originalCount) {
+                        console.log(`🔧 Filtered ${originalCount - dialogues.length} dialogues with invalid senders`);
+                    }
+                }
+                
+                console.log(`✅ Continuation generated with ${modelName} (${dialogues.length} dialogues)`);
+                return dialogues;
             } else {
                 throw new Error('No JSON found in AI response');
             }

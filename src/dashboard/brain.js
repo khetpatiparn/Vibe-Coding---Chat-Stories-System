@@ -54,14 +54,24 @@ async function renderCharacterGrid() {
                 fetch(`/api/memories/character/${char.id}`),
                 fetch(`/api/relationships/character/${char.id}`)
             ]);
+            
+            // Check if responses are OK
+            if (!memRes.ok || !relRes.ok) {
+                console.error(`API error for char ${char.id}: memRes=${memRes.status}, relRes=${relRes.status}`);
+            }
+            
             const memories = await memRes.json();
             const relations = await relRes.json();
+            
+            console.log(`Char ${char.id} (${char.display_name}): ${memories.length} memories, ${relations.length} relations`);
+            
             return {
                 id: char.id,
                 memoryCount: Array.isArray(memories) ? memories.length : 0,
                 relationCount: Array.isArray(relations) ? relations.length : 0
             };
         } catch (err) {
+            console.error(`Failed to fetch counts for char ${char.id}:`, err);
             return { id: char.id, memoryCount: 0, relationCount: 0 };
         }
     });
@@ -269,6 +279,12 @@ function renderRelationships() {
             const otherCharName = r.char_id_1 === selectedCharacter.id ? r.char2_name : r.char1_name;
             const otherChar = characters.find(c => c.id === otherCharId);
             
+            // Fix: Ensure avatar path has leading slash
+            let avatarPath = otherChar?.avatar_path || '/assets/avatars/person1.png';
+            if (avatarPath && !avatarPath.startsWith('http') && !avatarPath.startsWith('/')) {
+                avatarPath = '/' + avatarPath;
+            }
+            
             let scoreColor = '#51cf66';
             if (r.score < 40) scoreColor = '#ff6b6b';
             else if (r.score < 70) scoreColor = '#ffd43b';
@@ -276,7 +292,7 @@ function renderRelationships() {
             return `
                 <div class="relationship-item" data-id="${r.id}">
                     <div class="rel-info">
-                        <img class="rel-avatar" src="${otherChar?.avatar_path || '/assets/avatars/person1.png'}" alt="">
+                        <img class="rel-avatar" src="${avatarPath}" alt="">
                         <div class="rel-details">
                             <h4>${otherCharName || 'Unknown'}</h4>
                             <span class="rel-status">${getStatusEmoji(r.status)} ${r.status}</span>

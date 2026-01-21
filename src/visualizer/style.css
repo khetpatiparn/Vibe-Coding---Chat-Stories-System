@@ -69,8 +69,8 @@ body.rendering {
 
 /* Mobile-sized elements for rendering (deviceScaleFactor handles the scaling) */
 body.rendering .message-bubble {
-  font-size: 0.9rem !important;
-  padding: 10px 14px !important;
+  font-size: 0.85rem !important;
+  padding: 8px 12px !important;
 }
 
 body.rendering .message-avatar {
@@ -228,12 +228,12 @@ body.rendering .message.right {
 }
 
 .message-bubble {
-  padding: 10px 14px;
-  /* Reduced for smaller text */
+  padding: 8px 12px;
+  /* Reduced padding for smaller text */
   border-radius: 18px;
-  font-size: 0.95rem;
-  /* Reduced from 1rem (~15% smaller) */
-  line-height: 1.4;
+  font-size: 0.875rem;
+  /* Reduced from 0.95rem for cleaner look */
+  line-height: 1.45;
   position: relative;
   word-wrap: break-word;
   word-break: break-word;

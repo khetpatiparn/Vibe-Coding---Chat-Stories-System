@@ -114,6 +114,68 @@ app.post('/api/upload/image', uploadChat.single('image'), (req, res) => {
 });
 
 // ============================================
+// Helper: Build Smart Relationship Context
+// ดึง relationship จริงจาก DB มาสร้าง context ให้ AI
+// ============================================
+async function buildRelationshipContext(characterIds, customChars) {
+    // Extract numeric IDs from 'custom_XX' format
+    const numericIds = characterIds
+        .filter(id => id.startsWith('custom_'))
+        .map(id => parseInt(id.replace('custom_', '')));
+    
+    if (numericIds.length < 2) {
+        return 'friend'; // Fallback: single character or no custom chars
+    }
+    
+    // Build name lookup
+    const idToName = {};
+    customChars.forEach(c => {
+        idToName[c.id] = c.display_name;
+    });
+    
+    // Fetch relationships between all pairs
+    const relationshipPairs = [];
+    const strangerPairs = [];
+    
+    for (let i = 0; i < numericIds.length; i++) {
+        for (let j = i + 1; j < numericIds.length; j++) {
+            const id1 = numericIds[i];
+            const id2 = numericIds[j];
+            const name1 = idToName[id1] || `Character ${id1}`;
+            const name2 = idToName[id2] || `Character ${id2}`;
+            
+            const rel = await Relationship.get(id1, id2);
+            
+            if (rel) {
+                const level = rel.score >= 70 ? 'สนิทกันมาก (Close)' :
+                              rel.score >= 50 ? 'รู้จักกัน (Acquaintance)' :
+                              rel.score >= 30 ? 'รู้จักแต่ไม่สนิท' : 'ไม่ค่อยถูกกัน';
+                relationshipPairs.push(`${name1} <-> ${name2}: ${level} (score: ${rel.score})`);
+            } else {
+                strangerPairs.push(`${name1} <-> ${name2}: ไม่เคยรู้จักกัน (Strangers)`);
+            }
+        }
+    }
+    
+    // Build context string
+    let context = '';
+    if (relationshipPairs.length > 0) {
+        context += 'คู่ที่รู้จักกัน:\n' + relationshipPairs.join('\n');
+    }
+    if (strangerPairs.length > 0) {
+        if (context) context += '\n\n';
+        context += '⚠️ คู่ที่ไม่เคยเจอกัน (ต้องมีการแนะนำตัว/ถามว่าเป็นใคร):\n' + strangerPairs.join('\n');
+    }
+    
+    if (!context) {
+        return 'friend'; // Fallback if no relationship data
+    }
+    
+    console.log('📊 Built relationship context:\n' + context);
+    return context;
+}
+
+// ============================================
 // API Endpoints
 // ============================================
 
@@ -145,7 +207,7 @@ app.get('/api/projects/:id', async (req, res) => {
 // 2.1 Update Project Title, Room Name & Settings
 app.put('/api/projects/:id', async (req, res) => {
     try {
-        const { title, room_name, show_partner_name, show_my_name } = req.body;
+        const { title, room_name, show_partner_name, show_my_name, custom_header_name } = req.body;
         
         if (title !== undefined) {
             await Project.updateTitle(req.params.id, title);
@@ -165,6 +227,9 @@ app.put('/api/projects/:id', async (req, res) => {
                 console.error('TTS regeneration failed:', ttsErr.message);
                 // Don't fail the whole request if TTS fails
             }
+        }
+        if (custom_header_name !== undefined) {
+            await Project.updateCustomHeaderName(req.params.id, custom_header_name);
         }
         if (show_partner_name !== undefined || show_my_name !== undefined) {
             // Fetch current project to merge
@@ -605,21 +670,20 @@ app.post('/api/generate', async (req, res) => {
     }
 });
 
-// 4.1 Generate Continuation (AI)
+// 4.1 Generate Continuation (AI) - WITH SMART RELATIONSHIP CONTEXT
 app.post('/api/generate/continue', async (req, res) => {
     try {
-        const { projectId, characters, topic, length, mode, relationship } = req.body;
+        const { projectId, characters, topic, length, mode } = req.body;
+        // Note: 'relationship' dropdown is now IGNORED - we use real DB relationships instead
         
         // 1. Fetch all custom characters to build name mapping
         const customChars = await CustomCharacter.getAll();
         
-        // Default characters - REMOVED User Request
+        // Build ID <-> Name mappings
         const idToName = {};
         const nameToId = {};
-        // const defaultNames = { ... }; 
-        // Logic removed to prevent defaults from appearing
         
-        // Custom characters  
+        // Custom characters only (no defaults)
         customChars.forEach(c => {
             const id = `custom_${c.id}`;
             idToName[id] = c.display_name;
@@ -676,8 +740,15 @@ app.post('/api/generate/continue', async (req, res) => {
              return { id: charId, is_custom: false };
         });
 
-        // 3. Call AI with IDs and Profile Data (V2.1)
-        const newDialogues = await continueStory(topic, dialoguesWithNames, characters, length, mode, relationship || 'friend', detailedCharacterData);
+        // ============================================
+        // SMART RELATIONSHIP CONTEXT (NEW!)
+        // ดึง relationship จริงจาก DB มาบอก AI ว่าใครรู้จักใคร
+        // ============================================
+        const relationshipContext = await buildRelationshipContext(characters, customChars);
+        console.log('🤝 Relationship Context:', relationshipContext);
+
+        // 3. Call AI with IDs, Profile Data, and Relationship Context (V2.2)
+        const newDialogues = await continueStory(topic, dialoguesWithNames, characters, length, mode, relationshipContext, detailedCharacterData);
         
         // 4. Convert AI response back to internal IDs and Process Stickers with SMART TIMING
         const processedDialogues = [];
@@ -1496,6 +1567,7 @@ app.post('/api/memories/summarize', async (req, res) => {
         }
         
         console.log('🧠 Summarizing story for memory...');
+        console.log('📋 Received characterIds:', characterIds);
         const summary = await summarizeStory(dialogues);
         
         if (!summary) {
@@ -1510,9 +1582,15 @@ app.post('/api/memories/summarize', async (req, res) => {
         if (characterIds && characterIds.length > 0) {
             for (const id of characterIds) {
                 const char = await CustomCharacter.getById(id);
-                if (char) participatingChars.push(char);
+                if (char) {
+                    participatingChars.push(char);
+                    console.log(`  ✓ Found character ID ${id}: ${char.display_name}`);
+                } else {
+                    console.log(`  ✗ Character ID ${id} not found in custom_characters`);
+                }
             }
         }
+        console.log(`📊 Found ${participatingChars.length} participating characters`);
         
         if (summary.facts && participatingChars.length > 0) {
             for (const fact of summary.facts) {
@@ -1558,7 +1636,10 @@ app.post('/api/memories/summarize', async (req, res) => {
         }
         
         // Update relationships (Round Robin for all pairs)
+        // REQUIRES: At least 2 custom characters to create a relationship
+        console.log(`💕 Relationship check: ${characterIds?.length || 0} characters, impact: ${summary.relationship_impact?.change}`);
         if (summary.relationship_impact && characterIds && characterIds.length >= 2) {
+            console.log(`💕 Creating relationships for pairs of ${characterIds.length} characters...`);
             // Update every pair in the group
              for (let i = 0; i < characterIds.length; i++) {
                 for (let j = i + 1; j < characterIds.length; j++) {
@@ -1571,9 +1652,18 @@ app.post('/api/memories/summarize', async (req, res) => {
                     const newScore = Math.max(0, Math.min(100, currentScore + summary.relationship_impact.change));
                     
                     await Relationship.upsert(id1, id2, newScore, 'friend');
+                    console.log(`  💕 Relationship ${id1} <-> ${id2}: ${currentScore} → ${newScore}`);
                 }
             }
             console.log(`💕 Updated relationships for ${characterIds.length} characters (${summary.relationship_impact.reason})`);
+        } else {
+            console.log(`⚠️ Skipped relationship update: Need at least 2 custom characters (got ${characterIds?.length || 0})`);
+        }
+        
+        // Mark project as having saved memory
+        if (projectId && savedMemories.length > 0) {
+            await Project.updateMemorySaved(projectId, true);
+            console.log(`🧠 Marked project ${projectId} as memory_saved`);
         }
         
         res.json({ 
@@ -1591,6 +1681,17 @@ app.post('/api/memories/summarize', async (req, res) => {
 // ============================================
 // Sitcom Engine: Relationship API
 // ============================================
+
+// Get all relationships for a character
+// IMPORTANT: This route MUST come BEFORE /:char1/:char2 to avoid path conflict
+app.get('/api/relationships/character/:charId', async (req, res) => {
+    try {
+        const relationships = await Relationship.getAllForCharacter(Number(req.params.charId));
+        res.json(relationships);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Get relationship between two characters
 app.get('/api/relationships/:char1/:char2', async (req, res) => {
@@ -1611,16 +1712,6 @@ app.post('/api/relationships', async (req, res) => {
         }
         const id = await Relationship.upsert(charId1, charId2, score || 50, status || 'friend');
         res.json({ success: true, id });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Get all relationships for a character
-app.get('/api/relationships/character/:charId', async (req, res) => {
-    try {
-        const relationships = await Relationship.getAllForCharacter(Number(req.params.charId));
-        res.json(relationships);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

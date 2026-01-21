@@ -822,14 +822,32 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
         }
         
         // ✅ FIX: Use -t to set exact video duration (prevents infinite loop)
+        // ============================================
+        // FIX: Compression Artifacts & Color Banding
+        // - crf 18 = Higher quality (lower = better, 0=lossless)
+        // - g 30 = Keyframe every 1 second (30fps) - prevents quality drop at start
+        // - bf 2 = Allow 2 B-frames for smooth motion
+        // - noise filter = Adds slight grain to prevent color banding on solid colors
+        // ============================================
         const outputOpts = [
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
-            '-preset', 'ultrafast',
-            '-crf', '23',
+            '-preset', 'slow',       // Better compression efficiency
+            '-crf', '17',            // Even higher quality (was 18)
+            '-g', '30',              // Keyframe every 1 sec (fixes initial blur)
+            '-bf', '2',              // B-frames for smooth motion
+            '-tune', 'film',         // Tune for film-like content (better gradients)
             '-c:a', 'aac',
-            '-b:a', '128k'
+            '-b:a', '192k'           // Higher audio bitrate
         ];
+        
+        // Add video filter for anti-banding (stronger for TikTok re-compression)
+        // This prevents "wavy lines" on solid color backgrounds
+        // deband: removes banding artifacts, noise: adds grain to mask remaining banding
+        command.videoFilters([
+            'deband=1thr=0.02:2thr=0.02:3thr=0.02:blur=1',  // Deband filter
+            'noise=c0s=5:c0f=t+u',   // Stronger noise (5) with temporal+uniform
+        ]);
         
         // Add duration limit if we know the total duration
         if (totalDuration) {

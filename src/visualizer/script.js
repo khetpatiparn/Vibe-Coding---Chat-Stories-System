@@ -32,12 +32,56 @@ class ChatStory {
   }
 
   setupHeader() {
-    // Use room_name if set, otherwise use default placeholder
-    if (this.data.room_name && this.data.room_name.trim() !== '') {
-      this.headerName.innerText = this.data.room_name;
+    // ============================================
+    // Header Logic:
+    // 1. ถ้ามี custom_header_name ใช้ค่านั้น (ผู้ใช้ตั้งเอง)
+    // 2. ถ้าไม่มี ใช้ชื่อคู่สนทนาอัตโนมัติ
+    // ============================================
+    const leftCharacters = [];
+    
+    // Find all left-side characters (partners)
+    if (this.data.characters) {
+      for (const [role, char] of Object.entries(this.data.characters)) {
+        if (char.side === 'left') {
+          leftCharacters.push(char);
+        }
+      }
+    }
+    
+    // Store partner count for bubble name logic
+    this.partnerCount = leftCharacters.length;
+    
+    // Priority 1: Custom header name (user-defined)
+    if (this.data.custom_header_name && this.data.custom_header_name.trim()) {
+      this.headerName.innerText = this.data.custom_header_name;
+      
+      // Still use first partner's avatar if available
+      if (leftCharacters.length > 0 && leftCharacters[0].avatar && this.headerAvatar) {
+        this.headerAvatar.src = this.resolvePath(leftCharacters[0].avatar);
+      }
+      return;
+    }
+    
+    // Priority 2: Auto-generate from partners
+    if (leftCharacters.length === 0) {
+      // No partners - use room name as fallback
+      this.headerName.innerText = this.data.room_name || 'แชท';
+    } else if (leftCharacters.length === 1) {
+      // Single partner - show their name
+      this.headerName.innerText = leftCharacters[0].name;
+      
+      // Update header avatar to partner's avatar
+      if (leftCharacters[0].avatar && this.headerAvatar) {
+        this.headerAvatar.src = this.resolvePath(leftCharacters[0].avatar);
+      }
     } else {
-      // Default placeholder - user can set it in dashboard
-      this.headerName.innerText = 'ชื่อห้องแชท';
+      // Multiple partners - show first name + count
+      this.headerName.innerText = `${leftCharacters[0].name} และอีก ${leftCharacters.length - 1} คน`;
+      
+      // Use first partner's avatar
+      if (leftCharacters[0].avatar && this.headerAvatar) {
+        this.headerAvatar.src = this.resolvePath(leftCharacters[0].avatar);
+      }
     }
   }
 
@@ -350,15 +394,29 @@ class ChatStory {
         ${avatarContent}
       </div>`;
 
-    // Toggle sender name visibility
+    // ============================================
+    // NEW: Smart Name Display Logic
+    // - 2 คน: ไม่แสดงชื่อ (รู้จาก header + avatar แล้ว)
+    // - 3+ คน: แสดงชื่อเฉพาะฝั่งซ้าย (แยกว่าใครพูด)
+    // ============================================
     let showName = false;
-    if (sideClass === 'left') {
-        showName = this.data.show_partner_name !== undefined ? (this.data.show_partner_name === 1) : true;
+    
+    // Check if group chat (3+ people)
+    const isGroupChat = (this.partnerCount || 0) >= 2;
+    
+    if (isGroupChat) {
+        // Group chat: show ALL names (both left and right) to identify speakers
+        showName = true;
     } else {
-        showName = this.data.show_my_name !== undefined ? (this.data.show_my_name === 1) : false;
+        // 1-on-1 chat: respect user settings but default to hidden
+        if (sideClass === 'left') {
+            showName = this.data.show_partner_name !== undefined ? (this.data.show_partner_name === 1) : false;
+        } else {
+            showName = this.data.show_my_name !== undefined ? (this.data.show_my_name === 1) : false;
+        }
     }
 
-    // Smart Grouping: Hide name if consecutive
+    // Smart Grouping: Hide name if consecutive (same sender)
     if (isConsecutive) {
         showName = false;
     }

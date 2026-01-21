@@ -68,11 +68,18 @@
                         style="background: transparent; border: none; color: var(--text-gray); cursor: pointer; font-size: 1rem; margin-left: 8px; display: none;">✏️</button>
                     <span class="status-badge" id="current-project-status">DRAFT</span>
 
-                    <!-- Room Name Editor -->
+                    <!-- Room Name Editor (สำหรับ Intro) -->
                     <div style="margin-left: 20px; display: inline-flex; align-items: center; gap: 6px;">
-                        <span style="color: var(--text-gray); font-size: 0.9rem;">💬</span>
-                        <input type="text" id="room-name-input" placeholder="ชื่อห้องแชท"
-                            style="background: var(--bg-dark); border: 1px solid var(--border); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.9rem; width: 150px;">
+                        <span style="color: var(--text-gray); font-size: 0.9rem;" title="ชื่อห้อง (ใช้ใน Intro)">📖</span>
+                        <input type="text" id="room-name-input" placeholder="ชื่อเรื่อง (Intro)"
+                            style="background: var(--bg-dark); border: 1px solid var(--border); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.9rem; width: 120px;">
+                    </div>
+                    
+                    <!-- Custom Header Name (ชื่อ Header ที่แสดงในแชท) -->
+                    <div style="margin-left: 10px; display: inline-flex; align-items: center; gap: 6px;">
+                        <span style="color: var(--text-gray); font-size: 0.9rem;" title="ชื่อ Header (แสดงในแชท)">💬</span>
+                        <input type="text" id="custom-header-input" placeholder="ชื่อ Header (ถ้าว่าง = อัตโนมัติ)"
+                            style="background: var(--bg-dark); border: 1px solid var(--border); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.9rem; width: 160px;">
                     </div>
 
                     <!-- Visibility Toggles (Simplified) -->
@@ -372,16 +379,8 @@
                         <option value="relation">Relationship Focus (Deep Talk)</option>
                     </select>
                 </div>
-                <div>
-                    <label>Relationship</label>
-                    <select id="continue-relationship"
-                        style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border); color: white; border-radius: 6px;">
-                        <option value="friend" selected>👥 Friend</option>
-                        <option value="close_friend">🤙 Close (กู/มึง)</option>
-                        <option value="colleague">💼 Colleague</option>
-                        <option value="couple">💕 Couple</option>
-                    </select>
-                </div>
+                <!-- Group Vibe REMOVED - Now using Smart Relationship Context from DB -->
+                <!-- Relationships are automatically detected based on Memory history -->
             </div>
 
             <div class="form-group">
