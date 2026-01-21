@@ -101,11 +101,63 @@
                 </div>
                 <div class="actions">
                     <button id="btn-generate-ai" class="btn-secondary">AI ✨</button>
-                    <!-- <button id="btn-save" class="btn-secondary">Save</button> -->
-                    <button id="btn-export-json" class="btn-secondary">Export 📦</button>
-                    <button id="btn-import-json" class="btn-secondary">Import 📥</button>
-                    <button id="btn-save-memory" class="btn-secondary" title="Save story to character memory">🧠 Save
-                        Memory</button>
+                    
+                    <!-- More Options Dropdown -->
+                    <div id="dropdown-container" style="position: relative; display: inline-block;">
+                        <button id="btn-more-options" class="btn-secondary" title="More Options" onclick="toggleDropdown()">⋮</button>
+                        <div id="dropdown-more" style="
+                            display: none;
+                            position: fixed;
+                            background: #1a1d29;
+                            border: 1px solid #2d3142;
+                            border-radius: 8px;
+                            min-width: 200px;
+                            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+                            z-index: 99999;
+                            overflow: hidden;
+                        ">
+                            <button onclick="openTikTokGenerator()" style="
+                                width: 100%;
+                                padding: 12px 16px;
+                                background: transparent;
+                                border: none;
+                                color: white;
+                                text-align: left;
+                                cursor: pointer;
+                                font-size: 0.95rem;
+                            " onmouseover="this.style.background='#2d3142'" onmouseout="this.style.background='transparent'">
+                                📱 TikTok Description
+                            </button>
+                            <div style="height: 1px; background: #2d3142;"></div>
+                            <button onclick="exportProjectAsJSON(); toggleDropdown();" style="
+                                width: 100%;
+                                padding: 12px 16px;
+                                background: transparent;
+                                border: none;
+                                color: white;
+                                text-align: left;
+                                cursor: pointer;
+                                font-size: 0.95rem;
+                            " onmouseover="this.style.background='#2d3142'" onmouseout="this.style.background='transparent'">
+                                📦 Export JSON
+                            </button>
+                            <div style="height: 1px; background: #2d3142;"></div>
+                            <button onclick="openImportModal(); toggleDropdown();" style="
+                                width: 100%;
+                                padding: 12px 16px;
+                                background: transparent;
+                                border: none;
+                                color: white;
+                                text-align: left;
+                                cursor: pointer;
+                                font-size: 0.95rem;
+                            " onmouseover="this.style.background='#2d3142'" onmouseout="this.style.background='transparent'">
+                                📥 Import JSON
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button id="btn-save-memory" class="btn-secondary" title="Save story to character memory">🧠</button>
                     <button id="btn-render" class="btn-primary">Render 🎬</button>
                 </div>
             </header>
@@ -550,6 +602,41 @@
                 <div style="grid-column: 1/-1; text-align: center; color: var(--text-gray); margin-top: 50px;">
                     กด Tab หรือ Search เพื่อหา Sticker...
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TikTok Description Generator Modal -->
+    <div id="modal-descriptions" class="modal hidden">
+        <div class="modal-content" style="max-width: 95vw; width: 1400px; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: white;">📱 TikTok Description Generator</h2>
+                <button id="btn-close-descriptions" class="btn-secondary" style="padding: 8px 12px;">✕</button>
+            </div>
+
+            <p style="color: var(--text-gray); margin-bottom: 20px;">
+                🎯 เลือก 1 ใน 5 กลยุทธ์ที่เหมาะกับคลิปของคุณ (วิเคราะห์จากเนื้อเรื่อง)
+            </p>
+
+            <!-- Loading State -->
+            <div id="descriptions-loading" style="text-align: center; padding: 40px; display: none;">
+                <div style="font-size: 3rem; margin-bottom: 10px;">✨</div>
+                <p style="color: white;">กำลังวิเคราะห์และสร้าง description...</p>
+            </div>
+
+            <!-- Description List - Horizontal Layout -->
+            <div id="descriptions-list" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
+                <!-- Descriptions will be injected here -->
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: space-between;">
+                <button id="btn-regenerate-descriptions" class="btn-secondary">
+                    🔄 Generate ใหม่
+                </button>
+                <button id="btn-close-descriptions-bottom" class="btn-secondary">
+                    ปิด
+                </button>
             </div>
         </div>
     </div>

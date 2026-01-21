@@ -839,6 +839,56 @@ app.post('/api/generate/continue', async (req, res) => {
     }
 });
 
+// 4.1.6 Generate TikTok Descriptions
+app.post('/api/projects/:id/generate-descriptions', async (req, res) => {
+    try {
+        const projectId = req.params.id;
+        
+        // Get project data
+        const project = await Project.getById(projectId);
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+        
+        // Get dialogues and characters
+        const dialogues = await Dialogue.getByProject(projectId);
+        const characters = await Character.getByProject(projectId);
+        
+        // Convert characters array to object format
+        const charObj = {};
+        characters.forEach(char => {
+            charObj[char.role] = char;
+        });
+        
+        // Generate descriptions
+        const { generateDescriptions } = require('./src/ai/description-generator');
+        const result = await generateDescriptions(
+            dialogues,
+            charObj,
+            project.room_name,
+            project.theme
+        );
+        
+        if (result.success) {
+            res.json({
+                success: true,
+                descriptions: result.descriptions,
+                analysis: result.analysis
+            });
+        } else {
+            res.json({
+                success: false,
+                error: result.error,
+                descriptions: result.descriptions // Fallback templates
+            });
+        }
+        
+    } catch (err) {
+        console.error('Description generation error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // 4.1.5 Update Dialogue
 app.put('/api/projects/:id/dialogues/:did', async (req, res) => {
     try {

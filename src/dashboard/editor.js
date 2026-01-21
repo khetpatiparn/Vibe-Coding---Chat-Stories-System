@@ -82,9 +82,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-render').onclick = renderVideo;
     document.getElementById('btn-add-dialogue').onclick = addDialogue;
     document.getElementById('btn-generate-ai').onclick = openStorySettings;
-    document.getElementById('btn-export-json').onclick = exportProjectAsJSON;
-    document.getElementById('btn-import-json').onclick = openImportModal;
     document.getElementById('btn-save-memory').onclick = saveToMemory;
+    
+    // TikTok Description Generator Modal
+    document.getElementById('btn-close-descriptions').onclick = closeDescriptionsModal;
+    document.getElementById('btn-close-descriptions-bottom').onclick = closeDescriptionsModal;
+    document.getElementById('btn-regenerate-descriptions').onclick = generateDescriptions;
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('dropdown-more');
+        const btn = document.getElementById('btn-more-options');
+        if (dropdown && !dropdown.contains(e.target) && e.target !== btn) {
+            dropdown.style.display = 'none';
+        }
+    });
     
     // Room Name Input - Auto-save on change
     document.getElementById('room-name-input').onchange = saveRoomName;
@@ -2679,6 +2691,180 @@ async function confirmReplaceSticker(url) {
     replaceStickerDialogueId = null;
 }
 window.confirmReplaceSticker = confirmReplaceSticker;
+
+// ============================================
+// TikTok Description Generator
+// ============================================
+async function openDescriptionsModal() {
+    if (!currentProject) {
+        showToast('⚠️ กรุณาเลือก Project ก่อน', 'warning');
+        return;
+    }
+    
+    const modal = document.getElementById('modal-descriptions');
+    modal.classList.remove('hidden');
+    
+    // Auto-generate on open
+    await generateDescriptions();
+}
+
+function closeDescriptionsModal() {
+    document.getElementById('modal-descriptions').classList.add('hidden');
+}
+
+async function generateDescriptions() {
+    const loadingEl = document.getElementById('descriptions-loading');
+    const listEl = document.getElementById('descriptions-list');
+    
+    try {
+        // Show loading
+        loadingEl.style.display = 'block';
+        listEl.style.display = 'none';
+        
+        const res = await fetch(`${API_BASE}/projects/${currentProject}/generate-descriptions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await res.json();
+        
+        console.log('Description API response:', data);
+        
+        // Check for API error
+        if (data.error && !data.descriptions) {
+            throw new Error(data.error);
+        }
+        
+        if (!data.descriptions || data.descriptions.length === 0) {
+            throw new Error('No descriptions generated');
+        }
+        
+        // Render descriptions - Horizontal cards
+        listEl.innerHTML = data.descriptions.map(desc => `
+            <div class="description-card" style="
+                background: var(--bg-dark);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 12px;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                min-height: 280px;
+            ">
+                <div style="margin-bottom: 10px;">
+                    <div style="font-weight: 600; color: white; margin-bottom: 5px; font-size: 0.9rem;">
+                        ${desc.strategyName || desc.strategy}
+                    </div>
+                    <div style="color: var(--text-gray); font-size: 0.75rem; line-height: 1.4;">
+                        ${desc.reason || ''}
+                    </div>
+                </div>
+                <div class="description-text" id="desc-text-${desc.id}" style="
+                    background: var(--bg-darker);
+                    padding: 10px;
+                    border-radius: 6px;
+                    color: white;
+                    font-size: 0.85rem;
+                    line-height: 1.5;
+                    border-left: 3px solid #4f46e5;
+                    flex: 1;
+                    margin-bottom: 10px;
+                ">
+                    ${desc.text}
+                </div>
+                <button onclick="copyDescription(${desc.id})" class="btn-copy-desc" 
+                    style="
+                        background: #4f46e5;
+                        color: white;
+                        border: none;
+                        padding: 8px 12px;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        font-size: 0.8rem;
+                        transition: background 0.2s;
+                        width: 100%;
+                    "
+                    onmouseover="this.style.background='#6366f1'"
+                    onmouseout="this.style.background='#4f46e5'">
+                    📋 Copy
+                </button>
+            </div>
+        `).join('');
+        
+        // Hide loading, show list
+        loadingEl.style.display = 'none';
+        listEl.style.display = 'grid';
+        
+        showToast('✅ Generated 5 descriptions!', 'success');
+        
+    } catch (err) {
+        console.error('Description generation error:', err);
+        loadingEl.style.display = 'none';
+        listEl.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-gray);">
+                ❌ เกิดข้อผิดพลาด: ${err.message}
+            </div>
+        `;
+        listEl.style.display = 'block';
+        showToast('❌ ไม่สามารถสร้าง descriptions ได้', 'error');
+    }
+}
+
+function copyDescription(descId) {
+    const textEl = document.getElementById(`desc-text-${descId}`);
+    if (!textEl) return;
+    
+    const text = textEl.innerText.trim();
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('📋 Copied to clipboard!', 'success');
+        
+        // Visual feedback
+        const btn = event.target;
+        const originalText = btn.innerText;
+        btn.innerText = '✅ Copied!';
+        btn.style.background = '#10b981';
+        
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.style.background = '#4f46e5';
+        }, 2000);
+    }).catch(err => {
+        showToast('❌ Failed to copy', 'error');
+        console.error('Copy error:', err);
+    });
+}
+window.copyDescription = copyDescription;
+
+// ============================================
+// Dropdown Toggle Functions (Global)
+// ============================================
+function toggleDropdown() {
+    const dropdown = document.getElementById('dropdown-more');
+    const btn = document.getElementById('btn-more-options');
+    
+    if (dropdown && btn) {
+        const isVisible = dropdown.style.display === 'block';
+        
+        if (!isVisible) {
+            // Position dropdown below button
+            const rect = btn.getBoundingClientRect();
+            dropdown.style.top = (rect.bottom + 5) + 'px';
+            dropdown.style.right = (window.innerWidth - rect.right) + 'px';
+            dropdown.style.display = 'block';
+        } else {
+            dropdown.style.display = 'none';
+        }
+    }
+}
+window.toggleDropdown = toggleDropdown;
+
+function openTikTokGenerator() {
+    toggleDropdown();
+    openDescriptionsModal();
+}
+window.openTikTokGenerator = openTikTokGenerator;
 
 // ============================================
 // Cross-Origin Messaging (iframe visualizer -> dashboard)

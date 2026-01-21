@@ -36,7 +36,7 @@ const CONFIG = {
     height: 1920,
     fps: 30,
     framesDir: './output/frames',
-    outputDir: './output',
+    outputDir: './output/03_Drafts',
     endingBuffer: 2,
     // Delay Settings
     baseDelay: 1.0, 
