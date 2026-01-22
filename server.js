@@ -580,40 +580,62 @@ app.post('/api/generate', async (req, res) => {
         let currentOrder = 0;
         let previousSender = null; // ตัวแปรจำคนส่งคนล่าสุด
 
-        for (const d of story.dialogues) {
+        // ============================================
+        // OPTIMIZATION: Batch GIPHY Requests (Parallel)
+        // ลด latency จาก N sequential calls เป็น 1 parallel batch
+        // ============================================
+        const stickerDialogues = story.dialogues.filter(d => d.sticker_keyword);
+        const stickerMap = new Map(); // keyword -> gifUrl
+        
+        if (stickerDialogues.length > 0) {
+            console.log(`🧸 Batch fetching ${stickerDialogues.length} stickers...`);
+            const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC';
             
-            // 1. Handle Sticker (Insert as separate dialogue FIRST)
-            if (d.sticker_keyword) {
+            // Parallel fetch all stickers
+            const stickerPromises = stickerDialogues.map(async (d) => {
                 try {
-                    const apiKey = process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC';
                     const response = await axios.get(`https://api.giphy.com/v1/stickers/search`, {
                         params: { api_key: apiKey, q: d.sticker_keyword, limit: 10, rating: 'pg-13' }
                     });
                     
                     if (response.data.data.length > 0) {
                         const randomIndex = Math.floor(Math.random() * response.data.data.length);
-                        const gifUrl = response.data.data[randomIndex].images.fixed_height.url;
-                        
-                        // Smart Reaction: ถ้าคนเดิมพิมพ์ต่อกัน ลด reaction
-                        const stickerReaction = (d.sender === previousSender) 
-                            ? TIMING.BURST_REACTION_DELAY 
-                            : TIMING.DEFAULT_REACTION_DELAY;
-                        
-                        await Dialogue.add(targetProjectId, {
-                            sender: d.sender,
-                            message: '',
-                            delay: 0.8,
-                            reaction_delay: stickerReaction,
-                            typing_speed: 'fast',
-                            image_path: gifUrl
-                        }, currentOrder++);
-                        
-                        previousSender = d.sender;
-                        console.log(`🧸 Auto-added sticker for '${d.sticker_keyword}' (reaction: ${stickerReaction}s)`);
+                        return { keyword: d.sticker_keyword, url: response.data.data[randomIndex].images.fixed_height.url };
                     }
+                    return null;
                 } catch (err) {
                     console.error(`Failed to fetch sticker for '${d.sticker_keyword}':`, err.message);
+                    return null;
                 }
+            });
+            
+            const stickerResults = await Promise.all(stickerPromises);
+            stickerResults.filter(Boolean).forEach(r => stickerMap.set(r.keyword, r.url));
+            console.log(`✅ Fetched ${stickerMap.size} stickers in parallel`);
+        }
+
+        for (const d of story.dialogues) {
+            
+            // 1. Handle Sticker (Insert as separate dialogue FIRST)
+            if (d.sticker_keyword && stickerMap.has(d.sticker_keyword)) {
+                const gifUrl = stickerMap.get(d.sticker_keyword);
+                
+                // Smart Reaction: ถ้าคนเดิมพิมพ์ต่อกัน ลด reaction
+                const stickerReaction = (d.sender === previousSender) 
+                    ? TIMING.BURST_REACTION_DELAY 
+                    : TIMING.DEFAULT_REACTION_DELAY;
+                
+                await Dialogue.add(targetProjectId, {
+                    sender: d.sender,
+                    message: '',
+                    delay: 0.8,
+                    reaction_delay: stickerReaction,
+                    typing_speed: 'fast',
+                    image_path: gifUrl
+                }, currentOrder++);
+                
+                previousSender = d.sender;
+                console.log(`🧸 Added sticker for '${d.sticker_keyword}' (reaction: ${stickerReaction}s)`);
             }
 
             // 2. Handle Text (Insert as separate dialogue SECOND)
@@ -1762,6 +1784,17 @@ app.post('/api/relationships', async (req, res) => {
         }
         const id = await Relationship.upsert(charId1, charId2, score || 50, status || 'friend');
         res.json({ success: true, id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete relationship
+app.delete('/api/relationships/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.run('DELETE FROM relationships WHERE id = ?', [id]);
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

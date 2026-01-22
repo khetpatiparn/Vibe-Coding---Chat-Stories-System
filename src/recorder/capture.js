@@ -823,22 +823,20 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
         
         // ✅ FIX: Use -t to set exact video duration (prevents infinite loop)
         // ============================================
-        // FIX: Compression Artifacts & Color Banding
-        // - crf 18 = Higher quality (lower = better, 0=lossless)
-        // - g 30 = Keyframe every 1 second (30fps) - prevents quality drop at start
-        // - bf 2 = Allow 2 B-frames for smooth motion
-        // - noise filter = Adds slight grain to prevent color banding on solid colors
+        // TikTok Optimized Settings
+        // - crf 23 = Good quality, small file size (TikTok re-compresses anyway)
+        // - preset medium = Balanced speed/compression
+        // - Result: ~35-40 MB/min instead of ~100 MB/min
         // ============================================
         const outputOpts = [
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
-            '-preset', 'slow',       // Better compression efficiency
-            '-crf', '17',            // Even higher quality (was 18)
-            '-g', '30',              // Keyframe every 1 sec (fixes initial blur)
+            '-preset', 'medium',     // Faster render, good compression
+            '-crf', '23',            // TikTok optimized (was 17)
+            '-g', '30',              // Keyframe every 1 sec
             '-bf', '2',              // B-frames for smooth motion
-            '-tune', 'film',         // Tune for film-like content (better gradients)
             '-c:a', 'aac',
-            '-b:a', '192k'           // Higher audio bitrate
+            '-b:a', '128k'           // Standard audio (TikTok limit)
         ];
         
         // Add video filter for anti-banding (stronger for TikTok re-compression)

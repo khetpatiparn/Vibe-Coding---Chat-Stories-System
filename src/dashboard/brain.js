@@ -304,6 +304,7 @@ function renderRelationships() {
                         </div>
                         <span class="score-text" style="color: ${scoreColor};">${r.score}</span>
                         <button class="btn-edit" onclick="editRelationship(${otherCharId}, ${r.score}, '${r.status}')">Edit</button>
+                        <button class="btn-delete" onclick="deleteRelationship(${r.id})" title="Delete">🗑️</button>
                     </div>
                 </div>
             `;
@@ -406,6 +407,25 @@ function editRelationship(otherCharId, score, status) {
     if (score >= 70) display.style.color = '#51cf66';
     else if (score >= 40) display.style.color = '#ffd43b';
     else display.style.color = '#ff6b6b';
+}
+
+async function deleteRelationship(relId) {
+    if (!confirm('ลบความสัมพันธ์นี้?')) return;
+    
+    try {
+        const res = await fetch(`/api/relationships/${relId}`, {
+            method: 'DELETE'
+        });
+        
+        if (res.ok) {
+            await loadCharacterData(selectedCharacter.id);
+        } else {
+            alert('Failed to delete relationship');
+        }
+    } catch (err) {
+        console.error('Failed to delete relationship:', err);
+        alert('Failed to delete relationship');
+    }
 }
 
 async function saveRelationship() {

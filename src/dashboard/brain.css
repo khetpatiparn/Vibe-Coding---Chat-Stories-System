@@ -270,6 +270,22 @@
     background: var(--primary);
 }
 
+.relationship-item .btn-delete {
+    background: transparent;
+    border: 1px solid #ff6b6b;
+    color: #ff6b6b;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: 8px;
+}
+
+.relationship-item .btn-delete:hover {
+    background: #ff6b6b;
+    color: white;
+}
+
 /* Add Relationship Button */
 .btn-add-rel {
     display: flex;

@@ -380,7 +380,7 @@ class ChatStory {
     // console.log("Rendering message:", item.sender, "char:", char, "side:", char?.side);
     
     // If char is undefined or has no side, try to determine from message data
-    const sideClass = char && char.side ? char.side : "left";
+    const sideClass = (char && char.side && char.side !== "") ? char.side : "left";
     msgDiv.classList.add("message", sideClass);
     if (isConsecutive) msgDiv.classList.add("consecutive");
 

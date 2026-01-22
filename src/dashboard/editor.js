@@ -623,7 +623,6 @@ function exportProjectAsJSON() {
             delay: d.delay,
             reaction_delay: d.reaction_delay,
             typing_speed: d.typing_speed,
-            typing_speed: d.typing_speed,
             seq_order: d.seq_order,
             image_path: d.image_path
         }))
