@@ -1056,12 +1056,27 @@ const Memory = {
         });
     },
 
+    // Update a memory (Edit)
+    update: (id, memoryText, type, importance) => {
+        return new Promise((resolve, reject) => {
+            db.run(`UPDATE memories SET memory_text = ?, type = ?, importance = ? WHERE id = ?`,
+                [memoryText, type, importance, id],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+        });
+    },
+
     // Get all memories for a character (for Brain Tab UI)
     getAllForCharacter: (charId) => {
         return new Promise((resolve, reject) => {
-            db.all(`SELECT m.*, c.display_name as about_name
+            db.all(`SELECT m.*, 
+                    c.display_name as about_name,
+                    p.title as source_project_title
                     FROM memories m
                     LEFT JOIN custom_characters c ON m.about_char_id = c.id
+                    LEFT JOIN projects p ON m.source_project_id = p.id
                     WHERE m.owner_char_id = ?
                     ORDER BY m.created_at DESC`, [charId], (err, rows) => {
                 if (err) reject(err);

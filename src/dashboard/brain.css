@@ -197,6 +197,94 @@
     color: #ff6b6b;
 }
 
+.memory-item .btn-edit {
+    background: transparent;
+    border: none;
+    color: var(--text-gray);
+    cursor: pointer;
+    padding: 5px;
+    font-size: 1rem;
+    transition: color 0.2s;
+}
+
+.memory-item .btn-edit:hover {
+    color: #4dabf7;
+}
+
+/* Source Badge */
+.memory-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.source-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.source-badge.manual {
+    background: rgba(130, 130, 130, 0.2);
+    color: #aaa;
+}
+
+.source-badge.from-project {
+    background: rgba(78, 159, 230, 0.2);
+    color: #4e9fe6;
+}
+
+/* Filter Bar */
+.memory-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 15px;
+    background: var(--bg-dark);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.filter-label {
+    color: var(--text-gray);
+    font-size: 0.85rem;
+    margin-right: 5px;
+}
+
+.filter-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-gray);
+    padding: 5px 10px;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.filter-btn:hover {
+    border-color: var(--primary);
+    color: white;
+}
+
+.filter-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.filter-count {
+    background: rgba(255,255,255,0.2);
+    padding: 1px 5px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    margin-left: 3px;
+}
+
 /* Relationship Items */
 .relationship-item {
     display: flex;

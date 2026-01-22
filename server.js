@@ -961,6 +961,21 @@ app.post('/api/render/:id', async (req, res) => {
         // Get story data
         let story = await exportStoryJSON(projectId);
         
+        // 🆕 Auto-generate TTS if missing but has room_name
+        if (!story.intro_path && story.room_name) {
+            try {
+                console.log(`🎙️ No intro TTS found, generating for: ${story.room_name}`);
+                const introResult = await generateIntroTTS(story.room_name, projectId, story.category || 'funny');
+                if (introResult && introResult.audioPath) {
+                    await Project.updateIntroPath(projectId, introResult.audioPath);
+                    story.intro_path = introResult.audioPath; // Update story object too
+                    console.log(`✅ Auto-generated intro TTS: ${introResult.audioPath}`);
+                }
+            } catch (ttsErr) {
+                console.warn('Auto TTS generation failed:', ttsErr.message);
+            }
+        }
+        
         // Filter dialogues by range if specified
         if (dialogueRange && dialogueRange.start && dialogueRange.end) {
             const start = dialogueRange.start - 1; // Convert to 0-indexed
@@ -1124,6 +1139,38 @@ app.post('/api/import', async (req, res) => {
         }
         
         console.log(`✅ Imported ${data.dialogues.length} dialogues as new project ID: ${projectId}`);
+        
+        // 🆕 Import all project settings (theme, room_name, visibility, etc.)
+        const roomName = data.room_name || data.project?.room_name || title;
+        const theme = data.theme || data.project?.theme || 'default';
+        const category = data.category || data.project?.category || 'funny';
+        const customHeaderName = data.custom_header_name || data.project?.custom_header_name || null;
+        const showPartnerName = data.show_partner_name ?? data.project?.show_partner_name ?? 1;
+        const showMyName = data.show_my_name ?? data.project?.show_my_name ?? 0;
+        
+        // Apply all settings
+        if (roomName) await Project.updateRoomName(projectId, roomName);
+        if (theme !== 'default') await Project.updateTheme(projectId, theme);
+        if (customHeaderName) await Project.updateCustomHeaderName(projectId, customHeaderName);
+        await Project.updateSettings(projectId, {
+            show_partner_name: showPartnerName,
+            show_my_name: showMyName
+        });
+        
+        // Auto-generate TTS
+        if (roomName) {
+            try {
+                const introResult = await generateIntroTTS(roomName, projectId, category);
+                if (introResult && introResult.audioPath) {
+                    await Project.updateIntroPath(projectId, introResult.audioPath);
+                    console.log(`🎙️ Auto-generated intro TTS for imported project: ${roomName}`);
+                }
+            } catch (ttsErr) {
+                console.warn('TTS generation skipped:', ttsErr.message);
+            }
+        }
+        
+        console.log(`📦 Imported settings: theme=${theme}, room=${roomName}, header=${customHeaderName}`);
         res.json({ success: true, projectId, dialogueCount: data.dialogues.length });
         
     } catch (err) {
@@ -1624,6 +1671,20 @@ app.post('/api/memories', async (req, res) => {
 app.delete('/api/memories/:id', async (req, res) => {
     try {
         await Memory.delete(Number(req.params.id));
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update a memory (Edit)
+app.put('/api/memories/:id', async (req, res) => {
+    try {
+        const { memoryText, type, importance } = req.body;
+        if (!memoryText) {
+            return res.status(400).json({ error: 'memoryText required' });
+        }
+        await Memory.update(Number(req.params.id), memoryText, type, importance);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

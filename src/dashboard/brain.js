@@ -7,6 +7,8 @@ let characters = [];
 let selectedCharacter = null;
 let memories = [];
 let relationships = [];
+let editingMemoryId = null; // Track if we're editing
+let currentFilter = 'all'; // Filter: 'all', 'manual', or project_id
 
 // DOM Elements
 const characterGridView = document.getElementById('character-grid-view');
@@ -143,11 +145,16 @@ function setupEventListeners() {
     
     // Add Memory Button
     btnAddMemory.addEventListener('click', () => {
+        editingMemoryId = null; // Reset edit mode
+        document.getElementById('memory-form').reset();
+        document.getElementById('importance-value').textContent = '5';
+        modalAddMemory.querySelector('h2').textContent = 'Add New Memory';
         modalAddMemory.classList.remove('hidden');
     });
 
     // Cancel Memory Modal
     document.getElementById('btn-cancel-memory').addEventListener('click', () => {
+        editingMemoryId = null; // Reset edit mode
         modalAddMemory.classList.add('hidden');
     });
 
@@ -231,18 +238,35 @@ function renderMemories() {
     const factsList = document.getElementById('facts-list');
     const eventsList = document.getElementById('events-list');
     
-    const facts = memories.filter(m => m.type === 'fact');
-    const events = memories.filter(m => m.type === 'event');
+    // Apply filter
+    let filteredMemories = memories;
+    if (currentFilter === 'manual') {
+        filteredMemories = memories.filter(m => !m.source_project_id);
+    } else if (currentFilter !== 'all') {
+        filteredMemories = memories.filter(m => m.source_project_id == currentFilter);
+    }
+    
+    const facts = filteredMemories.filter(m => m.type === 'fact');
+    const events = filteredMemories.filter(m => m.type === 'event');
+    
+    // Render filter bar
+    renderFilterBar();
     
     // Render facts
     if (facts.length === 0) {
         factsList.innerHTML = '<div class="empty-memory">No facts recorded yet</div>';
     } else {
         factsList.innerHTML = facts.map(m => `
-            <div class="memory-item" data-id="${m.id}">
-                <span class="memory-text">${m.memory_text}</span>
+            <div class="memory-item" data-id="${m.id}" data-source="${m.source_project_id || 'manual'}">
+                <div class="memory-content">
+                    <span class="memory-text">${m.memory_text}</span>
+                    <span class="source-badge ${m.source_project_id ? 'from-project' : 'manual'}">
+                        ${m.source_project_id ? `📝 ${m.source_project_title || 'Project #' + m.source_project_id}` : '✋ Manual'}
+                    </span>
+                </div>
                 <div class="memory-meta">
                     <span class="importance-badge">⭐ ${m.importance}</span>
+                    <button class="btn-edit" onclick="editMemory(${m.id}, '${escapeQuotes(m.memory_text)}', 'fact', ${m.importance})">✏️</button>
                     <button class="btn-delete" onclick="deleteMemory(${m.id})">🗑️</button>
                 </div>
             </div>
@@ -254,15 +278,76 @@ function renderMemories() {
         eventsList.innerHTML = '<div class="empty-memory">No events recorded yet</div>';
     } else {
         eventsList.innerHTML = events.map(m => `
-            <div class="memory-item event" data-id="${m.id}">
-                <span class="memory-text">${m.memory_text}</span>
+            <div class="memory-item event" data-id="${m.id}" data-source="${m.source_project_id || 'manual'}">
+                <div class="memory-content">
+                    <span class="memory-text">${m.memory_text}</span>
+                    <span class="source-badge ${m.source_project_id ? 'from-project' : 'manual'}">
+                        ${m.source_project_id ? `📝 ${m.source_project_title || 'Project #' + m.source_project_id}` : '✋ Manual'}
+                    </span>
+                </div>
                 <div class="memory-meta">
                     <span class="importance-badge">⭐ ${m.importance}</span>
+                    <button class="btn-edit" onclick="editMemory(${m.id}, '${escapeQuotes(m.memory_text)}', 'event', ${m.importance})">✏️</button>
                     <button class="btn-delete" onclick="deleteMemory(${m.id})">🗑️</button>
                 </div>
             </div>
         `).join('');
     }
+}
+
+// Render filter bar
+function renderFilterBar() {
+    let filterContainer = document.getElementById('memory-filter');
+    const panelHeader = document.querySelector('.panel-header');
+    
+    // Safety check: only render if panel-header exists (memory panel is visible)
+    if (!panelHeader) return;
+    
+    if (!filterContainer) {
+        // Create filter container if not exists
+        filterContainer = document.createElement('div');
+        filterContainer.id = 'memory-filter';
+        filterContainer.className = 'memory-filter';
+        panelHeader.after(filterContainer);
+    }
+    
+    // Get unique sources
+    const sources = new Map();
+    sources.set('all', { label: '📊 All', count: memories.length });
+    sources.set('manual', { label: '✋ Manual', count: memories.filter(m => !m.source_project_id).length });
+    
+    memories.forEach(m => {
+        if (m.source_project_id) {
+            const key = m.source_project_id.toString();
+            if (!sources.has(key)) {
+                sources.set(key, { 
+                    label: `📝 ${m.source_project_title || 'Project #' + m.source_project_id}`,
+                    count: 0 
+                });
+            }
+            sources.get(key).count++;
+        }
+    });
+    
+    filterContainer.innerHTML = `
+        <span class="filter-label">🔍 Filter:</span>
+        ${Array.from(sources.entries()).map(([key, data]) => `
+            <button class="filter-btn ${currentFilter === key ? 'active' : ''}" onclick="setMemoryFilter('${key}')">
+                ${data.label} <span class="filter-count">${data.count}</span>
+            </button>
+        `).join('')}
+    `;
+}
+
+// Set filter
+function setMemoryFilter(filter) {
+    currentFilter = filter;
+    renderMemories();
+}
+
+// Helper: Escape quotes for inline onclick
+function escapeQuotes(str) {
+    return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 function renderRelationships() {
@@ -337,27 +422,60 @@ async function saveMemory() {
     const importance = parseInt(document.getElementById('memory-importance').value);
     
     try {
-        const res = await fetch('/api/memories', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ownerCharId: selectedCharacter.id,
-                memoryText: text,
-                type: type,
-                importance: importance
-            })
-        });
+        let res;
+        if (editingMemoryId) {
+            // Update existing memory
+            res = await fetch(`/api/memories/${editingMemoryId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    memoryText: text,
+                    type: type,
+                    importance: importance
+                })
+            });
+        } else {
+            // Create new memory
+            res = await fetch('/api/memories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ownerCharId: selectedCharacter.id,
+                    memoryText: text,
+                    type: type,
+                    importance: importance
+                })
+            });
+        }
         
         if (res.ok) {
             modalAddMemory.classList.add('hidden');
             document.getElementById('memory-form').reset();
             document.getElementById('importance-value').textContent = '5';
+            editingMemoryId = null; // Reset edit mode
             await loadCharacterData(selectedCharacter.id);
         }
     } catch (err) {
         console.error('Failed to save memory:', err);
         alert('Failed to save memory');
     }
+}
+
+// Edit Memory function
+function editMemory(id, text, type, importance) {
+    editingMemoryId = id;
+    
+    // Populate form with existing values
+    document.getElementById('memory-type').value = type;
+    document.getElementById('memory-text').value = text.replace(/\\'/g, "'").replace(/&quot;/g, '"');
+    document.getElementById('memory-importance').value = importance;
+    document.getElementById('importance-value').textContent = importance;
+    
+    // Update modal title
+    modalAddMemory.querySelector('h2').textContent = 'Edit Memory';
+    
+    // Show modal
+    modalAddMemory.classList.remove('hidden');
 }
 
 async function deleteMemory(id) {
