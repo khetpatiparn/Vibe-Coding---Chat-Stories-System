@@ -2739,36 +2739,28 @@ async function generateDescriptions() {
             throw new Error('No descriptions generated');
         }
         
-        // Render descriptions - Horizontal cards
-        listEl.innerHTML = data.descriptions.map(desc => `
+        // Render descriptions - Clean simple cards
+        listEl.innerHTML = data.descriptions.map((desc, index) => `
             <div class="description-card" style="
-                background: var(--bg-dark);
-                border: 1px solid var(--border);
-                border-radius: 8px;
-                padding: 12px;
+                background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+                border: 1px solid #4f46e5;
+                border-radius: 12px;
+                padding: 16px;
                 display: flex;
                 flex-direction: column;
-                height: 100%;
-                min-height: 280px;
-            ">
-                <div style="margin-bottom: 10px;">
-                    <div style="font-weight: 600; color: white; margin-bottom: 5px; font-size: 0.9rem;">
-                        ${desc.strategyName || desc.strategy}
-                    </div>
-                    <div style="color: var(--text-gray); font-size: 0.75rem; line-height: 1.4;">
-                        ${desc.reason || ''}
-                    </div>
-                </div>
+                justify-content: space-between;
+                min-height: 160px;
+                transition: transform 0.2s, box-shadow 0.2s;
+            " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 25px rgba(79,70,229,0.3)';"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
                 <div class="description-text" id="desc-text-${desc.id}" style="
-                    background: var(--bg-darker);
-                    padding: 10px;
-                    border-radius: 6px;
                     color: white;
-                    font-size: 0.85rem;
-                    line-height: 1.5;
-                    border-left: 3px solid #4f46e5;
+                    font-size: 1.1rem;
+                    line-height: 1.6;
+                    font-weight: 500;
                     flex: 1;
-                    margin-bottom: 10px;
+                    display: flex;
+                    align-items: center;
                 ">
                     ${desc.text}
                 </div>
@@ -2777,15 +2769,17 @@ async function generateDescriptions() {
                         background: #4f46e5;
                         color: white;
                         border: none;
-                        padding: 8px 12px;
-                        border-radius: 6px;
+                        padding: 10px 16px;
+                        border-radius: 8px;
                         cursor: pointer;
-                        font-size: 0.8rem;
-                        transition: background 0.2s;
+                        font-size: 0.85rem;
+                        font-weight: 500;
+                        transition: all 0.2s;
                         width: 100%;
+                        margin-top: 12px;
                     "
-                    onmouseover="this.style.background='#6366f1'"
-                    onmouseout="this.style.background='#4f46e5'">
+                    onmouseover="this.style.background='#6366f1'; this.style.transform='scale(1.02)';"
+                    onmouseout="this.style.background='#4f46e5'; this.style.transform='scale(1)';">
                     📋 Copy
                 </button>
             </div>
