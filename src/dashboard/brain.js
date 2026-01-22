@@ -8,6 +8,7 @@ let selectedCharacter = null;
 let memories = [];
 let relationships = [];
 let editingMemoryId = null; // Track if we're editing
+let editingIsSharedEvent = false; // Track if editing shared event
 let currentFilter = 'all'; // Filter: 'all', 'manual', or project_id
 
 // DOM Elements
@@ -22,6 +23,30 @@ const memoryCount = document.getElementById('memory-count');
 // Modal Elements
 const modalAddMemory = document.getElementById('modal-add-memory');
 const modalAddRel = document.getElementById('modal-add-relationship');
+
+// ============================================
+// Global Functions (for onclick handlers)
+// ============================================
+window.toggleMemoryGroup = function(header, type, key) {
+    const group = header.parentElement;
+    const items = group.querySelector('.group-items');
+    const icon = header.querySelector('.collapse-icon');
+    const isCollapsed = items.style.display === 'none';
+    
+    items.style.display = isCollapsed ? 'block' : 'none';
+    icon.textContent = isCollapsed ? '▼' : '▶';
+    group.classList.toggle('collapsed', !isCollapsed);
+    
+    // Save state to localStorage
+    const collapsedGroups = JSON.parse(localStorage.getItem('brainCollapsedGroups') || '{}');
+    collapsedGroups[`${selectedCharacter?.id}_${type}_${key}`] = !isCollapsed;
+    localStorage.setItem('brainCollapsedGroups', JSON.stringify(collapsedGroups));
+};
+
+window.setMemoryFilter = function(filter) {
+    currentFilter = filter;
+    renderMemories();
+};
 
 // ============================================
 // Initialization
@@ -252,47 +277,88 @@ function renderMemories() {
     // Render filter bar
     renderFilterBar();
     
-    // Render facts
+    // Render facts (grouped and collapsible)
     if (facts.length === 0) {
         factsList.innerHTML = '<div class="empty-memory">No facts recorded yet</div>';
     } else {
-        factsList.innerHTML = facts.map(m => `
-            <div class="memory-item" data-id="${m.id}" data-source="${m.source_project_id || 'manual'}">
-                <div class="memory-content">
-                    <span class="memory-text">${m.memory_text}</span>
-                    <span class="source-badge ${m.source_project_id ? 'from-project' : 'manual'}">
-                        ${m.source_project_id ? `📝 ${m.source_project_title || 'Project #' + m.source_project_id}` : '✋ Manual'}
-                    </span>
-                </div>
-                <div class="memory-meta">
-                    <span class="importance-badge">⭐ ${m.importance}</span>
-                    <button class="btn-edit" onclick="editMemory(${m.id}, '${escapeQuotes(m.memory_text)}', 'fact', ${m.importance})">✏️</button>
-                    <button class="btn-delete" onclick="deleteMemory(${m.id})">🗑️</button>
-                </div>
-            </div>
-        `).join('');
+        factsList.innerHTML = renderGroupedMemories(facts, 'fact');
     }
     
-    // Render events
+    // Render events (with sync indicator)
     if (events.length === 0) {
         eventsList.innerHTML = '<div class="empty-memory">No events recorded yet</div>';
     } else {
         eventsList.innerHTML = events.map(m => `
-            <div class="memory-item event" data-id="${m.id}" data-source="${m.source_project_id || 'manual'}">
+            <div class="memory-item event" data-id="${m.id}" data-source="${m.source_project_id || 'manual'}" data-shared="${m.shared_event_id || ''}">
                 <div class="memory-content">
                     <span class="memory-text">${m.memory_text}</span>
                     <span class="source-badge ${m.source_project_id ? 'from-project' : 'manual'}">
                         ${m.source_project_id ? `📝 ${m.source_project_title || 'Project #' + m.source_project_id}` : '✋ Manual'}
                     </span>
+                    ${m.shared_event_id ? '<span class="sync-badge" title="Synced across all characters">🔗</span>' : ''}
                 </div>
                 <div class="memory-meta">
                     <span class="importance-badge">⭐ ${m.importance}</span>
-                    <button class="btn-edit" onclick="editMemory(${m.id}, '${escapeQuotes(m.memory_text)}', 'event', ${m.importance})">✏️</button>
-                    <button class="btn-delete" onclick="deleteMemory(${m.id})">🗑️</button>
+                    <button class="btn-edit" onclick="editMemory(${m.id}, '${escapeQuotes(m.memory_text)}', 'event', ${m.importance}, ${m.shared_event_id ? 'true' : 'false'})">✏️</button>
+                    <button class="btn-delete" onclick="deleteMemory(${m.id}, ${m.shared_event_id ? 'true' : 'false'})">🗑️</button>
                 </div>
             </div>
         `).join('');
     }
+}
+
+// Render grouped and collapsible memories (for facts)
+function renderGroupedMemories(items, type) {
+    // Group by source
+    const groups = new Map();
+    groups.set('manual', []);
+    
+    items.forEach(m => {
+        const key = m.source_project_id ? m.source_project_id.toString() : 'manual';
+        if (!groups.has(key)) {
+            groups.set(key, []);
+        }
+        groups.get(key).push(m);
+    });
+    
+    // Get collapsed state from localStorage
+    const collapsedGroups = JSON.parse(localStorage.getItem('brainCollapsedGroups') || '{}');
+    
+    let html = '';
+    
+    groups.forEach((groupItems, key) => {
+        if (groupItems.length === 0) return;
+        
+        const isCollapsed = collapsedGroups[`${selectedCharacter?.id}_${type}_${key}`] || false;
+        const firstItem = groupItems[0];
+        const groupLabel = key === 'manual' ? '✋ Manual Entries' : `📝 ${firstItem.source_project_title || 'Project #' + key}`;
+        
+        html += `
+            <div class="memory-group ${isCollapsed ? 'collapsed' : ''}" data-group="${key}">
+                <div class="group-header" onclick="toggleMemoryGroup(this, '${type}', '${key}')">
+                    <span class="collapse-icon">${isCollapsed ? '▶' : '▼'}</span>
+                    <span class="group-label">${groupLabel}</span>
+                    <span class="group-count">(${groupItems.length})</span>
+                </div>
+                <div class="group-items" style="display: ${isCollapsed ? 'none' : 'block'}">
+                    ${groupItems.map(m => `
+                        <div class="memory-item" data-id="${m.id}" data-source="${m.source_project_id || 'manual'}">
+                            <div class="memory-content">
+                                <span class="memory-text">${m.memory_text}</span>
+                            </div>
+                            <div class="memory-meta">
+                                <span class="importance-badge">⭐ ${m.importance}</span>
+                                <button class="btn-edit" onclick="editMemory(${m.id}, '${escapeQuotes(m.memory_text)}', 'fact', ${m.importance}, false)">✏️</button>
+                                <button class="btn-delete" onclick="deleteMemory(${m.id}, false)">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    });
+    
+    return html;
 }
 
 // Render filter bar
@@ -337,12 +403,6 @@ function renderFilterBar() {
             </button>
         `).join('')}
     `;
-}
-
-// Set filter
-function setMemoryFilter(filter) {
-    currentFilter = filter;
-    renderMemories();
 }
 
 // Helper: Escape quotes for inline onclick
@@ -420,6 +480,8 @@ async function saveMemory() {
     const type = document.getElementById('memory-type').value;
     const text = document.getElementById('memory-text').value;
     const importance = parseInt(document.getElementById('memory-importance').value);
+    const syncCheckbox = document.getElementById('sync-shared-event');
+    const syncSharedEvent = syncCheckbox ? syncCheckbox.checked : false;
     
     try {
         let res;
@@ -431,7 +493,8 @@ async function saveMemory() {
                 body: JSON.stringify({
                     memoryText: text,
                     type: type,
-                    importance: importance
+                    importance: importance,
+                    syncSharedEvent: syncSharedEvent
                 })
             });
         } else {
@@ -448,11 +511,19 @@ async function saveMemory() {
             });
         }
         
+        const result = await res.json();
         if (res.ok) {
             modalAddMemory.classList.add('hidden');
             document.getElementById('memory-form').reset();
             document.getElementById('importance-value').textContent = '5';
             editingMemoryId = null; // Reset edit mode
+            editingIsSharedEvent = false;
+            
+            // Show sync feedback
+            if (result.synced && result.synced > 1) {
+                alert(`✅ Updated ${result.synced} characters at once!`);
+            }
+            
             await loadCharacterData(selectedCharacter.id);
         }
     } catch (err) {
@@ -462,8 +533,9 @@ async function saveMemory() {
 }
 
 // Edit Memory function
-function editMemory(id, text, type, importance) {
+function editMemory(id, text, type, importance, isShared = false) {
     editingMemoryId = id;
+    editingIsSharedEvent = isShared;
     
     // Populate form with existing values
     document.getElementById('memory-type').value = type;
@@ -474,16 +546,43 @@ function editMemory(id, text, type, importance) {
     // Update modal title
     modalAddMemory.querySelector('h2').textContent = 'Edit Memory';
     
+    // Show/hide sync checkbox for shared events
+    const syncOption = document.getElementById('sync-option');
+    if (syncOption) {
+        if (isShared && type === 'event') {
+            syncOption.style.display = 'flex';
+            document.getElementById('sync-shared-event').checked = true;
+        } else {
+            syncOption.style.display = 'none';
+        }
+    }
+    
     // Show modal
     modalAddMemory.classList.remove('hidden');
 }
 
-async function deleteMemory(id) {
-    if (!confirm('Delete this memory?')) return;
+async function deleteMemory(id, isShared = false) {
+    let confirmMsg = 'Delete this memory?';
+    let syncDelete = false;
+    
+    if (isShared) {
+        const choice = confirm('🔗 This event is shared across multiple characters.\n\nClick OK to delete from ALL characters.\nClick Cancel to delete only this copy.');
+        if (choice === null) return; // User cancelled the action
+        syncDelete = choice;
+        if (!syncDelete && !confirm('Delete only this copy?')) return;
+    } else {
+        if (!confirm(confirmMsg)) return;
+    }
     
     try {
-        const res = await fetch(`/api/memories/${id}`, { method: 'DELETE' });
+        const url = syncDelete ? `/api/memories/${id}?sync=true` : `/api/memories/${id}`;
+        const res = await fetch(url, { method: 'DELETE' });
+        const result = await res.json();
+        
         if (res.ok) {
+            if (result.deleted > 1) {
+                alert(`🗑️ Deleted from ${result.deleted} characters!`);
+            }
             await loadCharacterData(selectedCharacter.id);
         }
     } catch (err) {

@@ -550,6 +550,105 @@
     color: var(--primary);
 }
 
+/* ============================================
+   Collapsible Memory Groups
+   ============================================ */
+.memory-group {
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg-dark);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.group-header:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.collapse-icon {
+    font-size: 0.8rem;
+    width: 16px;
+    color: var(--text-gray);
+}
+
+.group-label {
+    flex: 1;
+    font-weight: 500;
+    color: var(--text-white);
+}
+
+.group-count {
+    font-size: 0.8rem;
+    color: var(--text-gray);
+}
+
+.group-items {
+    background: var(--bg-panel);
+    padding: 4px 0;
+}
+
+.group-items .memory-item {
+    margin: 4px 8px;
+    border-radius: 6px;
+}
+
+/* Sync Badge for Shared Events */
+.sync-badge {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #7048e8, #4c6ef5);
+    color: white;
+    margin-left: 6px;
+    animation: pulse-sync 2s infinite;
+}
+
+@keyframes pulse-sync {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Sync Option in Modal */
+.sync-option {
+    margin-top: 10px;
+    padding: 12px;
+    background: rgba(112, 72, 232, 0.1);
+    border: 1px solid rgba(112, 72, 232, 0.3);
+    border-radius: 8px;
+}
+
+.sync-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--text-white);
+}
+
+.sync-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #7048e8;
+}
+
+.sync-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.8rem;
+    color: var(--text-gray);
+    padding-left: 26px;
+}
+
 /* Visibility Utilities */
 .hidden {
     display: none !important;

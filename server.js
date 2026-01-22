@@ -1667,25 +1667,54 @@ app.post('/api/memories', async (req, res) => {
     }
 });
 
-// Delete a memory
+// Delete a memory - with shared event sync support
 app.delete('/api/memories/:id', async (req, res) => {
     try {
-        await Memory.delete(Number(req.params.id));
-        res.json({ success: true });
+        const memId = Number(req.params.id);
+        const syncDelete = req.query.sync === 'true';
+        
+        if (syncDelete) {
+            const sharedEventId = await Memory.getSharedEventId(memId);
+            if (sharedEventId) {
+                // Delete ALL copies with the same shared_event_id
+                const deletedCount = await Memory.deleteBySharedId(sharedEventId);
+                console.log(`🗑️ Synced event delete: ${deletedCount} copies removed (shared_event_id: ${sharedEventId})`);
+                return res.json({ success: true, deleted: deletedCount });
+            }
+        }
+        
+        // Regular single delete
+        await Memory.delete(memId);
+        res.json({ success: true, deleted: 1 });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// Update a memory (Edit)
+// Update a memory (Edit) - with shared event sync
 app.put('/api/memories/:id', async (req, res) => {
     try {
-        const { memoryText, type, importance } = req.body;
+        const { memoryText, type, importance, syncSharedEvent } = req.body;
         if (!memoryText) {
             return res.status(400).json({ error: 'memoryText required' });
         }
-        await Memory.update(Number(req.params.id), memoryText, type, importance);
-        res.json({ success: true });
+        
+        const memId = Number(req.params.id);
+        
+        // Check if this is a shared event and user wants to sync
+        if (syncSharedEvent) {
+            const sharedEventId = await Memory.getSharedEventId(memId);
+            if (sharedEventId) {
+                // Update ALL copies with the same shared_event_id
+                const updatedCount = await Memory.updateBySharedId(sharedEventId, memoryText, importance);
+                console.log(`✏️ Synced event update: ${updatedCount} copies updated (shared_event_id: ${sharedEventId})`);
+                return res.json({ success: true, synced: updatedCount });
+            }
+        }
+        
+        // Regular single update
+        await Memory.update(memId, memoryText, type, importance);
+        res.json({ success: true, synced: 1 });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1760,12 +1789,14 @@ app.post('/api/memories/summarize', async (req, res) => {
             console.log(`Saved ${savedMemories.length} facts`);
         }
         
-        // Save event summary to ALL participating characters (Shared Memory)
+        // Save event summary to ALL participating characters (Shared Memory with Sync ID)
         if (summary.event_summary && characterIds && characterIds.length > 0) {
+            // Generate unique shared_event_id for syncing edits across all copies
+            const sharedEventId = `evt_${projectId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             for (const charId of characterIds) {
-                await Memory.add(charId, null, summary.event_summary, 'event', 7, projectId);
+                await Memory.addWithSharedId(charId, null, summary.event_summary, 'event', 7, projectId, sharedEventId);
             }
-            console.log(`Saved event summary to ${characterIds.length} characters`);
+            console.log(`Saved event summary to ${characterIds.length} characters (shared_event_id: ${sharedEventId})`);
         }
         
         // Update relationships (Round Robin for all pairs)

@@ -220,13 +220,29 @@ function initSchema() {
             memory_text TEXT NOT NULL,
             type TEXT DEFAULT 'fact',
             importance INTEGER DEFAULT 5,
+            shared_event_id TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(owner_char_id) REFERENCES custom_characters(id) ON DELETE CASCADE,
             FOREIGN KEY(about_char_id) REFERENCES custom_characters(id) ON DELETE SET NULL,
             FOREIGN KEY(source_project_id) REFERENCES projects(id) ON DELETE CASCADE
         )`, (err) => {
             if (err) console.error('Failed to create memories table:', err);
-            else console.log('✅ memories table ready (Sitcom Engine)');
+            else {
+                console.log('✅ memories table ready (Sitcom Engine)');
+                // Migration: Add shared_event_id column if not exists
+                db.all("PRAGMA table_info(memories)", (err, rows) => {
+                    if (!err) {
+                        const hasSharedEventId = rows.some(r => r.name === 'shared_event_id');
+                        if (!hasSharedEventId) {
+                            console.log('Migrating: Adding shared_event_id to memories...');
+                            db.run("ALTER TABLE memories ADD COLUMN shared_event_id TEXT", (err) => {
+                                if (err) console.error("Migration failed (shared_event_id):", err);
+                                else console.log("✅ Migration successful: shared_event_id added.");
+                            });
+                        }
+                    }
+                });
+            }
         });
 
         // 8. Relationships Table (Sitcom Engine - Character Dynamics)
@@ -1046,6 +1062,19 @@ const Memory = {
         });
     },
 
+    // Add memory with shared event ID (for events that sync across characters)
+    addWithSharedId: (ownerCharId, aboutCharId, memoryText, type = 'event', importance = 5, sourceProjectId = null, sharedEventId = null) => {
+        return new Promise((resolve, reject) => {
+            db.run(`INSERT INTO memories (owner_char_id, about_char_id, memory_text, type, importance, source_project_id, shared_event_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [ownerCharId, aboutCharId, memoryText, type, importance, sourceProjectId, sharedEventId],
+                function(err) {
+                    if (err) reject(err);
+                    else resolve(this.lastID);
+                });
+        });
+    },
+
     // Delete a specific memory
     delete: (id) => {
         return new Promise((resolve, reject) => {
@@ -1068,6 +1097,38 @@ const Memory = {
         });
     },
 
+    // Update all memories with same shared_event_id (Sync Events)
+    updateBySharedId: (sharedEventId, memoryText, importance) => {
+        return new Promise((resolve, reject) => {
+            db.run(`UPDATE memories SET memory_text = ?, importance = ? WHERE shared_event_id = ?`,
+                [memoryText, importance, sharedEventId],
+                function(err) {
+                    if (err) reject(err);
+                    else resolve(this.changes); // จำนวน rows ที่ถูก update
+                });
+        });
+    },
+
+    // Delete all memories with same shared_event_id
+    deleteBySharedId: (sharedEventId) => {
+        return new Promise((resolve, reject) => {
+            db.run(`DELETE FROM memories WHERE shared_event_id = ?`, [sharedEventId], function(err) {
+                if (err) reject(err);
+                else resolve(this.changes);
+            });
+        });
+    },
+
+    // Get shared_event_id from memory id
+    getSharedEventId: (id) => {
+        return new Promise((resolve, reject) => {
+            db.get(`SELECT shared_event_id FROM memories WHERE id = ?`, [id], (err, row) => {
+                if (err) reject(err);
+                else resolve(row?.shared_event_id || null);
+            });
+        });
+    },
+
     // Get all memories for a character (for Brain Tab UI)
     getAllForCharacter: (charId) => {
         return new Promise((resolve, reject) => {
@@ -1078,7 +1139,7 @@ const Memory = {
                     LEFT JOIN custom_characters c ON m.about_char_id = c.id
                     LEFT JOIN projects p ON m.source_project_id = p.id
                     WHERE m.owner_char_id = ?
-                    ORDER BY m.created_at DESC`, [charId], (err, rows) => {
+                    ORDER BY m.type ASC, m.source_project_id DESC, m.importance DESC, m.created_at DESC`, [charId], (err, rows) => {
                 if (err) reject(err);
                 else resolve(rows || []);
             });
