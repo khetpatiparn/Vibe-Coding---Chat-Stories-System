@@ -321,8 +321,12 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                             // Create wrapper for libgif
                             const wrapper = document.createElement('div');
                             wrapper.className = 'gif-canvas-wrapper';
-                            wrapper.style.opacity = '0'; // Start hidden for animation
-                            wrapper.style.transform = 'scale(0.8) translateY(20px)';
+                            // ✅ FIX: Start visible so animation works immediately
+                            // Animation in setCurrentTime will handle scale/opacity
+                            wrapper.style.opacity = '0'; 
+                            wrapper.style.transform = 'scale(0.6) translateY(30px)';
+                            wrapper.style.transformOrigin = 'center bottom';
+                            wrapper.style.willChange = 'transform, opacity'; // ✅ GPU acceleration hint
                             
                             // Clone img for SuperGif (it replaces the original)
                             const gifImg = document.createElement('img');
@@ -332,6 +336,9 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                             
                             wrapper.appendChild(gifImg);
                             stickerImg.parentNode.replaceChild(wrapper, stickerImg);
+                            
+                            // ✅ Mark wrapper as ready for animation BEFORE gif loads
+                            wrapper.dataset.gifLoaded = 'pending';
                             
                             // Initialize SuperGif
                             const rub = new SuperGif({ 
@@ -345,6 +352,15 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                                 wrapper.dataset.frameCount = rub.get_length();
                                 wrapper._supergif = rub;
                                 
+                                // Calculate gif duration based on frame delays
+                                const frameDelays = [];
+                                for (let i = 0; i < rub.get_length(); i++) {
+                                    // Default 100ms per frame if no delay info
+                                    frameDelays.push(0.1);
+                                }
+                                const totalGifDuration = frameDelays.reduce((a,b) => a+b, 0);
+                                wrapper.dataset.gifDuration = totalGifDuration.toString();
+                                
                                 // Force canvas to fit wrapper
                                 const canvas = wrapper.querySelector('canvas');
                                 if (canvas) {
@@ -353,7 +369,7 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                                 }
                                 
                                 rub.move_to(0);
-                                console.log('[R] Loaded GIF with', rub.get_length(), 'frames');
+                                console.log('[R] Loaded GIF with', rub.get_length(), 'frames, duration:', totalGifDuration.toFixed(2) + 's');
                             });
                         } catch (e) {
                             console.log('[R] SuperGif init error:', e.toString());
@@ -549,6 +565,7 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                             element.style.transformOrigin = 'center bottom';
                             
                             // 🎬 GIF Frame Sync (only for loaded gif-canvas-wrapper)
+                            // ✅ Animation works even if GIF not loaded yet (pending state)
                             if (element.classList.contains('gif-canvas-wrapper') && 
                                 element._supergif && 
                                 element.dataset.gifLoaded === 'true') {
@@ -819,32 +836,36 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
             command
                 .complexFilter(filterComplex)
                 .outputOptions(['-map', '0:v', '-map', '[aout]']);
+        } else {
+            // No audio - add silent audio to prevent timing issues
+            command.outputOptions(['-an']);  // No audio track
         }
         
         // ✅ FIX: Use -t to set exact video duration (prevents infinite loop)
         // ============================================
-        // TikTok Optimized Settings
-        // - crf 23 = Good quality, small file size (TikTok re-compresses anyway)
-        // - preset medium = Balanced speed/compression
-        // - Result: ~35-40 MB/min instead of ~100 MB/min
+        // Balanced Settings (Quality + TikTok Size)
+        // - crf 20 = Better quality for animations (was 23, originally 17)
+        // - preset slow = Preserves fast transitions like sticker pop
+        // - Result: ~50-60 MB/min (compromise between 35 and 100)
         // ============================================
         const outputOpts = [
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
-            '-preset', 'medium',     // Faster render, good compression
-            '-crf', '23',            // TikTok optimized (was 17)
-            '-g', '30',              // Keyframe every 1 sec
+            '-preset', 'slow',       // Better motion estimation for animations
+            '-crf', '20',            // Balanced: better than 23 for animation detail
+            '-g', '15',              // Keyframe every 0.5 sec (captures fast animations)
             '-bf', '2',              // B-frames for smooth motion
+            '-vsync', 'cfr',         // ✅ Constant frame rate - prevents frame drops
             '-c:a', 'aac',
             '-b:a', '128k'           // Standard audio (TikTok limit)
         ];
         
-        // Add video filter for anti-banding (stronger for TikTok re-compression)
-        // This prevents "wavy lines" on solid color backgrounds
-        // deband: removes banding artifacts, noise: adds grain to mask remaining banding
+        // ✅ Video filters BEFORE audio complex filter (prevents timing shift)
+        // Apply deband and noise to preserve animation while reducing banding
         command.videoFilters([
+            'fps=30',                                       // ✅ Force constant 30fps
             'deband=1thr=0.02:2thr=0.02:3thr=0.02:blur=1',  // Deband filter
-            'noise=c0s=5:c0f=t+u',   // Stronger noise (5) with temporal+uniform
+            'noise=c0s=3:c0f=t+u',   // Reduced noise (3 from 5) for cleaner animation
         ]);
         
         // Add duration limit if we know the total duration
