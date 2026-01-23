@@ -843,29 +843,23 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
         
         // ✅ FIX: Use -t to set exact video duration (prevents infinite loop)
         // ============================================
-        // Balanced Settings (Quality + TikTok Size)
-        // - crf 20 = Better quality for animations (was 23, originally 17)
-        // - preset slow = Preserves fast transitions like sticker pop
-        // - Result: ~50-60 MB/min (compromise between 35 and 100)
+        // CLEAN Settings - Back to basics
         // ============================================
         const outputOpts = [
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
-            '-preset', 'slow',       // Better motion estimation for animations
-            '-crf', '20',            // Balanced: better than 23 for animation detail
-            '-g', '15',              // Keyframe every 0.5 sec (captures fast animations)
-            '-bf', '2',              // B-frames for smooth motion
-            '-vsync', 'cfr',         // ✅ Constant frame rate - prevents frame drops
+            '-preset', 'medium',     // Balanced speed
+            '-crf', '20',            // Good quality
+            '-g', '30',
+            '-bf', '2',
+            '-vsync', 'cfr',
             '-c:a', 'aac',
-            '-b:a', '128k'           // Standard audio (TikTok limit)
+            '-b:a', '128k'
         ];
         
-        // ✅ Video filters BEFORE audio complex filter (prevents timing shift)
-        // Apply deband and noise to preserve animation while reducing banding
+        // ✅ Minimal filters - NO noise, NO heavy processing
         command.videoFilters([
-            'fps=30',                                       // ✅ Force constant 30fps
-            'deband=1thr=0.02:2thr=0.02:3thr=0.02:blur=1',  // Deband filter
-            'noise=c0s=3:c0f=t+u',   // Reduced noise (3 from 5) for cleaner animation
+            'fps=30',
         ]);
         
         // Add duration limit if we know the total duration
@@ -1053,7 +1047,9 @@ async function recordStory(story, options = {}) {
         };
         
         let videoPath = await assembleVideo(framesDir, outputName, audioOptions);
-        if (!options.keepFrames) await fs.remove(framesDir);
+        // ✅ TEMP: Keep frames for debugging banding issue
+        // if (!options.keepFrames) await fs.remove(framesDir);
+        console.log(`📁 Frames kept at: ${framesDir} (for debugging)`);
         
         // Auto-normalize audio loudness to -14 LUFS (TikTok standard)
         if (options.normalizeAudio !== false) {
