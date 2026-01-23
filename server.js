@@ -1812,11 +1812,14 @@ app.post('/api/memories/summarize', async (req, res) => {
                     
                     const currentRel = await Relationship.get(id1, id2);
                     const currentScore = currentRel ? currentRel.score : 50;
+                    const currentStatus = currentRel ? currentRel.status : 'stranger'; // Keep existing status
+                    
                     // Apply change (maybe diluted for group? or full impact? Let's keep full for now)
                     const newScore = Math.max(0, Math.min(100, currentScore + summary.relationship_impact.change));
                     
-                    await Relationship.upsert(id1, id2, newScore, 'friend');
-                    console.log(`  💕 Relationship ${id1} <-> ${id2}: ${currentScore} → ${newScore}`);
+                    // FIXED: Keep existing status instead of always setting to 'friend'
+                    await Relationship.upsert(id1, id2, newScore, currentStatus);
+                    console.log(`  💕 Relationship ${id1} <-> ${id2}: ${currentScore} → ${newScore} (status: ${currentStatus})`);
                 }
             }
             console.log(`💕 Updated relationships for ${characterIds.length} characters (${summary.relationship_impact.reason})`);
