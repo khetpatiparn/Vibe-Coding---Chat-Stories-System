@@ -131,8 +131,13 @@ body.rendering .message.right {
 
 /* Chat Header */
 #chat-header {
-  /* Gradient with noise overlay on top */
-  background: linear-gradient(135deg, #075e54, #128c7e);
+<<<<<<< HEAD
+  /* ✅ SOLID COLOR - ป้องกัน banding */
+  background-color: #0D8578;
+=======
+  /* ✅ SOLID COLOR - ป้องกัน banding */
+  background-color: #0D8578;
+>>>>>>> feature/remotion-video-engine
   padding: 15px 20px;
   padding-top: 60px;
   /* Safe zone for TikTok search bar */
@@ -608,8 +613,13 @@ body.theme-horror .typing-bubble .dot {
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  /* Gradient with noise overlay on top */
-  background: linear-gradient(135deg, #075e54, #128c7e);
+<<<<<<< HEAD
+  /* ✅ SOLID COLOR - ป้องกัน banding */
+  background-color: #0D8578;
+=======
+  /* ✅ SOLID COLOR - ป้องกัน banding */
+  background-color: #0D8578;
+>>>>>>> feature/remotion-video-engine
 }
 
 .intro-overlay.hidden {
