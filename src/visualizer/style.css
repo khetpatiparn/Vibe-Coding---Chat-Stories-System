@@ -115,7 +115,8 @@ body.rendering .message.right {
 
 /* Chat Header */
 #chat-header {
-  background: linear-gradient(135deg, #075e54, #128c7e);
+  /* ✅ SOLID COLOR - ป้องกัน banding */
+  background-color: #0D8578;
   padding: 15px 20px;
   padding-top: 60px;
   /* Safe zone for TikTok search bar */
@@ -591,8 +592,8 @@ body.theme-horror .typing-bubble .dot {
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  background: linear-gradient(135deg, #075e54, #128c7e);
-  /* Match header gradient */
+  /* ✅ SOLID COLOR - ป้องกัน banding */
+  background-color: #0D8578;
 }
 
 .intro-overlay.hidden {

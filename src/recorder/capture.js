@@ -412,7 +412,8 @@ async function captureFrames(story, outputName = 'story', timelineData) {
                     if (!renderIntro) {
                         renderIntro = document.createElement('div');
                         renderIntro.id = 'render-intro-overlay';
-                        renderIntro.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999999; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #075e54, #128c7e);';
+                        // ✅ SOLID COLOR - ป้องกัน banding (ไม่ใช้ gradient)
+                        renderIntro.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999999; display: flex; align-items: center; justify-content: center; background-color: #0D8578;';
                         
                         // Content wrapper for animation (like .intro-content)
                         contentWrap = document.createElement('div');
@@ -718,11 +719,9 @@ async function captureFrames(story, outputName = 'story', timelineData) {
         const currentTime = frame / CONFIG.fps;
         await page.evaluate((time) => window.setCurrentTime(time), currentTime);
         
-        // const framePath = path.join(framesDir, `frame_${String(frame).padStart(6, '0')}.png`);
-        // await page.screenshot({ path: framePath, type: 'png' });
-        // บรรทัด 219-220 (ลบอันเก่า ใส่ 2 บรรทัดนี้แทน)
-        const framePath = path.join(framesDir, `frame_${String(frame).padStart(6, '0')}.jpg`);
-        await page.screenshot({ path: framePath, type: 'jpeg', quality: 90 });
+        // ใช้ PNG แทน JPEG เพื่อป้องกัน banding บน gradient
+        const framePath = path.join(framesDir, `frame_${String(frame).padStart(6, '0')}.png`);
+        await page.screenshot({ path: framePath, type: 'png' });
         
         if (frame % 30 === 0) process.stdout.write(`\rRecording: ${currentTime.toFixed(1)}s / ${totalDuration.toFixed(1)}s`);
     }
@@ -737,7 +736,7 @@ async function captureFrames(story, outputName = 'story', timelineData) {
 // ============================================
 async function assembleVideo(framesDir, outputName = 'story', audioOptions = {}) {
     const outputPath = path.join(CONFIG.outputDir, `${outputName}.mp4`);
-    const framePattern = path.join(framesDir, 'frame_%06d.jpg');
+    const framePattern = path.join(framesDir, 'frame_%06d.png');  // PNG for no banding
 
     await fs.ensureDir(CONFIG.outputDir);
     
@@ -831,42 +830,37 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
             // Use duration=longest so BGM (looped) defines length, then -t cuts to video duration
             filterComplex += `${mixInputs}amix=inputs=${count}:duration=longest:dropout_transition=0:normalize=0[aout]`;
             
-            console.log(`  Filter: ${filterComplex.substring(0, 100)}...`);
+            // ✅ รวม video filter (fps) เข้าไปใน complexFilter เพื่อป้องกัน conflict
+            const fullFilter = `[0:v]fps=30[vout];${filterComplex}`;
+            
+            console.log(`  Filter: ${fullFilter.substring(0, 100)}...`);
             
             command
-                .complexFilter(filterComplex)
-                .outputOptions(['-map', '0:v', '-map', '[aout]']);
+                .complexFilter(fullFilter)
+                .outputOptions(['-map', '[vout]', '-map', '[aout]']);
         } else {
-            // No audio - add silent audio to prevent timing issues
+            // No audio - use simple videoFilters
+            command.videoFilters(['fps=30']);
             command.outputOptions(['-an']);  // No audio track
         }
         
         // ✅ FIX: Use -t to set exact video duration (prevents infinite loop)
         // ============================================
-        // Balanced Settings (Quality + TikTok Size)
-        // - crf 20 = Better quality for animations (was 23, originally 17)
-        // - preset slow = Preserves fast transitions like sticker pop
-        // - Result: ~50-60 MB/min (compromise between 35 and 100)
+        // HIGH QUALITY Settings - Optimized for Animation
         // ============================================
         const outputOpts = [
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
-            '-preset', 'slow',       // Better motion estimation for animations
-            '-crf', '20',            // Balanced: better than 23 for animation detail
-            '-g', '15',              // Keyframe every 0.5 sec (captures fast animations)
-            '-bf', '2',              // B-frames for smooth motion
-            '-vsync', 'cfr',         // ✅ Constant frame rate - prevents frame drops
+            '-preset', 'slow',
+            '-crf', '18',            // High quality
+            '-g', '15',              // Keyframe every 0.5s - จับ animation ได้ครบ
+            '-bf', '2',              // B-frames - smooth motion
+            '-vsync', 'cfr',         // Constant frame rate - ไม่ drop frames
             '-c:a', 'aac',
-            '-b:a', '128k'           // Standard audio (TikTok limit)
+            '-b:a', '128k'
         ];
         
-        // ✅ Video filters BEFORE audio complex filter (prevents timing shift)
-        // Apply deband and noise to preserve animation while reducing banding
-        command.videoFilters([
-            'fps=30',                                       // ✅ Force constant 30fps
-            'deband=1thr=0.02:2thr=0.02:3thr=0.02:blur=1',  // Deband filter
-            'noise=c0s=3:c0f=t+u',   // Reduced noise (3 from 5) for cleaner animation
-        ]);
+        // Note: Video filter (fps=30) is now included in complexFilter above
         
         // Add duration limit if we know the total duration
         if (totalDuration) {
