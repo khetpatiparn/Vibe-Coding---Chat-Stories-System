@@ -856,7 +856,6 @@ async function assembleVideo(framesDir, outputName = 'story', audioOptions = {})
             '-b:a', '128k'
         ];
         // Note: Video filter (fps=30) is now included in complexFilter above
->>>>>>> feature/remotion-video-engine
         
         // Add duration limit if we know the total duration
         if (totalDuration) {
